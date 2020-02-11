@@ -1,6 +1,6 @@
-package behaviour;
+package behavior;
 
-import agent.ND_DCOP;
+import agent.AgentPDDCOP;
 import jade.core.behaviours.OneShotBehaviour;
 
 /**
@@ -10,9 +10,9 @@ import jade.core.behaviours.OneShotBehaviour;
 public class SEND_IMPROVE extends OneShotBehaviour {
 	private static final long serialVersionUID = 6159093695904595420L;
 
-	ND_DCOP agent;
+	AgentPDDCOP agent;
 	
-	public SEND_IMPROVE(ND_DCOP agent) {
+	public SEND_IMPROVE(AgentPDDCOP agent) {
 		super(agent);
 		this.agent = agent;
 	}

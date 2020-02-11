@@ -1,4 +1,4 @@
-package behaviour;
+package behavior;
 
 import jade.core.AID;
 import jade.core.behaviours.Behaviour;
@@ -8,7 +8,7 @@ import jade.lang.acl.UnreadableException;
 
 import java.util.ArrayList;
 
-import agent.ND_DCOP;
+import agent.AgentPDDCOP;
 
 /**
  * @author khoihd
@@ -18,9 +18,9 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 
 	private static final long serialVersionUID = 3951196053602788669L;
 
-	ND_DCOP agent;
+	AgentPDDCOP agent;
 	
-	public RECEIVE_VALUE(ND_DCOP agent) {
+	public RECEIVE_VALUE(AgentPDDCOP agent) {
 		super(agent);
 		this.agent = agent;
 	}
@@ -34,7 +34,7 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 		ArrayList<ACLMessage> messageList = new ArrayList<ACLMessage>();
 		
 		while (messageList.size() < agent.getNeighborAIDList().size()) {
-			if (agent.getLsIteration() == ND_DCOP.MAX_ITERATION) {
+			if (agent.getLsIteration() == AgentPDDCOP.MAX_ITERATION) {
 				agent.setSimulatedTime(oldSimulatedTime);
 				return;
 			}
@@ -54,7 +54,7 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 				block();
 			
 		}
-		agent.addupSimulatedTime(ND_DCOP.getDelayMessageTime());
+		agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
 		
 		agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
 		
@@ -71,11 +71,11 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 			
 			//update agent_view?
 			if (valuesFromNeighbor != null) {
-				for (int ts=0; ts<=agent.h; ts++) {
+				for (int ts=0; ts<=agent.getHorizon(); ts++) {
 					String valueFromNeighbor = valuesFromNeighbor.get(ts);
 					String sender = msg.getSender().getLocalName();
 					if (valueFromNeighbor != null) {
-						agent.getAgentView_DPOP_TSMap().get(sender).put(ts, valueFromNeighbor);
+						agent.getAgentViewEachTimeStepMap().get(sender).put(ts, valueFromNeighbor);
 					}
 				}
 			}
@@ -89,6 +89,6 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 
 	@Override
 	public boolean done() {
-		return agent.getLsIteration() == ND_DCOP.MAX_ITERATION;
+		return agent.getLsIteration() == AgentPDDCOP.MAX_ITERATION;
 	}		
 }

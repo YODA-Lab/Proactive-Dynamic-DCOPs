@@ -1,4 +1,4 @@
-package behaviour;
+package behavior;
 
 import jade.core.AID;
 import jade.core.behaviours.Behaviour;
@@ -8,7 +8,7 @@ import jade.lang.acl.UnreadableException;
 
 import java.util.ArrayList;
 
-import agent.ND_DCOP;
+import agent.AgentPDDCOP;
 
 /**
  * @author khoihd
@@ -18,9 +18,9 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 
 	private static final long serialVersionUID = -5530908625966260157L;
 
-	ND_DCOP agent;
+	AgentPDDCOP agent;
 	
-	public RECEIVE_IMPROVE(ND_DCOP agent) {
+	public RECEIVE_IMPROVE(AgentPDDCOP agent) {
 		super(agent);
 		this.agent = agent;
 	}
@@ -34,7 +34,7 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 		ArrayList<ACLMessage> messageList = new ArrayList<ACLMessage>();
 		
 		while (messageList.size() < agent.getNeighborStrList().size()) {
-			if (agent.getLsIteration() == ND_DCOP.MAX_ITERATION) {
+			if (agent.getLsIteration() == AgentPDDCOP.MAX_ITERATION) {
 				agent.setSimulatedTime(oldSimulatedTime);
 				return;
 			}
@@ -55,7 +55,7 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 				block();
 		}
 		
-		agent.addupSimulatedTime(ND_DCOP.getDelayMessageTime());
+		agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
 		
 		agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
 		
@@ -81,36 +81,36 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 //						agent.getBestImproveValueList().set(ts, null);
 //					}
 //				}
-				if (improveUtilFromNeighbor > agent.getBestImproveUtilityJESP())
-					agent.setBestImproveUtilityJESP(null);
+				if (improveUtilFromNeighbor > agent.getBestImproveUtility())
+					agent.setBestImproveUtility(null);
 				//if not, my best improve value dominates all
 			}
 		}
 		
 		//if I cannot improve any at all, I set my value to null
 //		for (int index=0; index<=agent.h; index++) {
-			if (agent.getBestImproveUtilityJESP() <= 0)
+			if (agent.getBestImproveUtility() <= 0)
 				agent.setBestImproveValueListJESP(null);
 //		}
 		
 		//update my values base on my best improve
-		for (int index=0; index<=agent.h; index++) {
-			String improvedValue = agent.getBestImproveValueListJESP().get(index);
+		for (int index=0; index<=agent.getHorizon(); index++) {
+			String improvedValue = agent.getBestImproveValueList().get(index);
 			if (improvedValue != null) {
-				System.err.println(agent.getIdStr() + " " + improvedValue);
-				agent.getValueAtEachTSMap().put(index, improvedValue);
+				System.err.println(agent.getAgentID() + " " + improvedValue);
+				agent.getChosenValueAtEachTSMap().put(index, improvedValue);
 			}
 		}
 		
 		agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
 		
 		for (AID neighbor:agent.getNeighborAIDList()) 
-			agent.sendObjectMessageWithTime(neighbor, agent.getBestImproveValueListJESP(), 
+			agent.sendObjectMessageWithTime(neighbor, agent.getBestImproveValueList(), 
 						LS_VALUE, agent.getSimulatedTime());			
 	}
 
 	@Override
 	public boolean done() {
-		return agent.getLsIteration() == ND_DCOP.MAX_ITERATION;
+		return agent.getLsIteration() == AgentPDDCOP.MAX_ITERATION;
 	}
 }

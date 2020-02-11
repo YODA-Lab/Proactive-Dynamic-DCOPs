@@ -1,7 +1,7 @@
-package behaviour;
+package behavior;
 
 
-import agent.ND_DCOP;
+import agent.AgentPDDCOP;
 import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
@@ -14,10 +14,12 @@ import jade.lang.acl.MessageTemplate;
 public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_TYPE {
 
 	private static final long serialVersionUID = 4730436360893574779L;
-
-	ND_DCOP agent;
 	
-	public PSEUDOTREE_GENERATION(ND_DCOP agent) {
+	private static final boolean WAITING_FOR_MSG = true;
+
+	AgentPDDCOP agent;
+	
+	public PSEUDOTREE_GENERATION(AgentPDDCOP agent) {
 		super(agent);
 		this.agent = agent;
 	}
@@ -50,11 +52,9 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 			childMessage.setContent("CHILD");
 			childMessage.addReceiver(childrenWithBestInfo);
 			agent.send(childMessage);
-//			System.out.println("Agent " + getLocalName() + " send message "
-//							+ childMessage.getContent() + " to Agent " + childrenWithBestInfo.getLocalName());
 		}
 		
-		while (ND_DCOP.WAITING_FOR_MSG) {
+		while (WAITING_FOR_MSG) {
 			MessageTemplate template = MessageTemplate.MatchPerformative(PSEUDOTREE);
 			ACLMessage receivedMessage = myAgent.receive(template);
 			if (receivedMessage != null) {
@@ -81,10 +81,7 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 					pseudoMsg.setContent("PSEUDO");
 					pseudoMsg.addReceiver(sender);
 					agent.send(pseudoMsg);
-					
-//					System.out.println("Agent " + getLocalName() + " send message "
-//							+ pseudoMsg.getContent() + " to Agent " + sender.getLocalName());
-					
+										
 					continue;
 				}//end of second IF
 				else if (receivedMessage.getContent().equals("PSEUDO")) {
@@ -108,9 +105,6 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 					childMsg.setContent("CHILD");
 					childMsg.addReceiver(childrenWithBestInfo);
 					agent.send(childMsg);
-					
-//					System.out.println("Agent " + getLocalName() + " send message "
-//							+ childMsg.getContent() + " to Agent " + childrenWithBestInfo.getLocalName());
 				}
 				else {
 					if (agent.isRoot() == false) {
@@ -118,8 +112,6 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 						finishMsg.setContent("FINISH");
 						finishMsg.addReceiver(agent.getParentAID());
 						
-//						System.out.println("Agent " + getLocalName() + " send message "
-//								+ finishMsg.getContent() + " to agent " + parentAID.getLocalName());
 						agent.send(finishMsg);
 					}
 //					printTree(isRoot);
@@ -145,15 +137,13 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 				treeFinishMsg.setContent("TREE_FINISH");
 				treeFinishMsg.addReceiver(childrenAID);
 				agent.send(treeFinishMsg);
-//				System.out.println("Agent " + getLocalName() + " send message "
-//								+ treeFinishMsg.getContent() + " to Agent " + childrenAID.getLocalName());
 			}
 //			isPseudotreeProcess = FINISHED;
 		}
 		//waiting for message from the parent
 		//send message to all the children
 		else {
-			while (ND_DCOP.WAITING_FOR_MSG) {
+			while (WAITING_FOR_MSG) {
 				MessageTemplate template = MessageTemplate.MatchPerformative(PSEUDOTREE);
 				ACLMessage receivedMessage = myAgent.receive(template);
 				if (receivedMessage != null) {
@@ -163,8 +153,6 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 							treeFinishMsg.setContent("TREE_FINISH");
 							treeFinishMsg.addReceiver(childrenAgentAID);
 							agent.send(treeFinishMsg);
-//							System.out.println("Agent " + getLocalName() + " send message "
-//											+ treeFinishMsg.getContent() + " to Agent " + childrenAgentAID.getLocalName());
 						}
 						break;
 					}

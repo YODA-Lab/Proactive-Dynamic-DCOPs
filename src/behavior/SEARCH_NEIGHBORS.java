@@ -1,6 +1,6 @@
-package behaviour;
+package behavior;
 
-import agent.ND_DCOP;
+import agent.AgentPDDCOP;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
@@ -15,9 +15,9 @@ public class SEARCH_NEIGHBORS extends OneShotBehaviour implements MESSAGE_TYPE {
 
 	private static final long serialVersionUID = 6680449924898094747L;
 
-	ND_DCOP agent;
+	AgentPDDCOP agent;
 	
-	public SEARCH_NEIGHBORS(ND_DCOP agent) {
+	public SEARCH_NEIGHBORS(AgentPDDCOP agent) {
 		super(agent);
 		this.agent = agent;
 	}
@@ -26,7 +26,7 @@ public class SEARCH_NEIGHBORS extends OneShotBehaviour implements MESSAGE_TYPE {
 	public void action() {
 		DFAgentDescription templateDF = new DFAgentDescription();
 		ServiceDescription serviceDescription = new ServiceDescription();
-		serviceDescription.setType(agent.getIdStr());
+		serviceDescription.setType(agent.getAgentID());
 		templateDF.addServices(serviceDescription);
 		
 		while (agent.getNeighborAIDList().size() < agent.getNeighborStrList().size()) {

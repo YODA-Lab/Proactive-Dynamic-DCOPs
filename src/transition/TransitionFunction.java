@@ -1,20 +1,23 @@
 package transition;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author khoihd
  *
  */
 public class TransitionFunction {
-	ArrayList<String> domain;
-	ArrayList<ArrayList<Double>> transitionMatrix;
-	public TransitionFunction(ArrayList<String> domain, ArrayList<ArrayList<Double>> transitionFunction) {
+	List<String> domain = new ArrayList<>();
+	
+	List<List<Double>> transitionMatrix = new ArrayList<>();
+	
+	public TransitionFunction(List<String> domain, List<List<Double>> transitionFunction) {
 		this.domain = domain;
 		this.transitionMatrix = transitionFunction;
 	}
 	
-	public ArrayList<Double> getTransitionOf(String from) {
+	public List<Double> getTransitionOf(String from) {
 		int fromIndex = domain.indexOf(from);
 		return transitionMatrix.get(fromIndex);
 	}
@@ -35,19 +38,19 @@ public class TransitionFunction {
 		return transitionMatrix.get(fromIndex).get(toIndex);
 	}
 
-	public ArrayList<String> getDomain() {
+	public List<String> getDomain() {
 		return domain;
 	}
 
-	public void setDomain(ArrayList<String> domain) {
+	public void setDomain(List<String> domain) {
 		this.domain = domain;
 	}
 
-	public ArrayList<ArrayList<Double>> getTransitionMatrix() {
+	public List<List<Double>> getTransitionMatrix() {
 		return transitionMatrix;
 	}
 
-	public void setTransitionMatrix(ArrayList<ArrayList<Double>> transitionMatrix) {
+	public void setTransitionMatrix(List<List<Double>> transitionMatrix) {
 		this.transitionMatrix = transitionMatrix;
 	}
 	

@@ -1,4 +1,4 @@
-package behaviour;
+package behavior;
 
 import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
@@ -8,7 +8,7 @@ import jade.lang.acl.UnreadableException;
 
 import java.util.ArrayList;
 
-import agent.ND_DCOP;
+import agent.AgentPDDCOP;
 
 /**
  * @author khoihd
@@ -18,9 +18,9 @@ import agent.ND_DCOP;
 public class BROADCAST_RECEIVE_HEURISTIC_INFO extends OneShotBehaviour implements MESSAGE_TYPE{
 	private static final long serialVersionUID = 7277049523059465622L;
 
-	ND_DCOP agent;
+	AgentPDDCOP agent;
 	
-	public BROADCAST_RECEIVE_HEURISTIC_INFO(ND_DCOP agent) {
+	public BROADCAST_RECEIVE_HEURISTIC_INFO(AgentPDDCOP agent) {
 		super(agent);
 		this.agent = agent;
 	}

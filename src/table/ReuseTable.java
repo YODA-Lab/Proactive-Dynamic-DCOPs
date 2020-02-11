@@ -2,6 +2,7 @@ package table;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author khoihd
@@ -18,16 +19,16 @@ public class ReuseTable implements Serializable {
 	int rowCount;
 	int variableCount;
 	int randomCount;
-	ArrayList<Row> table;
-	ArrayList<String> decVarLabel;
-	ArrayList<String> randVarLabel;
+	List<Row> table;
+	List<String> decVarLabel;
+	List<String> randVarLabel;
 	int randType;
 
 	public ReuseTable(ReuseTable anotherTable) {
 		this.rowCount = anotherTable.rowCount;
 		this.variableCount = anotherTable.variableCount;
 		this.table = new ArrayList<Row>();
-//		this.decVarLabel = (ArrayList<String>) anotherTable.decVarLabel.clone();
+//		this.decVarLabel = (List<String>) anotherTable.decVarLabel.clone();
 		this.decVarLabel = new ArrayList<String>();
 		for (String label:anotherTable.getDecVarLabel()) {
 			this.decVarLabel.add(label);
@@ -39,7 +40,7 @@ public class ReuseTable implements Serializable {
 		}
 	}
 	
-	boolean equalArray(ArrayList<?> list1, ArrayList<?> list2) {
+	boolean equalArray(List<?> list1, List<?> list2) {
 		if (list1 == null || list2 == null)
 			return false;
 		if (list1.size() != list2.size())
@@ -51,7 +52,7 @@ public class ReuseTable implements Serializable {
 		return true;
 	}
 	
-	double getUtilityGivenDecValueList(ArrayList<String> decValueList) {
+	double getUtilityGivenDecValueList(List<String> decValueList) {
 		for (int index=0; index<table.size(); index++) {
 			if (equalArray(table.get(index).getValueList(), decValueList))
 				return table.get(index).getUtility();
@@ -59,7 +60,7 @@ public class ReuseTable implements Serializable {
 		return -999;
 	}
 	
-	double getUtilityGivenDecAndRandValueList(ArrayList<String> decValueList, ArrayList<String> randValueList) {
+	double getUtilityGivenDecAndRandValueList(List<String> decValueList, List<String> randValueList) {
 		for (int index=0; index<table.size(); index++) {
 			if (equalArray(table.get(index).getValueList(), decValueList)
 			&& equalArray(table.get(index).getRandomList(), randValueList))
@@ -89,7 +90,7 @@ public class ReuseTable implements Serializable {
         	&&	castedTypeTable.decVarLabel == this.decVarLabel;
 	}
 	
-	public ReuseTable(ArrayList<String> newLabel) {
+	public ReuseTable(List<String> newLabel) {
 		table = new ArrayList<Row>();
 		decVarLabel = new ArrayList<String>();
 		for (String variable:newLabel)
@@ -100,12 +101,12 @@ public class ReuseTable implements Serializable {
 		//this.randType = NOT_CONTAIN_RAND;
 	}
 	
-	public ReuseTable(ArrayList<String> newLabel, int randType) {
+	public ReuseTable(List<String> newLabel, int randType) {
 		this(newLabel);
 		this.randType = randType;
 	}
 	
-	public ReuseTable(ArrayList<String> decVarList, ArrayList<String> randVarList) {
+	public ReuseTable(List<String> decVarList, List<String> randVarList) {
 		table = new ArrayList<Row>();
 		decVarLabel = decVarList;
 		randVarLabel = randVarList;
@@ -115,7 +116,7 @@ public class ReuseTable implements Serializable {
 		this.randType = NOT_CONTAIN_RAND;
 	}
 	
-	public ReuseTable(ArrayList<String> decVarList, ArrayList<String> randVarList, int randType) {
+	public ReuseTable(List<String> decVarList, List<String> randVarList, int randType) {
 		this(decVarList, randVarList);
 		this.randType = randType;
 	}
@@ -130,23 +131,14 @@ public class ReuseTable implements Serializable {
 	//kiem tra gia tri cua bien, co trong listValues chua
 	//neu chua thi them vao
 	//tra ve danh sach tat ca gia tri cua 1 bien, khong bi duplicate
-	ArrayList<String> listValuesOfVariable(int index) {
-		ArrayList<String> listValues = new ArrayList<String>();
+	List<String> listValuesOfVariable(int index) {
+		List<String> listValues = new ArrayList<String>();
 		for (Row row: table) {			
-			if (containVariable(listValues, row.getValueAtPosition(index)) == false)
+			if (!listValues.contains(row.getValueAtPosition(index))) {
 				listValues.add(row.getValueAtPosition(index));
+			}
 		}
 		return listValues;
-	}
-	
-	boolean containVariable(ArrayList<String> list, String input) {
-		if (list.size() == 0)
-			return false;
-		for (String temp: list) {
-			if (temp.equals(input))
-				return true;
-		}
-		return false;
 	}
 	
 	void printDecVar() {
@@ -193,15 +185,15 @@ public class ReuseTable implements Serializable {
 		return variableCount;
 	}
 
-	public ArrayList<Row> getTable() {
+	public List<Row> getTable() {
 		return table;
 	}
 
-	public ArrayList<String> getDecVarLabel() {
+	public List<String> getDecVarLabel() {
 		return decVarLabel;
 	}
 
-	public ArrayList<String> getRandVarLabel() {
+	public List<String> getRandVarLabel() {
 		return randVarLabel;
 	}
 

@@ -1,4 +1,4 @@
-package behaviour;
+package behavior;
 
 /**
  * @author khoihd
@@ -20,5 +20,4 @@ public interface MESSAGE_TYPE {
 	public static final String msgTypes[] = {"DPOP_UTIL", "DPOP_VALUE", "PROPAGATE_DPOP_VALUE", "SWICHING_COST",
 										"LS_IMPROVE", "LS_VALUE", "LS_UTIL", "RAND_VALUE", "LS_ITERATION_DONE",
 										"PSEUDOTREE" , "INFO", "INIT_LS_UTIL"};
-	
 }

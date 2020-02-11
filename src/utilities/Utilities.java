@@ -12,7 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 
-import agent.ND_DCOP;
+import agent.AgentPDDCOP;
 
 public class Utilities {	
 	/**
@@ -22,12 +22,12 @@ public class Utilities {
 									+ "\t" + "Time" + "\t" + "Utility";
 	
 	//before local search iteration
-	public static void writeUtil_Time_BeforeLS(ND_DCOP agent) {
-		String newFileName = "SDPOP" + "_d=" + agent.noAgent
-									+ "_sw=" + (int) agent.switchingCost
-									+ "_h=" + agent.h + ".txt";  
+	public static void writeUtil_Time_BeforeLS(AgentPDDCOP agent) {
+		String newFileName = "SDPOP" + "_d=" + agent.getNoAgent()
+									+ "_sw=" + (int) agent.getSwitchingCost()
+									+ "_h=" + agent.getHorizon() + ".txt";  
 		
-		if (agent.instanceD == 0) {
+		if (agent.getInstanceID() == 0) {
 			headerLine += "\t" + "Switch";
 			writeHeaderLineToFile(newFileName);
 		}
@@ -39,18 +39,18 @@ public class Utilities {
 		df.setRoundingMode(RoundingMode.DOWN);
 		String line = null;
 		
-		line = "\n" + agent.instanceD + "\t" + alg + "\t" + agent.noAgent + "\t" + 
-				agent.getOldLSRunningTime() + "\t" + df.format(agent.getUtilityAndCost()) + "\t" + "*";
+		line = "\n" + agent.getInstanceID() + "\t" + alg + "\t" + agent.getNoAgent() + "\t" + 
+				agent.getSimulatedTime() + "\t" + df.format(agent.getUtilityAndCost()) + "\t" + "*";
 
 		writeToFile(line, newFileName);
 	}
 	
-	public static void writeUtil_Time_BeforeLS_Rand(ND_DCOP agent) {
-		String newFileName = "FIRST_RAND" + "_d=" + agent.noAgent
-				+ "_sw=" + (int) agent.switchingCost
-				+ "_h=" + agent.h + ".txt";  
+	public static void writeUtil_Time_BeforeLS_Rand(AgentPDDCOP agent) {
+		String newFileName = "FIRST_RAND" + "_d=" + agent.getNoAgent()
+				+ "_sw=" + (int) agent.getSwitchingCost()
+				+ "_h=" + agent.getHorizon() + ".txt";  
 
-		if (agent.instanceD == 0) {
+		if (agent.getInstanceID() == 0) {
 			headerLine += "\t" + "Switch";
 			writeHeaderLineToFile(newFileName);
 		}
@@ -62,49 +62,48 @@ public class Utilities {
 		df.setRoundingMode(RoundingMode.DOWN);
 		String line = null;
 
-		line = "\n" + agent.instanceD + "\t" + alg + "\t" + agent.noAgent + "\t" +
-				agent.getOldLSRunningTime() + "\t" + df.format(agent.getUtilityAndCost()) + "\t" + "*";
+		line = "\n" + agent.getInstanceID() + "\t" + alg + "\t" + agent.getNoAgent() + "\t" +
+				agent.getSimulatedTime() + "\t" + df.format(agent.getUtilityAndCost()) + "\t" + "*";
 
 		writeToFile(line, newFileName);
 	}
 	
-	public static void writeUtil_Time_FW_BW(ND_DCOP agent) {
-		if (agent.instanceD == 0)
-			writeHeaderLineToFile(agent.varDecisionFileName);
+	public static void writeUtil_Time_FW_BW(AgentPDDCOP agent) {
+		if (agent.getInstanceID() == 0)
+			writeHeaderLineToFile(agent.getOutputFileName());
 		
 		agent.setStop(true);
-		String alg = ND_DCOP.algTypes[agent.algorithm];
-		double runningTime = agent.getEndTime() - agent.getStartTime();
+//		String alg = ND_DCOP.algTypes[agent.algorithm];
+//		double runningTime = agent.getEndTime() - agent.getStartTime();
 		
 		DecimalFormat df = new DecimalFormat("##.##");
 		df.setRoundingMode(RoundingMode.DOWN);
 		String line = null;
 
-		line = "\n" + agent.instanceD + "\t" + alg + "\t" + agent.noAgent + "\t" + 
-				runningTime + "\t" + df.format(agent.getTotalGlobalUtility());
+		line = "\n" + agent.getInstanceID() + "\t" + agent.getAlgorithm() + "\t" + agent.getNoAgent() + "\t" + 
+				agent.getSimulatedTime() + "\t" + df.format(agent.getTotalGlobalUtility());
 					
-		writeToFile(line, agent.varDecisionFileName);
+		writeToFile(line, agent.getOutputFileName());
 	}
 
-	public static void writeUtil_Time_LS(ND_DCOP agent) {
+	public static void writeUtil_Time_LS(AgentPDDCOP agent) {
 		if (agent.getUtilityAndCost() == agent.getOldLSUtility() && agent.isStop() == false) {
-			if (agent.instanceD == 0) {
-				writeHeaderLineToFile(agent.varDecisionFileName);
+			if (agent.getInstanceID() == 0) {
+				writeHeaderLineToFile(agent.getOutputFileName());
 			}
 			
 			int countIteration = agent.getLsIteration() + 1;
 			//startWriting file
 			agent.setStop(true);
-			String alg = ND_DCOP.algTypes[agent.algorithm];
+//			String alg = ND_DCOP.algTypes[agent.algorithm];
+			
 			
 			DecimalFormat df = new DecimalFormat("##.##");
 			df.setRoundingMode(RoundingMode.DOWN);
-			String line = null;
-
-			line = "\n" + agent.instanceD + "\t" + alg + "\t" + agent.noAgent + "\t" + 
-					agent.getOldLSRunningTime() + "\t" + df.format(agent.getOldLSUtility()) + "\t" + (countIteration-1);
+			String line = "\n" + agent.getInstanceID() + "\t" + agent.getAlgorithm() + "\t" + agent.getNoAgent() + "\t" + 
+					agent.getSimulatedTime() + "\t" + df.format(agent.getOldLSUtility()) + "\t" + (countIteration-1);
 			
-			writeToFile(line, agent.varDecisionFileName);
+			writeToFile(line, agent.getOutputFileName());
 		}
 	}
 	
