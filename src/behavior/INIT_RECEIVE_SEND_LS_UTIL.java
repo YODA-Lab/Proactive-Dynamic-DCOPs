@@ -33,6 +33,7 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
 	@Override
 	public void action() {		
 		double utilFromChildren = 0;
+		
 		List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(INIT_LS_UTIL);
 		
 		for (ACLMessage msg : receiveMessages) {
@@ -44,29 +45,15 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
       }
 		}
 				
-		agent.setUtilityAndCost(utilFromChildren + 
+		// Send the partial quality of the subtree to parent
+		agent.setCurentLocalSearchQuality(utilFromChildren + 
 				agent.utilityWithParentAndPseudoAndUnary(lastTimeStep) - agent.calculcatingSwitchingCost());
 
 		if (!agent.isRoot()) {
-			agent.sendObjectMessageWithTime(agent.getParentAID(), agent.getUtilityAndCost(), INIT_LS_UTIL, agent.getSimulatedTime());
+			agent.sendObjectMessageWithTime(agent.getParentAID(), agent.getCurentLocalSearchQuality(), INIT_LS_UTIL, agent.getSimulatedTime());
 		}
 		else {
-//			agent.setOldLSRunningTime(System.currentTimeMillis() - agent.getStartTime());
-
-			agent.setOldLSUtility(agent.getUtilityAndCost());
-//			if (agent.algorithm == ND_DCOP.LS_SDPOP)
-//				Utilities.writeUtil_Time_BeforeLS(agent);
-//			else if (agent.algorithm == ND_DCOP.LS_RAND)
-			if (agent.getAlgorithm() == DcopAlgorithm.JESP)
-				Utilities.writeUtil_Time_BeforeLS_Rand(agent);
-			
-			System.out.println("SIMULATED TIME: " + agent.getSimulatedTime()/1000000 + "ms");
-			
-//			if (agent.algorithm == ND_DCOP.LS_SDPOP)
-//				System.err.println("Utility of Local-search DPOP at iteration 0: " + agent.getUtilityAndCost());
-//			else if (agent.algorithm == ND_DCOP.LS_RAND)
-			if (agent.getAlgorithm() == DcopAlgorithm.JESP)
-				System.err.println("Utility of Local-search RAND at iteration 0: " + agent.getUtilityAndCost());
+			agent.setBestLocalSearchQuality(agent.getCurentLocalSearchQuality());
 		}
 	}
 	

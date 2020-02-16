@@ -5,6 +5,7 @@ import java.util.List;
 
 import agent.AgentPDDCOP;
 import agent.AgentPDDCOP.DcopAlgorithm;
+import agent.AgentPDDCOP.DynamicType;
 import utilities.*;
 import jade.core.behaviours.Behaviour;
 import jade.lang.acl.ACLMessage;
@@ -30,24 +31,7 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
 	}
 	
 	@Override
-	public void action() {
-//		// no need to back up simulated time, since stop condition occurs in done condition.
-//		int msgCount = 0;
-//		while (msgCount < agent.getNeighborAIDList().size()) {
-//			MessageTemplate template = MessageTemplate.MatchPerformative(LS_ITERATION_DONE);
-//			ACLMessage receivedMessage = myAgent.receive(template);
-//			if (receivedMessage != null) {
-//				msgCount++;
-//				
-//				long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
-//				if (timeFromReceiveMessage > agent.getSimulatedTime())
-//					agent.setSimulatedTime(timeFromReceiveMessage);
-//			}
-//			else
-//				block();	
-//		}
-//		agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
-		
+	public void action() {		
     double utilFromChildren = 0;
     List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(INIT_LS_UTIL);
     
@@ -55,37 +39,32 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
       try {
         utilFromChildren += (Double) msg.getContentObject();
       } catch (UnreadableException e) {
-        // TODO Auto-generated catch block
         e.printStackTrace();
       }
     }
 		
-    agent.setUtilityAndCost(utilFromChildren + 
+    agent.setCurentLocalSearchQuality(utilFromChildren + 
         agent.utilityWithParentAndPseudoAndUnary(lastTimeStep) - agent.calculcatingSwitchingCost());
 
 		if (!agent.isRoot()) {
-			agent.sendObjectMessageWithTime(agent.getParentAID(), 
-					String.valueOf(agent.getUtilityAndCost()), LS_UTIL, agent.getSimulatedTime());
+			agent.sendObjectMessageWithTime(agent.getParentAID(), agent.getCurentLocalSearchQuality(), LS_UTIL, agent.getSimulatedTime());
 		}
 		else {
-//			agent.setEndTime(System.currentTimeMillis());
-			Utilities.writeUtil_Time_LS(agent);
-//			agent.setOldLSRunningTime(agent.getEndTime() - agent.getStartTime());
-			agent.setOldLSUtility(agent.getUtilityAndCost());
-			
-			System.out.println("SIMULATED TIME: " + agent.getSimulatedTime()/1000000 + "ms");
-			int countIteration = agent.getLsIteration() + 1;
-//			if (agent.algorithm == ND_DCOP.LS_SDPOP) {
-//				System.err.println("Utility of Local-search DPOP at iteration " + countIteration + ": " + agent.getUtilityAndCost());
-//			}
-//			else if (agent.algorithm == ND_DCOP.LS_RAND)
-			if (agent.getAlgorithm() == DcopAlgorithm.JESP)
-				System.err.println("Utility of Local-search RAND at iteration " + countIteration + ": " + agent.getUtilityAndCost());
+		  if (Double.compare(agent.getCurentLocalSearchQuality(), agent.getBestLocalSearchQuality()) > 0) {
+		    agent.setBestLocalSearchQuality(agent.getCurentLocalSearchQuality());
+		    //TODO: set runtime
+		  }
+		  
+		  if (agent.getLsIteration() == AgentPDDCOP.MAX_ITERATION) {
+		    //TODO: write solution quality and runtimes to file
+		  }
+//			Utilities.writeUtil_Time_LS(agent);
 		}
 		
 		agent.incrementLocalSearchIteration();
 		
 		if (agent.getLsIteration() < AgentPDDCOP.MAX_ITERATION) {
+//			agent.archivedSendImprove(lastTimeStep);
 			agent.sendImprove(lastTimeStep);
 		}
 	}

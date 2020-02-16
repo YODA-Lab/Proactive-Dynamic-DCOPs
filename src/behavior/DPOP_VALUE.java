@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import agent.AgentPDDCOP;
 import agent.AgentPDDCOP.DcopAlgorithm;
@@ -50,16 +51,12 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public void action() {
-		agent.setValuesToSendInVALUEPhase(new HashMap<String, String>());
+	public void action() {		
 		if (agent.isRoot()) {
 			agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
-			if (agent.isRunningAlgorithm(DcopAlgorithm.C_DPOP)) {
-				System.out.println(agent.getAgentID() + " choose value " + agent.getChosenValue());
-			}
 			
 			agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
-			agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getChosenValue());
+			agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getChosenValueAtEachTimeStep(currentTimeStep));
 			for (AID childrenAgentAID:agent.getChildrenAIDList()) {
 				agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(),
 								DPOP_VALUE, agent.getSimulatedTime());
@@ -110,64 +107,36 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 				}
 			}
 			
-			agent.setChosenValue(chosenRow.getValueAtPosition(agentIndex));
-
-			//add its chosen value to the map to send to its children
-			agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getChosenValue());			
+			String chosenValue = chosenRow.getValueAtPosition(agentIndex);
 			
-			if (agent.isRunningAlgorithm(DcopAlgorithm.C_DPOP)) {
-				System.out.println("Chosen value is " + agent.getChosenValue());
-			}
-			//correct
-			else if (agent.isRunningAlgorithm(DcopAlgorithm.LS_SDPOP) || agent.isRunningAlgorithm(DcopAlgorithm.SDPOP)) {
-				agent.getChosenValueAtEachTSMap().put(currentTimeStep, agent.getChosenValue());
-			}
-			else if (agent.isRunningAlgorithm(DcopAlgorithm.HYBRID)) {
-				agent.getChosenValueAtEachTSMap().put(currentTimeStep, agent.getChosenValue());
-			}
-			else if (agent.isRunningAlgorithm(DcopAlgorithm.REACT)) {
-				agent.getChosenValueAtEachTSMap().put(currentTimeStep, agent.getChosenValue());
-			}
-			//correct
-			else if (agent.isRunningAlgorithm(DcopAlgorithm.FORWARD)) {
-				//solution at current time step
-				if (currentTimeStep < agent.getHorizon()-1)
-					agent.getChosenValueAtEachTSMap().put(currentTimeStep, agent.getChosenValue());
-				//solution at h because we solve h before h-1
-				else if (currentTimeStep == agent.getHorizon()-1)
-					agent.getChosenValueAtEachTSMap().put(agent.getHorizon(), agent.getChosenValue());
-				//solution at h-1
-				else if (currentTimeStep == agent.getHorizon())
-					agent.getChosenValueAtEachTSMap().put(agent.getHorizon()-1, agent.getChosenValue());
+			agent.setChosenValueAtEachTimeStep(currentTimeStep, chosenValue);
 
-			}
-			else if (agent.isRunningAlgorithm(DcopAlgorithm.BACKWARD)) {
-				agent.getChosenValueAtEachTSMap().put(agent.getHorizon() - currentTimeStep, agent.getChosenValue());
-			}
+			agent.addValuesToSendInValuePhase(agent.getAgentID(), chosenValue);
+			
+      if (agent.isRunningAlgorithm(DcopAlgorithm.C_DPOP)) {
+        agent.setChosenValueAtEachTimeStep(currentTimeStep, chosenValue);
+      }
 			
 			agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
 			
 			if (agent.isLeaf() == false) {
-				ArrayList<String> agent_value = new ArrayList<String>();
+				List<String> agent_value = new ArrayList<String>();
 				agent_value.add(agent.getAgentID());
-				agent_value.add(agent.getChosenValue());
+				agent_value.add(chosenValue);
 				if (agent.isRunningAlgorithm(DcopAlgorithm.C_DPOP)) {
-					System.out.println("Chosen value is " + agent.getChosenValue());
+					System.out.println("Chosen value is " + chosenValue);
 				}
-				agent_value.add(String.valueOf(agent.getCurrentGlobalUtility()));
+				agent_value.add(String.valueOf(agent.getCurrentLocalSearchSolutionQuality()));
 				
 				for (AID children:agent.getChildrenAIDList()) {
-					agent.sendObjectMessageWithTime(children, agent.getValuesToSendInVALUEPhase()
-													, DPOP_VALUE, agent.getSimulatedTime());
+					agent.sendObjectMessageWithTime(children, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE, agent.getSimulatedTime());
 				}
 			}
 		}
-		
-		agent.incrementCurrentTS();
 	}
 	
-	public ArrayList<ACLMessage> waitingForMessageFromPseudoParent(int msgCode) {
-		ArrayList<ACLMessage> messageList = new ArrayList<ACLMessage>();
+	private List<ACLMessage> waitingForMessageFromPseudoParent(int msgCode) {
+		List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 		//no of messages are no of pseudoParent + 1 (parent)
 		while (messageList.size() < agent.getPseudoParentAIDList().size() + 1) {
 			MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
@@ -181,7 +150,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 		return messageList;
 	}
 	
-	public ACLMessage waitingForValuesInItsAgentViewFromParent(int msgCode) {
+	private ACLMessage waitingForValuesInItsAgentViewFromParent(int msgCode) {
 		ACLMessage receivedMessage = null;
 		while (true) {
 			
@@ -201,7 +170,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 		return receivedMessage;
 	}
 	
-	public void writeChosenValueToFile_Not_FW() {
+	private void writeChosenValueToFile_Not_FW() {
 		String algName = null;
 		if (agent.isRunningAlgorithm(DcopAlgorithm.REACT))
 			algName = "react";
@@ -216,7 +185,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 			+ "\t" + "scType=" + AgentPDDCOP.SWITCHING_TYPE + "\n";
 			
 		line = line + "ts=" + currentTimeStep
-					+ "\t" + "x=" + agent.getChosenValueAtEachTSMap().get(currentTimeStep)
+					+ "\t" + "x=" + agent.getChosenValueAtEachTimeStep(currentTimeStep)
 					+ "\t" + "y=" + agent.getPickedRandomAt(currentTimeStep);
 		
 		//write switching cost after y (react/hybrid) or x (forward)
@@ -224,8 +193,8 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 		if (currentTimeStep == 0)
 			switchOrNot = AgentPDDCOP.switchNo;
 		else {
-			if (agent.getChosenValueAtEachTSMap().get(currentTimeStep).equals
-					(agent.getChosenValueAtEachTSMap().get(currentTimeStep-1)) == true) {
+			if (agent.getChosenValueAtEachTimeStep(currentTimeStep).equals
+					(agent.getChosenValueAtEachTimeStep(currentTimeStep-1)) == true) {
 				switchOrNot = AgentPDDCOP.switchNo;
 			}
 			else {
@@ -264,22 +233,22 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 		if (currentTimeStep == 0) {
 			switchOrNot = AgentPDDCOP.switchNo;
 			line = line + "ts=" + currentTimeStep
-			 		+ "\t" + "x=" + agent.getChosenValueAtEachTSMap().get(currentTimeStep)
+			 		+ "\t" + "x=" + agent.getChosenValueAtEachTimeStep(currentTimeStep)
 					+ "\t" + "sw=" + switchOrNot + "\n";
 		}
 		else if (currentTimeStep == agent.getHorizon()-1) {
 			//no switching cost for now, wait for
 			line = line + "ts=" + agent.getHorizon()
-			 		+ "\t" + "x=" + agent.getChosenValueAtEachTSMap().get(agent.getHorizon());
+			 		+ "\t" + "x=" + agent.getChosenValueAtEachTimeStep(agent.getHorizon());
 			agent.setLastLine(line);
 		}
 		else if (currentTimeStep == agent.getHorizon()) {
 			line = line + "ts=" + (agent.getHorizon()-1)
-	 					+ "\t" + "x=" + agent.getChosenValueAtEachTSMap().get(agent.getHorizon()-1);
+	 					+ "\t" + "x=" + agent.getChosenValueAtEachTimeStep(agent.getHorizon()-1);
 			
 			//compare value at h-1 with h-2
-			if (agent.getChosenValueAtEachTSMap().get(agent.getHorizon()-1).equals
-					(agent.getChosenValueAtEachTSMap().get(agent.getHorizon()-2)) == true) {
+			if (agent.getChosenValueAtEachTimeStep(agent.getHorizon()-1).equals
+					(agent.getChosenValueAtEachTimeStep(agent.getHorizon()-2)) == true) {
 				switchOrNot = AgentPDDCOP.switchNo;
 			}
 			else {
@@ -288,8 +257,8 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 			
 			line = line + "\t" + "sw=" + switchOrNot + "\n" + agent.getLastLine();
 			
-			if (agent.getChosenValueAtEachTSMap().get(agent.getHorizon()).equals
-					(agent.getChosenValueAtEachTSMap().get(agent.getHorizon()-1)) == true) {
+			if (agent.getChosenValueAtEachTimeStep(agent.getHorizon()).equals
+					(agent.getChosenValueAtEachTimeStep(agent.getHorizon()-1)) == true) {
 				switchOrNot = AgentPDDCOP.switchNo;
 			}
 			else {
@@ -300,9 +269,9 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 		}
 		else {
 			line = line + "ts=" + currentTimeStep
-	 					+ "\t" + "x=" + agent.getChosenValueAtEachTSMap().get(currentTimeStep);
-			if (agent.getChosenValueAtEachTSMap().get(currentTimeStep).equals
-					(agent.getChosenValueAtEachTSMap().get(currentTimeStep-1)) == true) {
+	 					+ "\t" + "x=" + agent.getChosenValueAtEachTimeStep(currentTimeStep);
+			if (agent.getChosenValueAtEachTimeStep(currentTimeStep).equals
+					(agent.getChosenValueAtEachTimeStep(currentTimeStep-1)) == true) {
 				switchOrNot = AgentPDDCOP.switchNo;
 			}
 			else {

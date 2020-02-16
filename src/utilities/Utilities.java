@@ -23,13 +23,13 @@ public class Utilities {
 	
 	//before local search iteration
 	public static void writeUtil_Time_BeforeLS(AgentPDDCOP agent) {
-		String newFileName = "SDPOP" + "_d=" + agent.getNoAgent()
-									+ "_sw=" + (int) agent.getSwitchingCost()
-									+ "_h=" + agent.getHorizon() + ".txt";  
-		
+//		String newFileName = "SDPOP" + "_d=" + agent.getAgentC
+//									+ "_sw=" + (int) agent.getSwitchingCost()
+//									+ "_h=" + agent.getHorizon() + ".txt";  
+//		
 		if (agent.getInstanceID() == 0) {
 			headerLine += "\t" + "Switch";
-			writeHeaderLineToFile(newFileName);
+			writeHeaderLineToFile(agent.getOutputFileName());
 		}
 		
 		//startWriting file
@@ -39,14 +39,14 @@ public class Utilities {
 		df.setRoundingMode(RoundingMode.DOWN);
 		String line = null;
 		
-		line = "\n" + agent.getInstanceID() + "\t" + alg + "\t" + agent.getNoAgent() + "\t" + 
-				agent.getSimulatedTime() + "\t" + df.format(agent.getUtilityAndCost()) + "\t" + "*";
+		line = "\n" + agent.getInstanceID() + "\t" + alg + "\t" + agent.getAgentCount() + "\t" + 
+				agent.getSimulatedTime() + "\t" + df.format(agent.getCurentLocalSearchQuality()) + "\t" + "*";
 
-		writeToFile(line, newFileName);
+		writeToFile(line, agent.getOutputFileName());
 	}
 	
 	public static void writeUtil_Time_BeforeLS_Rand(AgentPDDCOP agent) {
-		String newFileName = "FIRST_RAND" + "_d=" + agent.getNoAgent()
+		String newFileName = "FIRST_RAND" + "_d=" + agent.getAgentCount()
 				+ "_sw=" + (int) agent.getSwitchingCost()
 				+ "_h=" + agent.getHorizon() + ".txt";  
 
@@ -62,32 +62,31 @@ public class Utilities {
 		df.setRoundingMode(RoundingMode.DOWN);
 		String line = null;
 
-		line = "\n" + agent.getInstanceID() + "\t" + alg + "\t" + agent.getNoAgent() + "\t" +
-				agent.getSimulatedTime() + "\t" + df.format(agent.getUtilityAndCost()) + "\t" + "*";
+		line = "\n" + agent.getInstanceID() + "\t" + alg + "\t" + agent.getAgentCount() + "\t" +
+				agent.getSimulatedTime() + "\t" + df.format(agent.getCurentLocalSearchQuality()) + "\t" + "*";
 
 		writeToFile(line, newFileName);
 	}
 	
 	public static void writeUtil_Time_FW_BW(AgentPDDCOP agent) {
-		if (agent.getInstanceID() == 0)
+		if (agent.getInstanceID() == 0) {
 			writeHeaderLineToFile(agent.getOutputFileName());
+		}
 		
 		agent.setStop(true);
-//		String alg = ND_DCOP.algTypes[agent.algorithm];
-//		double runningTime = agent.getEndTime() - agent.getStartTime();
 		
 		DecimalFormat df = new DecimalFormat("##.##");
 		df.setRoundingMode(RoundingMode.DOWN);
 		String line = null;
 
-		line = "\n" + agent.getInstanceID() + "\t" + agent.getAlgorithm() + "\t" + agent.getNoAgent() + "\t" + 
-				agent.getSimulatedTime() + "\t" + df.format(agent.getTotalGlobalUtility());
+		line = "\n" + agent.getInstanceID() + "\t" + agent.getAlgorithm() + "\t" + agent.getAgentCount() + "\t" + 
+				agent.getSimulatedTime() + "\t" + df.format(agent.getSolutionQuality());
 					
 		writeToFile(line, agent.getOutputFileName());
 	}
 
 	public static void writeUtil_Time_LS(AgentPDDCOP agent) {
-		if (agent.getUtilityAndCost() == agent.getOldLSUtility() && agent.isStop() == false) {
+		if (agent.getCurentLocalSearchQuality() == agent.getBestLocalSearchQuality() && agent.isStop() == false) {
 			if (agent.getInstanceID() == 0) {
 				writeHeaderLineToFile(agent.getOutputFileName());
 			}
@@ -100,13 +99,12 @@ public class Utilities {
 			
 			DecimalFormat df = new DecimalFormat("##.##");
 			df.setRoundingMode(RoundingMode.DOWN);
-			String line = "\n" + agent.getInstanceID() + "\t" + agent.getAlgorithm() + "\t" + agent.getNoAgent() + "\t" + 
-					agent.getSimulatedTime() + "\t" + df.format(agent.getOldLSUtility()) + "\t" + (countIteration-1);
+			String line = "\n" + agent.getInstanceID() + "\t" + agent.getAlgorithm() + "\t" + agent.getAgentCount() + "\t" + 
+					agent.getSimulatedTime() + "\t" + df.format(agent.getBestLocalSearchQuality()) + "\t" + (countIteration - 1);
 			
 			writeToFile(line, agent.getOutputFileName());
 		}
 	}
-	
 	
 	public static void writeHeaderLineToFile(String outputFile) {
 		byte data[] = headerLine.getBytes();

@@ -10,15 +10,18 @@ import jade.core.behaviours.OneShotBehaviour;
 public class SEND_IMPROVE extends OneShotBehaviour {
 	private static final long serialVersionUID = 6159093695904595420L;
 
-	AgentPDDCOP agent;
+	private AgentPDDCOP agent;
+	private int lastTimeStep;
 	
-	public SEND_IMPROVE(AgentPDDCOP agent) {
+	public SEND_IMPROVE(AgentPDDCOP agent, int lastTimeStep) {
 		super(agent);
 		this.agent = agent;
+		this.lastTimeStep = lastTimeStep;
 	}
 	
 	@Override
 	public void action() {
-		agent.sendImprove();
+//		agent.archivedSendImprove(lastTimeStep);
+		agent.sendImprove(lastTimeStep);
 	}
 }

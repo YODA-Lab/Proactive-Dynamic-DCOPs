@@ -19,6 +19,10 @@ public class Row implements Serializable {
 	private List<String> randomList  = new ArrayList<String>();;
 	private double utility;
 	
+	public Row() {
+	  
+	}
+	
 	public Row(Row newRow) {
 		this.valueList.addAll(newRow.getValueList());
 		this.randomList.addAll(newRow.getRandomList());		

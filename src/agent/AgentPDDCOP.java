@@ -1,5 +1,7 @@
 package agent;
 
+import static java.lang.System.out;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -105,7 +107,6 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
   }
 
   public static final SwitchingType SWITCHING_TYPE = SwitchingType.CONSTANT;
-  public static final int EXPONENTIAL_BASE = 2;
   /*
    * DCOP parameters
    * To be read from arguments
@@ -158,7 +159,7 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 	private HashMap<String, double[][]> probabilityAtEachTimeStepMap = new HashMap<>();
 
 	// VALUE phase
-	Map<String, String> valuesToSendInVALUEPhase;
+	Map<String, String> valuesToSendInVALUEPhase = new HashMap<>();
 
 	// used for LOCAL SEARCH
 	private Map<Integer, String> chosenValueAtEachTSMap = new HashMap<>();
@@ -168,11 +169,13 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 	private List<Double> currentGlobalUtilityList = new ArrayList<>();
 	private List<String> bestImproveValueList = new ArrayList<>();
 	private List<Double> bestUtilityList = new ArrayList<>();
+  private List<Double> bestImproveUtilityList;
+
 	/**
 	 * Object since it could be null
 	 */
-	private double currentGlobalUtility;
-	private double totalGlobalUtility;
+	private double currentLocalSearchSolutionQuality;
+	private double solutionQuality;
 
 	private Map<String, List<Double>> initProabilityMap = new HashMap<>();
 	/**
@@ -180,7 +183,6 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 	 */
 	private Map<String, TransitionFunction> transitionFunctionMap = new HashMap<>();
 	private Table agentViewTable;
-	private String chosenValue;
 	private Map<Integer, String> pickedRandomMap = new HashMap<>();
 	
 	private long currentUTILstartTime;
@@ -198,13 +200,13 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 
 	// List<String> neighborWithRandList;
 
-	// for writing file
-	private double oldLSUtility = 0;
+	// Store the quality of the best LS solution
+	private double bestLocalSearchQuality = 0;
 	
 	private boolean stop = false;
-	private int noAgent;
-	private double utilityAndCost;
+	private double curentLocalSearchQuality;
 	private String lastLine = "";
+  private int agentCount;
 
 	public AgentPDDCOP() {
 	}
@@ -212,7 +214,8 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 	// done with LS-RAND
 	public void readArguments() {
 		Object[] args = getArguments();
-		
+    out.println(Arrays.deepToString(args));
+    
 		// parameters for running experiments
 		algorithm = DcopAlgorithm.valueOf((String) args[0]);
 		inputFileName = (String) args[1]; // rep_10_d14.dzn
@@ -225,7 +228,7 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 		
 		instanceID = Integer.valueOf(a[0]);
 		
-		noAgent = Integer.valueOf(a[1]);
+		agentCount = Integer.valueOf(a[1]);
 		
 		agentID = getLocalName();
 
@@ -233,7 +236,7 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 			constraintTableAtEachTSMap.put(timeStep, new ArrayList<Table>());
 		}
 		
-		outputFileName = algorithm + "_d=" + noAgent + "_sw=" + (int) switchingCost + "_h=" + horizon + ".txt";
+		outputFileName = algorithm + "_d=" + agentCount + "_sw=" + (int) switchingCost + "_h=" + horizon + ".txt";
 	}
 
 	protected void setup() {
@@ -306,8 +309,6 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
     else if (algorithm == DcopAlgorithm.LS_RAND) {
       mainSequentialBehaviourList.addSubBehaviour(new RAND_PICK_VALUE(this));
     }     
-//    else if (isAlgorithmIn(new DcopAlgorithm[]{DcopAlgorithm.REACT, DcopAlgorithm.HYBRID})) {
-//    }  
      		
 		if (isAlgorithmIn(new DcopAlgorithm[]{DcopAlgorithm.LS_RAND, DcopAlgorithm.LS_SDPOP})) {
 		  
@@ -320,9 +321,9 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 			mainSequentialBehaviourList.addSubBehaviour(new INIT_RECEIVE_DPOP_VALUE(this));
 			mainSequentialBehaviourList.addSubBehaviour(new INIT_RECEIVE_SEND_LS_UTIL(this, theLastTimeStep));
 			
-			mainSequentialBehaviourList.addSubBehaviour(new SEND_IMPROVE(this));
+			mainSequentialBehaviourList.addSubBehaviour(new SEND_IMPROVE(this, theLastTimeStep));
       ParallelBehaviour localSearch = new ParallelBehaviour();
-      localSearch.addSubBehaviour(new RECEIVE_IMPROVE(this));
+      localSearch.addSubBehaviour(new RECEIVE_IMPROVE(this, theLastTimeStep));
       localSearch.addSubBehaviour(new RECEIVE_VALUE(this));
       localSearch.addSubBehaviour(new LS_RECEIVE_SEND_LS_UTIL(this, theLastTimeStep));
       mainSequentialBehaviourList.addSubBehaviour(localSearch);
@@ -336,8 +337,6 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 	protected void takeDown() {
 		System.out.println("Agent " + agentID + " with threadID " + Thread.currentThread().getId()
 				+ " has SIMULATED TIME: " + simulatedTime / 1000000 + "ms");
-		System.out.println("Agent " + agentID + " with threadID " + Thread.currentThread().getId() + " has sim TIME: "
-				+ bean.getCurrentThreadUserTime() / 1000000 + "ms");
 		System.err.println("Agent " + getAID().getName() + " is terminated.");
 		try {
 			DFService.deregister(this);
@@ -345,10 +344,55 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 			e.printStackTrace();
 		}
 	}
+	
+  public void sendImprove(int lastTimeStep) {
+    currentStartTime = bean.getCurrentThreadUserTime();
 
-	public void sendImprove(int lastTimeStep) {
+    List<Double> currentUtilityList = utilityMinusCostOverTS(chosenValueAtEachTSMap, lastTimeStep);
+
+    double maxUtility = Integer.MIN_VALUE;
+
+    List<String> domain = getSelfDomain();
+    int domainSize = domain.size();
+    int totalSize = (int) Math.pow(domainSize, lastTimeStep + 1);
+
+    for (int index = 0; index < totalSize; index++) {
+      // a list of values at every time step
+      ArrayList<String> valueListTS = new ArrayList<String>();
+      int temp = index;
+      for (int k = 0; k <= lastTimeStep; k++) {
+        valueListTS.add(domain.get(temp % domainSize));
+        temp = temp / domainSize;
+      }
+      // Collections.reverse(valueListTS);
+
+      double evaluation = utilityMinusSwitchingCost(valueListTS);
+      if (evaluation > maxUtility) {
+        maxUtility = evaluation;
+        bestImproveValueList = valueListTS;
+      }
+    }
+
+    bestImproveUtilityList = new ArrayList<Double>();
+    if (maxUtility != Integer.MIN_VALUE) {
+      bestUtilityList = utilityMinusCostOverTSList(bestImproveValueList);
+      for (int i = 0; i <= lastTimeStep; i++) {
+        bestImproveUtilityList.add(bestUtilityList.get(i) - currentUtilityList.get(i));
+      }
+    }
+
+    simulatedTime += bean.getCurrentThreadUserTime() - currentStartTime;
+
+    // send IMPROVE messages
+    for (AID neighbor : neighborAIDList) {
+      sendObjectMessageWithTime(neighbor, bestImproveUtilityList, MESSAGE_TYPE.LS_IMPROVE, simulatedTime);
+    }
+  }
+
+	public void archivedSendImprove(int lastTimeStep) {
 		currentStartTime = bean.getCurrentThreadUserTime();
-    Double bestImproveUtility = null;
+    
+		Double bestImproveUtility = null;
 
 		List<Double> currentUtilityList = utilityMinusCostOverTS(chosenValueAtEachTSMap, lastTimeStep);
 
@@ -363,6 +407,7 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 			// a list of values at every time step
 			List<String> valueListTS = new ArrayList<String>();
 			int temp = index;
+			
 			for (int k = 0; k <= lastTimeStep; k++) {
 				valueListTS.add(domain.get(temp % domainSize));
 				temp = temp / domainSize;
@@ -721,10 +766,10 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 		send(message);
 	}
 
-	public void printTree(boolean isRoot) {
+	public void printTree() {
 		System.out.println("************");
 		System.out.println("My ID is: " + agentID);
-		if (isRoot == false)
+		if (!isRoot)
 			System.out.println("My parent is: " + parentAID.getLocalName());
 		System.out.println("My children are: ");
 		for (int i = 0; i < childrenAIDList.size(); i++) {
@@ -1279,12 +1324,16 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 		this.decisionVariableDomainMap = decisionVariableDomainMap;
 	}
 
-	public Map<Integer, String> getChosenValueAtEachTSMap() {
-		return chosenValueAtEachTSMap;
+	public String getChosenValueAtEachTimeStep(int timeStep) {
+		return chosenValueAtEachTSMap.get(timeStep);
 	}
 
-	public void setChosenValueAtEachTSMap(HashMap<Integer, String> valueAtEachTSMap) {
-		this.chosenValueAtEachTSMap = valueAtEachTSMap;
+	public void setChosenValueAtEachTimeStep(int timeStep, String chosenValue) {
+	  this.chosenValueAtEachTSMap.put(timeStep, chosenValue);
+	}
+	
+	public Map<Integer, String> getChosenValueAtEachTSMap() {
+	  return this.chosenValueAtEachTSMap;
 	}
 	
 	public void setValueAtTimeStep(int timeStep, String value) {
@@ -1319,14 +1368,6 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 		this.agentViewTable = agentViewTable;
 	}
 
-	public String getChosenValue() {
-		return chosenValue;
-	}
-
-	public void setChosenValue(String chosenValue) {
-		this.chosenValue = chosenValue;
-	}
-
 	public List<Double> getCurrentGlobalUtilityList() {
 		return currentGlobalUtilityList;
 	}
@@ -1335,20 +1376,24 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 		this.currentGlobalUtilityList = currentGlobalUtilityList;
 	}
 
-	public double getCurrentGlobalUtility() {
-		return currentGlobalUtility;
+	public double getCurrentLocalSearchSolutionQuality() {
+		return currentLocalSearchSolutionQuality;
 	}
 
-	public void setCurrentGlobalUtility(double currentGlobalUtility) {
-		this.currentGlobalUtility = currentGlobalUtility;
+	public void setCurrentLocalSearchSolutionQuality(double currentLocalSearchSolutionQuality) {
+		this.currentLocalSearchSolutionQuality = currentLocalSearchSolutionQuality;
 	}
 
-	public double getTotalGlobalUtility() {
-		return totalGlobalUtility;
+	public double getSolutionQuality() {
+		return solutionQuality;
 	}
 
-	public void setTotalGlobalUtility(double totalGlobalUtility) {
-		this.totalGlobalUtility = totalGlobalUtility;
+	public void setSolutionQuality(double solutionQuality) {
+		this.solutionQuality = solutionQuality;
+	}
+	
+	public void increaseSolutionQuality(double quality) {
+	  this.solutionQuality += quality;
 	}
 
 	public static long getDelayMessageTime() {
@@ -1387,12 +1432,12 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 		this.bestImproveValueList = bestImproveValueList;
 	}
 
-	public double getOldLSUtility() {
-		return oldLSUtility;
+	public double getBestLocalSearchQuality() {
+		return bestLocalSearchQuality;
 	}
 
-	public void setOldLSUtility(double oldLSUtility) {
-		this.oldLSUtility = oldLSUtility;
+	public void setBestLocalSearchQuality(double bestLocalSearchQuality) {
+		this.bestLocalSearchQuality = bestLocalSearchQuality;
 	}
 
 	public boolean isStop() {
@@ -1403,12 +1448,12 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 		this.stop = stop;
 	}
 
-	public double getUtilityAndCost() {
-		return utilityAndCost;
+	public double getCurentLocalSearchQuality() {
+		return curentLocalSearchQuality;
 	}
 
-	public void setUtilityAndCost(double utilityAndCost) {
-		this.utilityAndCost = utilityAndCost;
+	public void setCurentLocalSearchQuality(double curentLocalSearchQuality) {
+		this.curentLocalSearchQuality = curentLocalSearchQuality;
 	}
 
 	public Map<String, String> getValuesToSendInVALUEPhase() {
@@ -1557,10 +1602,6 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
     return hybridTS;
   }
 
-  public int getScExponentialBase() {
-    return EXPONENTIAL_BASE;
-  }
-
   public List<Double> getBestUtilityList() {
     return bestUtilityList;
   }
@@ -1575,10 +1616,6 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 
   public DcopAlgorithm getAlgorithm() {
     return algorithm;
-  }
-
-  public int getNoAgent() {
-    return noAgent;
   }
 
   public double getSwitchingCost() {
@@ -1631,5 +1668,58 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
   
   public Map<String, TransitionFunction> getTransitionFunctionMap() {
     return transitionFunctionMap;
+  }
+
+  /**
+   * @return the agentCount
+   */
+  public int getAgentCount() {
+    return agentCount;
+  }
+  
+  public void updateSolutionQuality(double utility) {
+    solutionQuality += utility;
+  }
+
+  public void storeDpopSolution(String value, int timeStep) {
+    // Store solution at each time step
+    if (algorithm == DcopAlgorithm.C_DPOP) {
+      // Set single value at horizon h 
+      if (dynamicType == DynamicType.INFINITE_HORIZON && timeStep == horizon) {
+        chosenValueAtEachTSMap.put(horizon, value);
+      }
+      // Set a sequence of values
+      else {
+        String[] values = value.split(",");
+        for (int i = 0; i < values.length; i++) {
+          chosenValueAtEachTSMap.put(i, values[i]);  
+        }
+      }
+    }
+    else if (isAlgorithmIn(new DcopAlgorithm[]{
+        DcopAlgorithm.FORWARD, DcopAlgorithm.BACKWARD, DcopAlgorithm.LS_SDPOP})) { 
+      chosenValueAtEachTSMap.put(timeStep, value);
+    }    
+  }
+  
+  /**
+   * @return the bestImproveUtilityList
+   */
+  public List<Double> getBestImproveUtilityList() {
+    return bestImproveUtilityList;
+  }
+
+  /**
+   * Set currentStartTime at the time the function is called
+   */
+  public void startSimulatedTiming() {
+    currentStartTime = getBean().getCurrentThreadUserTime();
+  }
+
+  /**
+   * Update the simulated runtime += currentTime - currentStartTime
+   */
+  public void stopStimulatedTiming() {
+    simulatedTime += bean.getCurrentThreadUserTime() - currentStartTime;    
   }
 }
