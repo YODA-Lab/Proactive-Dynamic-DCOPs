@@ -74,7 +74,7 @@ import jade.lang.acl.ACLMessage;
  * @author khoihd
  *
  */
-public class AgentPDDCOP extends Agent implements DCOP_INFO {
+public class AgentPDDCOP extends Agent {
 
 	private static final long serialVersionUID = 2919994686894853596L;
 	
@@ -107,6 +107,9 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
   }
 
   public static final SwitchingType SWITCHING_TYPE = SwitchingType.CONSTANT;
+  public static final int MAX_ITERATION = 30;
+  public static final int MARKOV_CONVERGENCE_TIME_STEP = 40;
+
   /*
    * DCOP parameters
    * To be read from arguments
@@ -346,7 +349,10 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 	}
 	
   public void sendImprove(int lastTimeStep) {
-    currentStartTime = bean.getCurrentThreadUserTime();
+    
+    startSimulatedTiming();
+    
+//    currentStartTime = bean.getCurrentThreadUserTime();
 
     List<Double> currentUtilityList = utilityMinusCostOverTS(chosenValueAtEachTSMap, lastTimeStep);
 
@@ -381,9 +387,9 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
       }
     }
 
-    simulatedTime += bean.getCurrentThreadUserTime() - currentStartTime;
+//    simulatedTime += bean.getCurrentThreadUserTime() - currentStartTime;
+    stopStimulatedTiming();
 
-    // send IMPROVE messages
     for (AID neighbor : neighborAIDList) {
       sendObjectMessageWithTime(neighbor, bestImproveUtilityList, MESSAGE_TYPE.LS_IMPROVE, simulatedTime);
     }
@@ -704,44 +710,44 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
 		return allTuple;
 	}
 
-	public double getUtilityFromTableGivenDecAndRand(Table table, List<String> decValueList,
-			List<String> randIterationValue) {
-		List<Row> tableToTraversed = table.getRowList();
-		for (Row row : tableToTraversed) {
-			boolean isRowFound = true;
-			// System.err.println("Utility of this row " + row.getUtility());
-			List<String> rowValueList = row.getValueList();
-			List<String> rowRandomList = row.getRandomList();
-
-			if (rowValueList.size() != decValueList.size() || rowRandomList.size() != randIterationValue.size()) {
-				System.err.println("!!!!!!Different size!!!!!!!!!");
-				System.err.println("!!!!!!Recheck your code!!!!!!");
-			}
-			for (int index = 0; index < decValueList.size(); index++) {
-				if (rowValueList.get(index).equals(decValueList.get(index)) == false) {
-					isRowFound = false;
-					break;
-				}
-			}
-
-			if (isRowFound == false)
-				continue;
-
-			for (int index = 0; index < randIterationValue.size(); index++) {
-				if (rowRandomList.get(index).equals(randIterationValue.get(index)) == false) {
-					isRowFound = false;
-					break;
-				}
-			}
-
-			if (isRowFound == false)
-				continue;
-
-			return row.getUtility();
-		}
-		System.out.println("Not found!!!!!!!!!!!!!!");
-		return Integer.MIN_VALUE;
-	}
+//	public double getUtilityFromTableGivenDecAndRand(Table table, List<String> decValueList,
+//			List<String> randIterationValue) {
+//		List<Row> tableToTraversed = table.getRowList();
+//		for (Row row : tableToTraversed) {
+//			boolean isRowFound = true;
+//			// System.err.println("Utility of this row " + row.getUtility());
+//			List<String> rowValueList = row.getValueList();
+//			List<String> rowRandomList = row.getRandomList();
+//
+//			if (rowValueList.size() != decValueList.size() || rowRandomList.size() != randIterationValue.size()) {
+//				System.err.println("!!!!!!Different size!!!!!!!!!");
+//				System.err.println("!!!!!!Recheck your code!!!!!!");
+//			}
+//			for (int index = 0; index < decValueList.size(); index++) {
+//				if (rowValueList.get(index).equals(decValueList.get(index)) == false) {
+//					isRowFound = false;
+//					break;
+//				}
+//			}
+//
+//			if (isRowFound == false)
+//				continue;
+//
+//			for (int index = 0; index < randIterationValue.size(); index++) {
+//				if (rowRandomList.get(index).equals(randIterationValue.get(index)) == false) {
+//					isRowFound = false;
+//					break;
+//				}
+//			}
+//
+//			if (isRowFound == false)
+//				continue;
+//
+//			return row.getUtility();
+//		}
+//		System.out.println("Not found!!!!!!!!!!!!!!");
+//		return Integer.MIN_VALUE;
+//	}
 
 	public void sendObjectMessage(AID receiver, Object content, int msgCode) {
 		ACLMessage message = new ACLMessage(msgCode);
@@ -1154,6 +1160,10 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
   }
   
   public Table computeDiscountedExpectedTable(Table randomTable, int timeStep, double discountFactor) {   
+    if (dynamicType == DynamicType.FINITE_HORIZON && timeStep == horizon) {
+      return computeLongtermExpectedTable(randomTable, timeStep, discountFactor);
+    }
+    
     List<String> decLabel = randomTable.getDecVarLabel();
     List<String> randLabel = randomTable.getRandVarLabel();
     Table discountedExpectedTable = new Table(decLabel);
@@ -1188,6 +1198,133 @@ public class AgentPDDCOP extends Agent implements DCOP_INFO {
     }
         
     return discountedExpectedTable;
+  }
+  
+  public Table computeLongtermExpectedTable(Table randomTable, int timeStep, double discountFactor) {
+    Table newlyCreatedTable;
+    List<List<String>> processedDecValues = new ArrayList<List<String>>();
+
+    List<String> decVarLabel = randomTable.getDecVarLabel();
+    List<String> randVarLabel = randomTable.getRandVarLabel();
+    List<List<String>> allTupleValue = getAllTupleValueOfGivenLabel(randVarLabel, false);
+    newlyCreatedTable = new Table(decVarLabel, randVarLabel);
+
+    int noOfEquations = 1;
+    for (String randVar : randVarLabel) {
+//      noOfEquations *= agent.getRandomVariableDomainMap().get(randVar).size();
+      noOfEquations *= randomVariableDomainMap.get(randVar).size();
+    }
+
+    // traverse each row of tableWithRandom
+    for (Row rowToBeTraversed : randomTable.getRowList()) {
+      List<String> decValueList = rowToBeTraversed.getValueList();
+
+      // check if decValueList contained in processedDecValues
+      if (processedDecValues.contains(decValueList)) {
+        continue;
+      } // search for all values of random Variable
+      else {
+        processedDecValues.add(decValueList);
+        /**
+         * construct unknown equations, by add coefficients
+         *
+         * construct coefficients (1-delta*prob[0,0] - delta*prob[0,1] ... -
+         * delta*prob[0,n] = v0 -delta*prob[1,0] + (1-delta*prob[1,1] ...-
+         * delta*prob[1,n] = v1
+         *
+         * -delta*prob[n,0] - delta*prob[n,1] ... + (1-delta*prob[n,n] = v_n
+         **/
+        double coefficients[][] = new double[noOfEquations][noOfEquations + 1];
+        // select rowTuple => colTuple
+        for (int row = 0; row < noOfEquations; row++) {
+          List<String> rowTuple = allTupleValue.get(row);
+          // get colTuple
+          for (int column = 0; column < noOfEquations; column++) {
+            List<String> colTuple = allTupleValue.get(column);
+            double transProb = 1;
+            for (int randIndex = 0; randIndex < randVarLabel.size(); randIndex++) {
+              String randVar = randVarLabel.get(randIndex);
+              transProb = transProb
+                  * transitionFunctionMap.get(randVar).getProbByValue(rowTuple.get(randIndex), colTuple.get(randIndex));
+            }
+
+            if (row == column)
+              coefficients[row][column] = 1 - discountFactor * transProb;
+            else
+              coefficients[row][column] = -discountFactor * transProb;
+
+          }
+          // set utility
+          coefficients[row][noOfEquations] = Math.pow(discountFactor, timeStep) * randomTable.getUtilityFromTableGivenDecAndRand(decValueList, rowTuple);
+        }
+
+        // System.out.println(Arrays.deepToString(coefficients));
+        List<Double> utilityList = gaussian(coefficients, noOfEquations);
+
+        // create new row with a fix dec values, but different rand values
+        int i = 0;
+        for (List<String> randValueToBeAddedList : allTupleValue) {
+          Row newRow = new Row(decValueList, randValueToBeAddedList, utilityList.get(i));
+          i++;
+          newlyCreatedTable.addRow(newRow);
+        }
+        // end if: decValueList not contained
+      }
+      // end while: traversing table
+    }
+    return newlyCreatedTable;
+  }
+  
+  private List<Double> gaussian(double arr[][], int N) {
+    List<Double> longtermUtilityList = new ArrayList<Double>();
+    // take each line as pivot, except for the last line
+    for (int pivotIndex = 0; pivotIndex < N - 1; pivotIndex++) {
+      // go from the line below line pivotIndex, to the last line
+      boolean isNotZeroRowFound = false;
+      if (arr[pivotIndex][pivotIndex] == 0) {
+        int notZeroRow;
+        for (notZeroRow = pivotIndex + 1; notZeroRow < N; notZeroRow++) {
+          if (arr[notZeroRow][pivotIndex] != 0) {
+            isNotZeroRowFound = true;
+            break;
+          }
+        }
+
+        if (isNotZeroRowFound) {
+          // swap row pivotIndex and row notZeroRow
+          for (int columnToSwapIndex = 0; columnToSwapIndex < N + 1; columnToSwapIndex++) {
+            double tempForSwap = arr[pivotIndex][columnToSwapIndex];
+            arr[pivotIndex][columnToSwapIndex] = arr[notZeroRow][columnToSwapIndex];
+            arr[notZeroRow][columnToSwapIndex] = tempForSwap;
+          }
+        } else {
+          continue;
+        }
+      }
+
+      for (int rowForGauss = pivotIndex + 1; rowForGauss < N; rowForGauss++) {
+        double factor = arr[rowForGauss][pivotIndex] / arr[pivotIndex][pivotIndex];
+        for (int columnForGauss = 0; columnForGauss < N + 1; columnForGauss++) {
+          arr[rowForGauss][columnForGauss] = arr[rowForGauss][columnForGauss]
+              - factor * arr[pivotIndex][columnForGauss];
+        }
+      }
+    }
+
+    for (int columnPivot = N - 1; columnPivot >= 1; columnPivot--) {
+      for (int rowAbovePivot = columnPivot - 1; rowAbovePivot >= 0; rowAbovePivot--) {
+        double fraction = arr[rowAbovePivot][columnPivot] / arr[columnPivot][columnPivot];
+        for (int columnInTheRow = 0; columnInTheRow < N + 1; columnInTheRow++)
+          arr[rowAbovePivot][columnInTheRow] = arr[rowAbovePivot][columnInTheRow]
+              - fraction * arr[columnPivot][columnInTheRow];
+      }
+    }
+
+    for (int i = 0; i < N; i++) {
+      longtermUtilityList.add(arr[i][N] / arr[i][i]);
+    }
+
+    return longtermUtilityList;
   }
   
   /**

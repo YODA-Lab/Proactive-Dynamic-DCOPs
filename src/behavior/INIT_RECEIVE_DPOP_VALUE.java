@@ -31,7 +31,8 @@ public class INIT_RECEIVE_DPOP_VALUE extends OneShotBehaviour implements MESSAGE
 	public void action() {
 		List<ACLMessage> receivedMessageFromNeighborList = waitingForMessageFromNeighborsWithTime(PROPAGATE_DPOP_VALUE);
 		
-		long currentStartTime = agent.getBean().getCurrentThreadUserTime();
+//		long currentStartTime = agent.getBean().getCurrentThreadUserTime();
+		agent.startSimulatedTiming();
 		
 		for (ACLMessage receivedMessage : receivedMessageFromNeighborList) {
 			String sender = receivedMessage.getSender().getLocalName();
@@ -45,7 +46,8 @@ public class INIT_RECEIVE_DPOP_VALUE extends OneShotBehaviour implements MESSAGE
 			agent.getAgentViewEachTimeStepMap().put(sender, neighborValuesAtEachTSMap);
 		}
 		
-		agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - currentStartTime);
+		agent.stopStimulatedTiming();
+//		agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - currentStartTime);
 	}
 	
 	private List<ACLMessage> waitingForMessageFromNeighborsWithTime(int msgCode) {

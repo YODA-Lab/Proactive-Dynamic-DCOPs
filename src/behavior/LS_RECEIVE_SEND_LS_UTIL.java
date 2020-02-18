@@ -35,6 +35,8 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
     double utilFromChildren = 0;
     List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(INIT_LS_UTIL);
     
+    agent.startSimulatedTiming();
+    
     for (ACLMessage msg : receiveMessages) {
       try {
         utilFromChildren += (Double) msg.getContentObject();
@@ -45,6 +47,8 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
 		
     agent.setCurentLocalSearchQuality(utilFromChildren + 
         agent.utilityWithParentAndPseudoAndUnary(lastTimeStep) - agent.calculcatingSwitchingCost());
+    
+    agent.stopStimulatedTiming();
 
 		if (!agent.isRoot()) {
 			agent.sendObjectMessageWithTime(agent.getParentAID(), agent.getCurentLocalSearchQuality(), LS_UTIL, agent.getSimulatedTime());

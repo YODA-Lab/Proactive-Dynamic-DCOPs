@@ -77,6 +77,16 @@ public class Table implements Serializable {
 		}
 		return listValues;
 	}
+	
+	public double getUtilityFromTableGivenDecAndRand(List<String> decValueList, List<String> randValueList) {
+	  for (Row row : rowList) {
+	    if (row.getValueList().equals(decValueList) && row.getRandomList().equals(randValueList)) {
+	      return row.getUtility();
+	    }
+	  }
+	  
+	  return Double.MAX_VALUE;
+	}
 
 	public int getRowCount() {
 		return rowList.size();

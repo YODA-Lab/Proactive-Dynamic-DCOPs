@@ -277,14 +277,17 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	
 	private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode) {
 		List<ACLMessage> messageList = new ArrayList<ACLMessage>();
-
+		
 		while (messageList.size() < agent.getChildrenAIDList().size()) {
-			MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
+			agent.startSimulatedTiming();
+		  
+		  MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
 			ACLMessage receivedMessage = myAgent.receive(template);
 			
+      agent.stopStimulatedTiming();
 			if (receivedMessage != null) {
 				long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
-				
+								
 				if (timeFromReceiveMessage > agent.getSimulatedTime()) {
 					agent.setSimulatedTime(timeFromReceiveMessage);
 				}
@@ -582,7 +585,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
       for (int timeStep = 0; timeStep <= lastTimeStep; timeStep++) {
         if (agent.isDynamic(DynamicType.FINITE_HORIZON) && timeStep == agent.getHorizon()) {
-          similarTableList.add(computeLongtermExpectedTable(randomTable, discountFactor));
+          similarTableList.add(agent.computeLongtermExpectedTable(randomTable, timeStep, discountFactor));
         } 
         else {
           similarTableList.add(agent.computeDiscountedExpectedTable(randomTable, timeStep, discountFactor));
@@ -595,14 +598,14 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     return collapedDecistionTableList;
   }
  
- private List<Table> computeLongtermExpectedTableList(List<Table> randomTableList, double discountFactor) {
-   List<Table> tableList = new ArrayList<>();
-   for (Table table : randomTableList) {
-     tableList.add(computeLongtermExpectedTable(table, discountFactor));
-   }
-   
-   return tableList;
- }
+// private List<Table> computeLongtermExpectedTableList(List<Table> randomTableList, double discountFactor) {
+//   List<Table> tableList = new ArrayList<>();
+//   for (Table table : randomTableList) {
+//     tableList.add(computeLongtermExpectedTable(table, discountFactor));
+//   }
+//   
+//   return tableList;
+// }
  
  // they have the same entry, only different utility
  private Table computeCollapsedTableFromList(List<Table> tableList) {
@@ -642,15 +645,15 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
    return joinedTable;
  }
  
- private double computeSwitchingCost(List<String> valueTuple, double discountFactor) {
-   double scost = 0;
-   
-   for (int index = 0; index < valueTuple.size() - 1; index++) {
-     scost += Math.pow(discountFactor, index) * agent.switchingCostFunction(valueTuple.get(index), valueTuple.get(index + 1));
-   }
-   
-   return scost;
- }
+// private double computeSwitchingCost(List<String> valueTuple, double discountFactor) {
+//   double scost = 0;
+//   
+//   for (int index = 0; index < valueTuple.size() - 1; index++) {
+//     scost += Math.pow(discountFactor, index) * agent.switchingCostFunction(valueTuple.get(index), valueTuple.get(index + 1));
+//   }
+//   
+//   return scost;
+// }
  
  /**
   * Compute unary switching cost table of given agent agent given valueList and differentValue
@@ -709,131 +712,5 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     }
     
     return collapsedSwitchingCostTable;
-  }
-  
-  private Table computeLongtermExpectedTable(Table randomTable, double discountFactor) {
-    Table newlyCreatedTable;
-    List<List<String>> processedDecValues = new ArrayList<List<String>>();
-
-    List<String> decVarLabel = randomTable.getDecVarLabel();
-    List<String> randVarLabel = randomTable.getRandVarLabel();
-    List<List<String>> allTupleValue = agent.getAllTupleValueOfGivenLabel(randVarLabel, false);
-    newlyCreatedTable = new Table(decVarLabel, randVarLabel);
-
-    int noOfEquations = 1;
-    for (String randVar : randVarLabel) {
-      noOfEquations *= agent.getRandomVariableDomainMap().get(randVar).size();
-    }
-
-    // traverse each row of tableWithRandom
-    for (Row rowToBeTraversed : randomTable.getRowList()) {
-      List<String> decValueList = rowToBeTraversed.getValueList();
-
-      // check if decValueList contained in processedDecValues
-      if (processedDecValues.contains(decValueList)) {
-        continue;
-      } // search for all values of random Variable
-      else {
-        processedDecValues.add(decValueList);
-        /**
-         * construct unknown equations, by add coefficients
-         *
-         * construct coefficients (1-delta*prob[0,0] - delta*prob[0,1] ... -
-         * delta*prob[0,n] = v0 -delta*prob[1,0] + (1-delta*prob[1,1] ...-
-         * delta*prob[1,n] = v1
-         *
-         * -delta*prob[n,0] - delta*prob[n,1] ... + (1-delta*prob[n,n] = v_n
-         **/
-        double coefficients[][] = new double[noOfEquations][noOfEquations + 1];
-        // select rowTuple => colTuple
-        for (int row = 0; row < noOfEquations; row++) {
-          List<String> rowTuple = allTupleValue.get(row);
-          // get colTuple
-          for (int column = 0; column < noOfEquations; column++) {
-            List<String> colTuple = allTupleValue.get(column);
-            double transProb = 1;
-            for (int randIndex = 0; randIndex < randVarLabel.size(); randIndex++) {
-              String randVar = randVarLabel.get(randIndex);
-              transProb = transProb
-                  * agent.getTransitionFunctionMap().get(randVar).getProbByValue(rowTuple.get(randIndex), colTuple.get(randIndex));
-            }
-
-            if (row == column)
-              coefficients[row][column] = 1 - discountFactor * transProb;
-            else
-              coefficients[row][column] = -discountFactor * transProb;
-
-          }
-          // set utility
-          coefficients[row][noOfEquations] = agent.getUtilityFromTableGivenDecAndRand(randomTable, decValueList, rowTuple);
-        }
-
-        // System.out.println(Arrays.deepToString(coefficients));
-        List<Double> utilityList = gaussian(coefficients, noOfEquations);
-
-        // create new row with a fix dec values, but different rand values
-        int i = 0;
-        for (List<String> randValueToBeAddedList : allTupleValue) {
-          Row newRow = new Row(decValueList, randValueToBeAddedList, utilityList.get(i));
-          i++;
-          newlyCreatedTable.addRow(newRow);
-        }
-        // end if: decValueList not contained
-      }
-      // end while: traversing table
-    }
-    return newlyCreatedTable;
-  }
-  
-  private List<Double> gaussian(double arr[][], int N) {
-    List<Double> longtermUtilityList = new ArrayList<Double>();
-    // take each line as pivot, except for the last line
-    for (int pivotIndex = 0; pivotIndex < N - 1; pivotIndex++) {
-      // go from the line below line pivotIndex, to the last line
-      boolean isNotZeroRowFound = false;
-      if (arr[pivotIndex][pivotIndex] == 0) {
-        int notZeroRow;
-        for (notZeroRow = pivotIndex + 1; notZeroRow < N; notZeroRow++) {
-          if (arr[notZeroRow][pivotIndex] != 0) {
-            isNotZeroRowFound = true;
-            break;
-          }
-        }
-
-        if (isNotZeroRowFound) {
-          // swap row pivotIndex and row notZeroRow
-          for (int columnToSwapIndex = 0; columnToSwapIndex < N + 1; columnToSwapIndex++) {
-            double tempForSwap = arr[pivotIndex][columnToSwapIndex];
-            arr[pivotIndex][columnToSwapIndex] = arr[notZeroRow][columnToSwapIndex];
-            arr[notZeroRow][columnToSwapIndex] = tempForSwap;
-          }
-        } else {
-          continue;
-        }
-      }
-
-      for (int rowForGauss = pivotIndex + 1; rowForGauss < N; rowForGauss++) {
-        double factor = arr[rowForGauss][pivotIndex] / arr[pivotIndex][pivotIndex];
-        for (int columnForGauss = 0; columnForGauss < N + 1; columnForGauss++) {
-          arr[rowForGauss][columnForGauss] = arr[rowForGauss][columnForGauss]
-              - factor * arr[pivotIndex][columnForGauss];
-        }
-      }
-    }
-
-    for (int columnPivot = N - 1; columnPivot >= 1; columnPivot--) {
-      for (int rowAbovePivot = columnPivot - 1; rowAbovePivot >= 0; rowAbovePivot--) {
-        double fraction = arr[rowAbovePivot][columnPivot] / arr[columnPivot][columnPivot];
-        for (int columnInTheRow = 0; columnInTheRow < N + 1; columnInTheRow++)
-          arr[rowAbovePivot][columnInTheRow] = arr[rowAbovePivot][columnInTheRow]
-              - fraction * arr[columnPivot][columnInTheRow];
-      }
-    }
-
-    for (int i = 0; i < N; i++) {
-      longtermUtilityList.add(arr[i][N] / arr[i][i]);
-    }
-
-    return longtermUtilityList;
   }
 }

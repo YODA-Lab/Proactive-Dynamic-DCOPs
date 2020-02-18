@@ -25,7 +25,8 @@ public class RAND_PICK_VALUE extends OneShotBehaviour {
 	
 	@Override
 	public void action() {
-		agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
+//		agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
+	  agent.startSimulatedTiming();
 		
 		List<String> domain = agent.getDecisionVariableDomainMap().get(agent.getAgentID());
 		int domainSize = domain.size();
@@ -34,7 +35,9 @@ public class RAND_PICK_VALUE extends OneShotBehaviour {
 			agent.getChosenValueAtEachTSMap().put(ts,domain.get(rdn.nextInt(domainSize)));
 		}
 		
-		agent.setSimulatedTime(agent.getSimulatedTime()
-							+ agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
+//		agent.setSimulatedTime(agent.getSimulatedTime()
+//							+ agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
+		
+		agent.stopStimulatedTiming();
 	}
 }

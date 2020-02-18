@@ -28,11 +28,11 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 	@Override
 	public void action() {
 		// backup oldSimulatedTime
-		long oldSimulatedTime = agent.getSimulatedTime();
+//		long oldSimulatedTime = agent.getSimulatedTime();
 		
 		List<ACLMessage> messageList = waitingForMessageFromNeighborWithTime(LS_IMPROVE);
-	
-		agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
+		
+		agent.startSimulatedTiming();
 		
 		agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
 		
@@ -103,7 +103,7 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
           block();
       }
     }
-    agent.setSimulatedTime(agent.getSimulatedTime() + AgentPDDCOP.getDelayMessageTime());
+    agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
     return messageList;
   }
 

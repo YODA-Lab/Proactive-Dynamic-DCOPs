@@ -35,12 +35,12 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
 		double utilFromChildren = 0;
 		
 		List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(INIT_LS_UTIL);
+		agent.startSimulatedTiming();
 		
 		for (ACLMessage msg : receiveMessages) {
 		  try {
         utilFromChildren += (Double) msg.getContentObject();
       } catch (UnreadableException e) {
-        // TODO Auto-generated catch block
         e.printStackTrace();
       }
 		}
@@ -48,6 +48,8 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
 		// Send the partial quality of the subtree to parent
 		agent.setCurentLocalSearchQuality(utilFromChildren + 
 				agent.utilityWithParentAndPseudoAndUnary(lastTimeStep) - agent.calculcatingSwitchingCost());
+		
+		agent.stopStimulatedTiming();
 
 		if (!agent.isRoot()) {
 			agent.sendObjectMessageWithTime(agent.getParentAID(), agent.getCurentLocalSearchQuality(), INIT_LS_UTIL, agent.getSimulatedTime());
@@ -77,7 +79,8 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
 	        block();
 	    }
 	  }
-	  agent.setSimulatedTime(agent.getSimulatedTime() + AgentPDDCOP.getDelayMessageTime());
+	  
+    agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
 	  return messageList;
   }
 }

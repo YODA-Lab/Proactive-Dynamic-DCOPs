@@ -7,6 +7,7 @@ import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import agent.AgentPDDCOP;
 
@@ -28,50 +29,25 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void action() {
-		// save oldSimulatedTime here, roll back if stop condition
-		long oldSimulatedTime = agent.getSimulatedTime();
+    if (agent.getLsIteration() == AgentPDDCOP.MAX_ITERATION) {
+      return;
+    }
 		
-		ArrayList<ACLMessage> messageList = new ArrayList<ACLMessage>();
+		List<ACLMessage> messageList = waitingForMessageFromNeighborWithTime(LS_VALUE);
 		
-		while (messageList.size() < agent.getNeighborAIDList().size()) {
-			if (agent.getLsIteration() == AgentPDDCOP.MAX_ITERATION) {
-				agent.setSimulatedTime(oldSimulatedTime);
-				return;
-			}
-			MessageTemplate template = MessageTemplate.MatchPerformative(LS_VALUE);
-			ACLMessage receivedMessage = myAgent.receive(template);
-			if (receivedMessage != null) {
-//				System.out.println("Agent " + getLocalName() + " receive message "
-//						+ msgTypes[LS_VALUE] + " from Agent " + receivedMessage.
-//						getSender().getLocalName());
-				long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
-				if (timeFromReceiveMessage > agent.getSimulatedTime())
-					agent.setSimulatedTime(timeFromReceiveMessage);
-				
-				messageList.add(receivedMessage);
-			}
-			else
-				block();
-			
-		}
-		agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
-		
-		agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
-		
+		agent.startSimulatedTiming();
+						
 		for (ACLMessage msg:messageList) {
-			ArrayList<String> valuesFromNeighbor = new ArrayList<String>();
+			List<String> valuesFromNeighbor = new ArrayList<String>();
 			try {
 				valuesFromNeighbor = (ArrayList<String>) msg.getContentObject();
 			} catch (UnreadableException e) {
 				e.printStackTrace();
 			}
-							
-//			System.err.println("Agent " + idStr + " receive values: " + valuesFromNeighbor + " from Agent "
-//					+ msg.getSender().getLocalName());
 			
 			//update agent_view?
 			if (valuesFromNeighbor != null) {
-				for (int ts=0; ts<=agent.getHorizon(); ts++) {
+				for (int ts=0; ts <= agent.getHorizon(); ts++) {
 					String valueFromNeighbor = valuesFromNeighbor.get(ts);
 					String sender = msg.getSender().getLocalName();
 					if (valueFromNeighbor != null) {
@@ -81,11 +57,37 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 			}
 		}
 		
-		agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
+//		agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
+		agent.stopStimulatedTiming();
 		
-		for (AID neighbor:agent.getNeighborAIDList()) 
-			agent.sendObjectMessageWithTime(neighbor, "", LS_ITERATION_DONE, agent.getSimulatedTime());		
+		for (AID neighbor:agent.getNeighborAIDList()) {
+			agent.sendObjectMessageWithTime(neighbor, "", LS_ITERATION_DONE, agent.getSimulatedTime());
+		}
 	}
+	
+  private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {
+    List<ACLMessage> messageList = new ArrayList<ACLMessage>();
+
+    while (messageList.size() < agent.getNeighborAIDList().size()) {
+      MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
+      ACLMessage receivedMessage = myAgent.receive(template);
+        
+      if (receivedMessage != null) {
+        long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
+          
+        if (timeFromReceiveMessage > agent.getSimulatedTime()) {
+          agent.setSimulatedTime(timeFromReceiveMessage);
+        }
+        
+        messageList.add(receivedMessage); 
+      }
+      else {
+          block();
+      }
+    }
+    agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
+    return messageList;
+  }
 
 	@Override
 	public boolean done() {
