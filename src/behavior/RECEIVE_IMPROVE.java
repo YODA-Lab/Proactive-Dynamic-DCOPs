@@ -87,9 +87,12 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
     while (messageList.size() < agent.getNeighborAIDList().size()) {
+      agent.startSimulatedTiming();
+      
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
       ACLMessage receivedMessage = myAgent.receive(template);
         
+      agent.stopStimulatedTiming();
       if (receivedMessage != null) {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
           
@@ -109,6 +112,6 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 
 	@Override
 	public boolean done() {
-		return agent.getLsIteration() == AgentPDDCOP.MAX_ITERATION;
+		return agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION;
 	}
 }

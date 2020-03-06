@@ -53,8 +53,12 @@ public class INIT_RECEIVE_DPOP_VALUE extends OneShotBehaviour implements MESSAGE
 	private List<ACLMessage> waitingForMessageFromNeighborsWithTime(int msgCode) {
 	  List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 		while (messageList.size() < agent.getNeighborAIDList().size()) {
-			MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
+			agent.startSimulatedTiming();
+		  
+		  MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
 			ACLMessage receivedMessage = myAgent.receive(template);
+			
+			agent.stopStimulatedTiming();
 			if (receivedMessage != null) {
 				long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
 				

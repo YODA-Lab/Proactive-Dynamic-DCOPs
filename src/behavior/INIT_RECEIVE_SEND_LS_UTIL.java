@@ -63,9 +63,12 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
 	  while (messageList.size() < agent.getChildrenAIDList().size()) {
+	    agent.startSimulatedTiming();
+	    
 	    MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
 	    ACLMessage receivedMessage = myAgent.receive(template);
 	      
+	    agent.stopStimulatedTiming();
 	    if (receivedMessage != null) {
 	      long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
 	        

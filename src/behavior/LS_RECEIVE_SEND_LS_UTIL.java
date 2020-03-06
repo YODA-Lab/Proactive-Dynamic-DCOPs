@@ -56,18 +56,15 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
 		else {
 		  if (Double.compare(agent.getCurentLocalSearchQuality(), agent.getBestLocalSearchQuality()) > 0) {
 		    agent.setBestLocalSearchQuality(agent.getCurentLocalSearchQuality());
-		    //TODO: set runtime
+		    //TODO: store runtime of best solution so far
 		  }
 		  
-		  if (agent.getLsIteration() == AgentPDDCOP.MAX_ITERATION) {
-		    //TODO: write solution quality and runtimes to file
-		  }
-//			Utilities.writeUtil_Time_LS(agent);
+		  Utilities.writeResult(agent);
 		}
 		
 		agent.incrementLocalSearchIteration();
 		
-		if (agent.getLsIteration() < AgentPDDCOP.MAX_ITERATION) {
+		if (agent.getLocalSearchIteration() < AgentPDDCOP.MAX_ITERATION) {
 //			agent.archivedSendImprove(lastTimeStep);
 			agent.sendImprove(lastTimeStep);
 		}
@@ -75,16 +72,19 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
 
 	@Override
 	public boolean done() {
-		return agent.getLsIteration() == AgentPDDCOP.MAX_ITERATION;
+		return agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION;
 	}
 	
   private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode) {
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
     while (messageList.size() < agent.getChildrenAIDList().size()) {
+      agent.startSimulatedTiming();
+      
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
       ACLMessage receivedMessage = myAgent.receive(template);
         
+      agent.stopStimulatedTiming();
       if (receivedMessage != null) {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
           

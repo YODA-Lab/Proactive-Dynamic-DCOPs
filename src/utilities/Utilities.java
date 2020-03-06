@@ -20,6 +20,8 @@ public class Utilities {
 	 */
 	public static String header = initializeHeader();
 	
+	public static String localSearchHeader = initializeLSHeader();
+	
   public static DecimalFormat df = new DecimalFormat("##.##");
 	
 	public static void writeResult(AgentPDDCOP agent) {
@@ -30,11 +32,31 @@ public class Utilities {
 	 	writeToFile(result, agent.getOutputFileName());
 	}
 	    	
-	private static String getResult(AgentPDDCOP agent) {
+	private static String initializeLSHeader() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  private static String getResult(AgentPDDCOP agent) {
 	  StringBuffer sb = new StringBuffer();
     sb.append(agent.getAgentID() + "\t");
     sb.append(df.format(agent.getSolutionQuality()) + "\t");
     sb.append(agent.getSimulatedTime() + "\t");
+    sb.append(agent.getDynamicType() + "\t");
+    sb.append(agent.getAlgorithm() + "\t");
+    sb.append(agent.getAgentCount() + "\t");
+    sb.append(agent.getSwitchingCost() + "\t");
+    sb.append(df.format(agent.getDiscountFactor()) + "\n");
+
+    return sb.toString();
+  }
+  
+  private static String getLocalSearchResult(AgentPDDCOP agent) {
+    StringBuffer sb = new StringBuffer();
+    sb.append(agent.getLocalSearchIteration() + "\t");
+    sb.append(df.format(agent.getSolutionQuality()) + "\t");
+    sb.append(agent.getSimulatedTime() + "\t");
+    sb.append(agent.getInstanceID() + "\t");
     sb.append(agent.getDynamicType() + "\t");
     sb.append(agent.getAlgorithm() + "\t");
     sb.append(agent.getAgentCount() + "\t");
@@ -112,7 +134,7 @@ public class Utilities {
 				writeToFile(header, agent.getOutputFileName());
 			}
 			
-			int countIteration = agent.getLsIteration() + 1;
+			int countIteration = agent.getLocalSearchIteration() + 1;
 			//startWriting file
 			agent.setStop(true);
 //			String alg = ND_DCOP.algTypes[agent.algorithm];
@@ -159,4 +181,20 @@ public class Utilities {
     sb.append("Discount" + "\n");
     return sb.toString();
 	}
+	
+  public static String initializeLocalSearchHeader() {
+    df.setRoundingMode(RoundingMode.DOWN);
+    
+    StringBuffer sb = new StringBuffer();
+    sb.append("Iteration" + "\t");
+    sb.append("Utility" + "\t");
+    sb.append("Time (ms)" + "\t");
+    sb.append("InstanceID" + "\t");
+    sb.append("Dynamic" + "\t");
+    sb.append("Algorithm" + "\t");
+    sb.append("Agents" + "\t");
+    sb.append("Switching cost" + "\t");
+    sb.append("Discount" + "\n");
+    return sb.toString();
+  }
 }

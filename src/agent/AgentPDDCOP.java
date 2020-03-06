@@ -125,8 +125,6 @@ public class AgentPDDCOP extends Agent {
 	/*
 	 * To be read from input file
 	 */
-  private int decisionDomainSize;
-	private int randomDomainSize;
 	private int instanceID;
 	/*
 	 * To be computed from the arguments
@@ -204,7 +202,7 @@ public class AgentPDDCOP extends Agent {
 	// List<String> neighborWithRandList;
 
 	// Store the quality of the best LS solution
-	private double bestLocalSearchQuality = 0;
+	private double bestLocalSearchQuality;
 	
 	private boolean stop = false;
 	private double curentLocalSearchQuality;
@@ -260,6 +258,7 @@ public class AgentPDDCOP extends Agent {
     bean = ManagementFactory.getThreadMXBean();
     bean.setThreadContentionMonitoringEnabled(true);
     
+    int randomDomainSize = randomVariableDomainMap.get(agentID).size();
     probabilityAtEachTimeStepMap.put(getAgentID(), new double[horizon + 1][randomDomainSize]);
     
     int theLastTimeStep = horizon;
@@ -1549,7 +1548,7 @@ public class AgentPDDCOP extends Agent {
 		this.agentViewEachTimeStepMap = agentViewEachTimeStepMap;
 	}
 
-	public int getLsIteration() {
+	public int getLocalSearchIteration() {
 		return localSearchIteration;
 	}
 

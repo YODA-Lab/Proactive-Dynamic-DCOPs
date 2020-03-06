@@ -60,7 +60,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 			}
 		}
 		else {//leaf or internal nodes
-			ACLMessage receivedMessage = waitingForValuesInItsAgentViewFromParent(DPOP_VALUE);
+			ACLMessage receivedMessage = waitingForMessageFromParent(DPOP_VALUE);
 			agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
 			
 			HashMap<Integer, String> variableAgentViewIndexValueMap = new HashMap<Integer, String>();
@@ -147,7 +147,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 //		return messageList;
 //	}
 	
-  private ACLMessage waitingForValuesInItsAgentViewFromParent(int msgCode) {
+  private ACLMessage waitingForMessageFromParent(int msgCode) {
     ACLMessage receivedMessage = null;
 
     while (true) {

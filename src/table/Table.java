@@ -61,22 +61,18 @@ public class Table implements Serializable {
 	}
 	
 	public void addRow(Row newRow) {
-		this.rowList.add(newRow);
+		rowList.add(newRow);
 	}
 	
-	//tao 1 array chua values cua 1 bien
-	//chay tung dong cua vector
-	//kiem tra gia tri cua bien, co trong listValues chua
-	//neu chua thi them vao
-	//tra ve danh sach tat ca gia tri cua 1 bien, khong bi duplicate
-	List<String> listValuesOfVariable(int index) {
-		List<String> listValues = new ArrayList<String>();
-		for (Row row: rowList) {			
-			if (listValues.contains(row.getValueAtPosition(index)) == false)
-				listValues.add(row.getValueAtPosition(index));
-		}
-		return listValues;
-	}
+
+//	List<String> listValuesOfVariable(int index) {
+//		List<String> listValues = new ArrayList<String>();
+//		for (Row row: rowList) {			
+//			if (listValues.contains(row.getValueAtPosition(index)) == false)
+//				listValues.add(row.getValueAtPosition(index));
+//		}
+//		return listValues;
+//	}
 	
 	public double getUtilityFromTableGivenDecAndRand(List<String> decValueList, List<String> randValueList) {
 	  for (Row row : rowList) {
@@ -86,6 +82,10 @@ public class Table implements Serializable {
 	  }
 	  
 	  return Double.MAX_VALUE;
+	}
+	
+	public boolean isRandomTable() {
+	  return !randVarLabel.isEmpty();
 	}
 
 	public int getRowCount() {
