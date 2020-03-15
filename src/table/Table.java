@@ -21,6 +21,8 @@ public class Table implements Serializable {
 	private List<String> randVarLabel = new ArrayList<>();
 	
 	private List<Row> rowList = new ArrayList<>();
+	
+	private boolean isRandTable = false;
 
 	public Table(Table anotherTable) {
 	  this.decVarLabel.addAll(anotherTable.getDecVarLabel());	  
@@ -29,6 +31,8 @@ public class Table implements Serializable {
 		for (Row row : anotherTable.getRowList()) {
 			this.rowList.add(new Row(row));
 		}
+		
+		isRandTable = anotherTable.isRandTable();
 	}
 	
 	public double getUtilityGivenDecValueList(List<String> decValueList) {
@@ -64,16 +68,6 @@ public class Table implements Serializable {
 		rowList.add(newRow);
 	}
 	
-
-//	List<String> listValuesOfVariable(int index) {
-//		List<String> listValues = new ArrayList<String>();
-//		for (Row row: rowList) {			
-//			if (listValues.contains(row.getValueAtPosition(index)) == false)
-//				listValues.add(row.getValueAtPosition(index));
-//		}
-//		return listValues;
-//	}
-	
 	public double getUtilityFromTableGivenDecAndRand(List<String> decValueList, List<String> randValueList) {
 	  for (Row row : rowList) {
 	    if (row.getValueList().equals(decValueList) && row.getRandomList().equals(randValueList)) {
@@ -81,11 +75,7 @@ public class Table implements Serializable {
 	    }
 	  }
 	  
-	  return Double.MAX_VALUE;
-	}
-	
-	public boolean isRandomTable() {
-	  return !randVarLabel.isEmpty();
+	  return -Double.MAX_VALUE;
 	}
 
 	public int getRowCount() {
@@ -128,6 +118,24 @@ public class Table implements Serializable {
 
   @Override
   public String toString() {
-    return "Table [decVarLabel=" + decVarLabel + ", randVarLabel=" + randVarLabel + ", rowList=" + rowList + "]";
+    StringBuffer sb = new StringBuffer();
+    sb.append("Table: decVarLabel=");
+    sb.append(decVarLabel);
+    sb.append(", randVarLabel=");
+    sb.append(randVarLabel + "\n");
+    for (Row row : rowList) {
+      sb.append(row + "\n");
+    }
+    sb.append("]\n");
+    
+    return sb.toString();
+  }
+
+  public boolean isRandTable() {
+    return !randVarLabel.isEmpty() || isRandTable;
+  }
+
+  public void setRandTable(boolean isRandTable) {
+    this.isRandTable = isRandTable;
   }
 }

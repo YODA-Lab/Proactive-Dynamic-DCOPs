@@ -107,7 +107,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 			}
 			if (agent.isRunningAlgorithm(DcopAlgorithm.FORWARD) || agent.isRunningAlgorithm(DcopAlgorithm.BACKWARD)) {
 				if (currentTimeStep == agent.getHorizon()) {
-					Utilities.writeUtil_Time_FW_BW(agent);
+//					Utilities.writeUtil_Time_FW_BW(agent);
 				}
 			}
 		}
@@ -278,7 +278,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode) {
 		List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 		
-		while (messageList.size() < agent.getChildrenAIDList().size()) {
+		while (messageList.size() < agent.getChildrenAIDSet().size()) {
 			agent.startSimulatedTiming();
 		  
 		  MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);

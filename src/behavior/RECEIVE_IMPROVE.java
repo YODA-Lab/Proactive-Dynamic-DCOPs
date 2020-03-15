@@ -29,6 +29,10 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 	public void action() {
 		// backup oldSimulatedTime
 //		long oldSimulatedTime = agent.getSimulatedTime();
+	  
+    if (agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION) {
+      return;
+    }
 		
 		List<ACLMessage> messageList = waitingForMessageFromNeighborWithTime(LS_IMPROVE);
 		
@@ -77,7 +81,7 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 		
 		agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
 		
-		for (AID neighbor:agent.getNeighborAIDList()) { 
+		for (AID neighbor:agent.getNeighborAIDSet()) { 
 			agent.sendObjectMessageWithTime(neighbor, agent.getBestImproveValueList(), 
 						LS_VALUE, agent.getSimulatedTime());	
 		}
@@ -86,7 +90,7 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
   private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
-    while (messageList.size() < agent.getNeighborAIDList().size()) {
+    while (messageList.size() < agent.getNeighborAIDSet().size()) {
       agent.startSimulatedTiming();
       
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
@@ -112,6 +116,7 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 
 	@Override
 	public boolean done() {
+	  agent.print("is done RECEIVE_IMPROVE: " + agent.getLocalSearchIteration());
 		return agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION;
 	}
 }

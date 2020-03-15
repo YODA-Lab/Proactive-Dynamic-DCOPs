@@ -1,5 +1,7 @@
 package main;
 
+import java.util.Arrays;
+
 import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.core.Runtime;
@@ -11,8 +13,15 @@ public class Main {
 
   public static void main(String[] args) {    
     // parameters for running experiments
-    String inputFileName = args[1]; // "rep_0_d10.dzn";     
-    int agentCount = Integer.parseInt(inputFileName.replaceAll("rep_","").replaceAll(".dzn","").split("_d")[1]);
+    String inputFileName = args[1]; 
+    System.out.println(Arrays.toString(args));
+    System.out.println(inputFileName);
+    System.out.println(inputFileName.substring(inputFileName.indexOf("/")));
+    
+    String a[] = inputFileName.substring(inputFileName.indexOf("/") + 1).replaceAll("instance_", "").replaceAll(".dzn", "").split("_");
+    System.out.println(Arrays.toString(a));
+
+    int agentCount = Integer.valueOf(a[1].replace("x", ""));
     
     Runtime rt = Runtime.instance();
     rt.setCloseVM(true);

@@ -31,7 +31,7 @@ public class INIT_PROPAGATE_DPOP_VALUE extends OneShotBehaviour implements MESSA
 		
 		agent.addupSimulatedTime(sleepTime);
 		
-		for (AID neighborAgentAID : agent.getNeighborAIDList()) {
+		for (AID neighborAgentAID : agent.getNeighborAIDSet()) {
 			agent.sendObjectMessageWithTime(neighborAgentAID, agent.getChosenValueAtEachTSMap(),
 					PROPAGATE_DPOP_VALUE, agent.getSimulatedTime());
 		}

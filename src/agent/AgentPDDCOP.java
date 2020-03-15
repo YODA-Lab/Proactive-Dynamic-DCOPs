@@ -13,10 +13,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import behavior.AGENT_TERMINATE;
-import behavior.BROADCAST_RECEIVE_HEURISTIC_INFO;
 import behavior.DPOP_UTIL;
 import behavior.DPOP_VALUE;
 import behavior.INIT_PROPAGATE_DPOP_VALUE;
@@ -105,10 +109,13 @@ public class AgentPDDCOP extends Agent {
     HYBRID,
     REACT
   }
+  
+  public static final String INPUT_FOLDER = "input_files";
 
   public static final SwitchingType SWITCHING_TYPE = SwitchingType.CONSTANT;
-  public static final int MAX_ITERATION = 30;
+  public static final int MAX_ITERATION = 3;
   public static final int MARKOV_CONVERGENCE_TIME_STEP = 40;
+  public static final double DOUBLE_TOLERANCE = 1E-6;
 
   /*
    * DCOP parameters
@@ -121,6 +128,7 @@ public class AgentPDDCOP extends Agent {
 	private DynamicType dynamicType;
   private double discountFactor;
   private String inputFileName;
+  private double heuristicWeight;
 
 	/*
 	 * To be read from input file
@@ -137,12 +145,12 @@ public class AgentPDDCOP extends Agent {
 	private boolean isLeaf = false;
 
 	private AID parentAID;
-	private List<AID> childrenAIDList = new ArrayList<>();
-	private List<AID> neighborAIDList = new ArrayList<>();
-	private List<AID> pseudoParentAIDList = new ArrayList<>();
-	private List<AID> pseudoChildrenAIDList = new ArrayList<>();
+	private Set<AID> childrenAIDSet = new HashSet<>();
+	private Set<AID> neighborAIDSet = new HashSet<>();
+	private Set<AID> pseudoParentAIDSet = new HashSet<>();
+	private Set<AID> pseudoChildrenAIDSet = new HashSet<>();
 	private List<String> parentAndPseudoStrList = new ArrayList<>();
-	private List<String> neighborStrList = new ArrayList<>();
+	private Set<String> neighborStrSet = new HashSet<>();
 	
 	private List<Table> dpopDecisionTableList = new ArrayList<>();
 	private List<Table> dpopRandomTableList = new ArrayList<>();
@@ -151,16 +159,16 @@ public class AgentPDDCOP extends Agent {
 	private List<Table> rawRandomTableList = new ArrayList<>();
 
 	private List<String> decisionVariableList = new ArrayList<>();
-	private List<String> randomVariableList = new ArrayList<>();
+//	private List<String> selfVariableList = new ArrayList<>();
 	private HashMap<String, List<String>> decisionVariableDomainMap = new HashMap<>();
-	private HashMap<String, List<String>> randomVariableDomainMap = new HashMap<>();
+	private HashMap<String, List<String>> selfRandomVariableDomainMap = new HashMap<>();
 	// map TS -> constraint table list (if local_search)
 	// map TS -> 1 collapsed table list (if collapsed dpop)
 	private HashMap<Integer, List<Table>> constraintTableAtEachTSMap = new HashMap<>();
 	private HashMap<String, double[][]> probabilityAtEachTimeStepMap = new HashMap<>();
 
 	// VALUE phase
-	Map<String, String> valuesToSendInVALUEPhase = new HashMap<>();
+	private Map<String, String> valuesToSendInVALUEPhase = new HashMap<>();
 
 	// used for LOCAL SEARCH
 	private Map<Integer, String> chosenValueAtEachTSMap = new HashMap<>();
@@ -178,7 +186,7 @@ public class AgentPDDCOP extends Agent {
 	private double currentLocalSearchSolutionQuality;
 	private double solutionQuality;
 
-	private Map<String, List<Double>> initProabilityMap = new HashMap<>();
+//	private Map<String, List<Double>> initProabilityMap = new HashMap<>();
 	/**
 	 * Random variable -> TransitionFunction
 	 */
@@ -196,18 +204,21 @@ public class AgentPDDCOP extends Agent {
 	private static long delayMessageTime = 0; // in milliseconds
 
 	// for reuse information
-	private Map<AID, Integer> constraintInfoMap;
+	private Map<String, Double> agentHeuristicStringMap = new HashMap<>();
 	private boolean notVisited = true;
 
 	// List<String> neighborWithRandList;
 
 	// Store the quality of the best LS solution
 	private double bestLocalSearchQuality;
+	private long bestLocalSearchRuntime;
 	
 	private boolean stop = false;
 	private double curentLocalSearchQuality;
 	private String lastLine = "";
   private int agentCount;
+  // Used when reading the input file
+  private String rootAgent = null;
 
 	public AgentPDDCOP() {
 	}
@@ -219,17 +230,19 @@ public class AgentPDDCOP extends Agent {
     
 		// parameters for running experiments
 		algorithm = DcopAlgorithm.valueOf((String) args[0]);
-		inputFileName = (String) args[1]; // rep_10_d14.dzn
+		inputFileName = (String) args[1]; // random_x14_y123/instance_10_x14_y123.dzn
 		horizon = Integer.valueOf((String) args[2]);
 		switchingCost = Integer.valueOf((String) args[3]);
 		discountFactor = Double.valueOf((String) args[4]);
 		dynamicType = DynamicType.valueOf((String) args[5]);
+		heuristicWeight = Double.valueOf((String) args[6]);
 		
-		String a[] = inputFileName.replaceAll("rep_", "").replaceAll(".dzn", "").split("_d");
+		
+		String a[] = inputFileName.substring(inputFileName.indexOf("/") + 1).replaceAll("instance_", "").replaceAll(".dzn", "").split("_");
 		
 		instanceID = Integer.valueOf(a[0]);
 		
-		agentCount = Integer.valueOf(a[1]);
+		agentCount = Integer.valueOf(a[1].replace("x", ""));
 		
 		agentID = getLocalName();
 
@@ -240,56 +253,30 @@ public class AgentPDDCOP extends Agent {
 		outputFileName = algorithm + "_d=" + agentCount + "_sw=" + (int) switchingCost + "_h=" + horizon + ".txt";
 	}
 
-	protected void setup() {
-		readArguments();
-		// Set root
-		isRoot = agentID.equals("1") ? true : false;
-		
-		if (isRoot) {
-			System.out.println("Algorithm =  " + algorithm);
-			System.out.println("Input file name = " + inputFileName);
-	    System.out.println("InstanceID = " + instanceID);
-			System.out.println("Horizon = " + horizon);
-			System.out.println("Max iteration = " + MAX_ITERATION);		
-		}
-
-		parseInputFile(inputFileName);
+	protected void setup() {	
+    readArguments();
+    parseInputFile(INPUT_FOLDER + "/" + inputFileName);
+	  
+    if (isRoot) {
+      print("AgentID = " + agentID);
+      print("Algorithm = " + algorithm);
+      print("Input file name = " + inputFileName);
+      print("InstanceID = " + instanceID);
+      print("Switching cost = " + switchingCost);
+      print("Discount factor = " + discountFactor);
+      print("Horizon = " + horizon);
+      print("heuristicWeight = " + heuristicWeight);
+      print("Max iteration=" + MAX_ITERATION);   
+    }
+      		
     registerWithDF();   
     bean = ManagementFactory.getThreadMXBean();
     bean.setThreadContentionMonitoringEnabled(true);
     
-    int randomDomainSize = randomVariableDomainMap.get(agentID).size();
-    probabilityAtEachTimeStepMap.put(getAgentID(), new double[horizon + 1][randomDomainSize]);
+    int theLastTimeStep = computeDistributionForAllTimeSteps();
     
-    int theLastTimeStep = horizon;
-    if (dynamicType == DynamicType.INFINITE_HORIZON) {
-      createStableProbabilityForLastTimeStep();
-      theLastTimeStep = horizon - 1;
-      for (int timeIndex = 0; timeIndex <= theLastTimeStep; timeIndex++) {
-        computeExpectedProbabilityAtTimeStep(timeIndex);
-      }
-    }
-    else if (dynamicType == DynamicType.FINITE_HORIZON) {
-      for (int timeIndex = 0; timeIndex <= theLastTimeStep; timeIndex++) {
-        computeExpectedProbabilityAtTimeStep(timeIndex);
-      }
-    }
-    else if (dynamicType == DynamicType.HYBRID) {
-      for (int indexTime = 0; indexTime <= theLastTimeStep; indexTime++) {
-        addPickedRandomMap(indexTime, simulateRandom(indexTime));
-        createProbabilityWithObservation(indexTime);
-      }
-    }
-    else if (dynamicType == DynamicType.REACT) {
-      // Do nothing
-    }
-    
-    dpopDecisionTableList.addAll(getTableWithoutChildrenAndPseudochilren(rawDecisionTableList));
-    dpopRandomTableList.addAll(getTableWithoutChildrenAndPseudochilren(rawRandomTableList));
-
 		SequentialBehaviour mainSequentialBehaviourList = new SequentialBehaviour();
 		mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
-		mainSequentialBehaviourList.addSubBehaviour(new BROADCAST_RECEIVE_HEURISTIC_INFO(this));
 		mainSequentialBehaviourList.addSubBehaviour(new PSEUDOTREE_GENERATION(this));
 		
 		if (dynamicType == DynamicType.INFINITE_HORIZON) {
@@ -313,7 +300,6 @@ public class AgentPDDCOP extends Agent {
     }     
      		
 		if (isAlgorithmIn(new DcopAlgorithm[]{DcopAlgorithm.LS_RAND, DcopAlgorithm.LS_SDPOP})) {
-		  
 		  for (int timeIndex  = 0; timeIndex <= theLastTimeStep; timeIndex++) {
 		    constraintTableAtEachTSMap.get(timeIndex).addAll(computeDiscountedDecisionTableList(rawDecisionTableList, timeIndex, discountFactor));
         constraintTableAtEachTSMap.get(timeIndex).addAll(computeDiscountedDecisionTableList(rawRandomTableList, timeIndex, discountFactor));
@@ -322,7 +308,7 @@ public class AgentPDDCOP extends Agent {
 		  mainSequentialBehaviourList.addSubBehaviour(new INIT_PROPAGATE_DPOP_VALUE(this));
 			mainSequentialBehaviourList.addSubBehaviour(new INIT_RECEIVE_DPOP_VALUE(this));
 			mainSequentialBehaviourList.addSubBehaviour(new INIT_RECEIVE_SEND_LS_UTIL(this, theLastTimeStep));
-			
+
 			mainSequentialBehaviourList.addSubBehaviour(new SEND_IMPROVE(this, theLastTimeStep));
       ParallelBehaviour localSearch = new ParallelBehaviour();
       localSearch.addSubBehaviour(new RECEIVE_IMPROVE(this, theLastTimeStep));
@@ -335,11 +321,42 @@ public class AgentPDDCOP extends Agent {
 		addBehaviour(mainSequentialBehaviourList);
 	}
 
+  /**
+   * Compute probability distributions for each time steps
+   * @return
+   */
+  private int computeDistributionForAllTimeSteps() {    
+    if (dynamicType == DynamicType.INFINITE_HORIZON) {
+      for (int timeIndex = 1; timeIndex <= horizon - 1; timeIndex++) {
+        computeExpectedProbabilityAtTimeStep(timeIndex);
+      }
+      computeExpectedProbabilityAtTimeStep(AgentPDDCOP.MARKOV_CONVERGENCE_TIME_STEP);
+    }
+    else if (dynamicType == DynamicType.FINITE_HORIZON) {
+      for (int timeIndex = 1; timeIndex <= horizon; timeIndex++) {
+        computeExpectedProbabilityAtTimeStep(timeIndex);
+      }
+    }
+    // TODO: review HYBRID and REACT later
+    else if (dynamicType == DynamicType.HYBRID) {
+      for (int indexTime = 0; indexTime <= horizon; indexTime++) {
+        addPickedRandomMap(indexTime, simulateHybridRandom(indexTime));
+        createProbabilityWithObservation(indexTime);
+      }
+    }
+    else if (dynamicType == DynamicType.REACT) {
+      // TODO?
+      addReactRandomTableToList(-1);
+    }    
+    
+    return dynamicType == DynamicType.INFINITE_HORIZON ? horizon - 1 : horizon;
+  }
+
   // JADE function: stop the Agent
 	protected void takeDown() {
-		System.out.println("Agent " + agentID + " with threadID " + Thread.currentThread().getId()
-				+ " has SIMULATED TIME: " + simulatedTime / 1000000 + "ms");
-		System.err.println("Agent " + getAID().getName() + " is terminated.");
+//		print("Agent " + agentID + " with threadID " + Thread.currentThread().getId()
+//				+ " has SIMULATED TIME: " + simulatedTime / 1000000 + "ms");
+	  print("terminated");
 		try {
 			DFService.deregister(this);
 		} catch (FIPAException e) {
@@ -348,11 +365,8 @@ public class AgentPDDCOP extends Agent {
 	}
 	
   public void sendImprove(int lastTimeStep) {
-    
     startSimulatedTiming();
     
-//    currentStartTime = bean.getCurrentThreadUserTime();
-
     List<Double> currentUtilityList = utilityMinusCostOverTS(chosenValueAtEachTSMap, lastTimeStep);
 
     double maxUtility = Integer.MIN_VALUE;
@@ -386,10 +400,9 @@ public class AgentPDDCOP extends Agent {
       }
     }
 
-//    simulatedTime += bean.getCurrentThreadUserTime() - currentStartTime;
     stopStimulatedTiming();
 
-    for (AID neighbor : neighborAIDList) {
+    for (AID neighbor : neighborAIDSet) {
       sendObjectMessageWithTime(neighbor, bestImproveUtilityList, MESSAGE_TYPE.LS_IMPROVE, simulatedTime);
     }
   }
@@ -444,7 +457,7 @@ public class AgentPDDCOP extends Agent {
 		simulatedTime += bean.getCurrentThreadUserTime() - currentStartTime;
 
 		// send IMPROVE messages
-		for (AID neighbor : neighborAIDList) {
+		for (AID neighbor : neighborAIDSet) {
 			sendObjectMessageWithTime(neighbor, bestImproveUtility, MESSAGE_TYPE.LS_IMPROVE, simulatedTime);
 		}
 	}
@@ -453,23 +466,23 @@ public class AgentPDDCOP extends Agent {
    * Remove children and pseudoChildren constraint table
    */
   public List<Table> getTableWithoutChildrenAndPseudochilren(List<Table> tableList) {
-    List<String> childAndPseudoChildrenStrList = new ArrayList<String>();
-    for (AID childrenAID : childrenAIDList) {
-      childAndPseudoChildrenStrList.add(childrenAID.getLocalName());
+    Set<String> childAndPseudoChildrenStrSet = new HashSet<String>();
+    
+    for (AID childrenAID : childrenAIDSet) {
+      childAndPseudoChildrenStrSet.add(childrenAID.getLocalName());
     }
-    for (AID pseudoChildrenAID : pseudoChildrenAIDList) {
-      childAndPseudoChildrenStrList.add(pseudoChildrenAID.getLocalName());
+    for (AID pseudoChildrenAID : pseudoChildrenAIDSet) {
+      childAndPseudoChildrenStrSet.add(pseudoChildrenAID.getLocalName());
     }
     
-    List<Table> resultingTableList = new ArrayList<>(tableList);
+    List<Table> resultingTableList = new ArrayList<>();
 
     for (Table constraintTable : tableList) {
-      List<String> decLabelList = constraintTable.getDecVarLabel();
-      for (String children : childAndPseudoChildrenStrList) {
-        if (decLabelList.contains(children)) {
-          resultingTableList.remove(constraintTable);
-          break;
-        }
+      List<String> intersectList = new ArrayList<>(constraintTable.getDecVarLabel());
+      intersectList.retainAll(childAndPseudoChildrenStrSet);
+      
+      if (intersectList.isEmpty()) {
+        resultingTableList.add(constraintTable);
       }
     }
 
@@ -597,10 +610,11 @@ public class AgentPDDCOP extends Agent {
 
 	public void createProbabilityWithObservation(int timeStep) {
 		if (timeStep == 0) {
-			computeExpectedProbabilityAtTimeStep(0);
+//			computeExpectedProbabilityAtTimeStep(0);
 			return;
 		}
-		for (String randVariable : randomVariableList) {
+		
+		for (String randVariable : selfRandomVariableDomainMap.keySet()) {
 			double distribution[] = toArray(
 					transitionFunctionMap.get(randVariable).getTransitionOf(pickedRandomMap.get(timeStep - 1)));
 			probabilityAtEachTimeStepMap.get(randVariable)[timeStep] = distribution;
@@ -608,12 +622,13 @@ public class AgentPDDCOP extends Agent {
 	}
 
 	public void computeExpectedProbabilityAtTimeStep(int timeStep) {
-		for (String randVariable : randomVariableList) {
-			if (timeStep == 0) {
-				List<Double> initProbList = initProabilityMap.get(randVariable);
-				for (int i = 0; i < randomVariableDomainMap.get(randVariable).size(); i++) {
-					probabilityAtEachTimeStepMap.get(randVariable)[0][i] = initProbList.get(i);
-				}
+		for (String randVariable : selfRandomVariableDomainMap.keySet()) {
+			if (timeStep == MARKOV_CONVERGENCE_TIME_STEP) {
+			  double[] probability = probabilityAtEachTimeStepMap.get(randVariable)[horizon - 1];
+			  for (int h = horizon - 1; h <= MARKOV_CONVERGENCE_TIME_STEP; h++) {
+			    probability = multiply(probability, transitionFunctionMap.get(randVariable));
+			  }
+        probabilityAtEachTimeStepMap.get(randVariable)[horizon] = probability;
 			}
 			else {
 				double[] prevDistribution = probabilityAtEachTimeStepMap.get(randVariable)[timeStep - 1];
@@ -623,53 +638,41 @@ public class AgentPDDCOP extends Agent {
 		}
 	}
 
-	public void createStableProbabilityForLastTimeStep() {
-		// for each random variables
-		for (String randVariable : randomVariableList) {
-			double distribution[] = probabilityAtEachTimeStepMap.get(randVariable)[0];
-			// multiply to get stable distribution
-			for (int i = 0; i <= AgentPDDCOP.MARKOV_CONVERGENCE_TIME_STEP; i++) {
-				distribution = multiply(distribution, transitionFunctionMap.get(randVariable));
-			}
-			probabilityAtEachTimeStepMap.get(randVariable)[horizon] = distribution;
-		}
-	}
-
 	// for each agent, create probability for valueList at each timeStep of each
 	// randomVariable
 	// add to probabilityAtEachTimeStepMap
-	public void createAndAddProbabilityAtEachTimeStep() {
+//	private void createAndAddProbabilityAtEachTimeStep() {
 		// get each random Variable from randomVariableList
 		// add to probabilityAtEachTimeStepMap
 		// int columnNo = timeStepAllowed + 1;
-		int columnNo = horizon + 1;
-		for (int randVarIndex = 0; randVarIndex < randomVariableList.size(); randVarIndex++) {
-			String randVariable = randomVariableList.get(randVarIndex);
-			int domainSize = randomVariableDomainMap.get(randVariable).size();
-			// each row is a timeStep from 0 to finalTimeStep
-			// each column is a value from domain
-			double[][] probAtEachTS = new double[columnNo][domainSize];
-			TransitionFunction transMatrix = transitionFunctionMap.get(randVariable);
-			for (int row = 0; row < columnNo; row++) {
-				if (row == 0) {
-					List<Double> initProbList = initProabilityMap.get(randVariable);
-					for (int col = 0; col < domainSize; col++) {
-						probAtEachTS[row][col] = initProbList.get(col);
-					}
-					continue;
-				}
-				for (int col = 0; col < domainSize; col++) {
-					double probabilityAtATime = 0;
-					for (int upperCol = 0; upperCol < domainSize; upperCol++) {
-						probabilityAtATime += probAtEachTS[row - 1][upperCol]
-								* transMatrix.getProbByIndex(upperCol, col);
-					}
-					probAtEachTS[row][col] = probabilityAtATime;
-				}
-			}
-			probabilityAtEachTimeStepMap.put(randVariable, probAtEachTS);
-		}
-	}
+//		int columnNo = horizon + 1;
+//		for (int randVarIndex = 0; randVarIndex < selfVariableList.size(); randVarIndex++) {
+//			String randVariable = selfVariableList.get(randVarIndex);
+//			int domainSize = selfRandomVariableDomainMap.get(randVariable).size();
+//			// each row is a timeStep from 0 to finalTimeStep
+//			// each column is a value from domain
+//			double[][] probAtEachTS = new double[columnNo][domainSize];
+//			TransitionFunction transMatrix = transitionFunctionMap.get(randVariable);
+//			for (int row = 0; row < columnNo; row++) {
+//				if (row == 0) {
+//					List<Double> initProbList = initProabilityMap.get(randVariable);
+//					for (int col = 0; col < domainSize; col++) {
+//						probAtEachTS[row][col] = initProbList.get(col);
+//					}
+//					continue;
+//				}
+//				for (int col = 0; col < domainSize; col++) {
+//					double probabilityAtATime = 0;
+//					for (int upperCol = 0; upperCol < domainSize; upperCol++) {
+//						probabilityAtATime += probAtEachTS[row - 1][upperCol]
+//								* transMatrix.getProbByIndex(upperCol, col);
+//					}
+//					probAtEachTS[row][col] = probabilityAtATime;
+//				}
+//			}
+//			probabilityAtEachTimeStepMap.put(randVariable, probAtEachTS);
+//		}
+//	}
 
 	public List<List<String>> getAllTupleValueOfGivenLabel(List<String> varLabel, boolean isDecVar) {
 		List<List<String>> allTuple = new ArrayList<List<String>>();
@@ -681,7 +684,7 @@ public class AgentPDDCOP extends Agent {
 			if (isDecVar) {
 				domainSize = decisionVariableDomainMap.get(randVar).size();
 			} else
-				domainSize = randomVariableDomainMap.get(randVar).size();
+				domainSize = selfRandomVariableDomainMap.get(randVar).size();
 			sizeDomainList.add(domainSize);
 			totalSize *= domainSize;
 		}
@@ -700,7 +703,7 @@ public class AgentPDDCOP extends Agent {
 				if (isDecVar)
 					valueTuple.add(decisionVariableDomainMap.get(varLabel.get(varIndex)).get(remainder));
 				else
-					valueTuple.add(randomVariableDomainMap.get(varLabel.get(varIndex)).get(remainder));
+					valueTuple.add(selfRandomVariableDomainMap.get(varLabel.get(varIndex)).get(remainder));
 			}
 			Collections.reverse(valueTuple);
 			allTuple.add(valueTuple);
@@ -744,12 +747,13 @@ public class AgentPDDCOP extends Agent {
 //
 //			return row.getUtility();
 //		}
-//		System.out.println("Not found!!!!!!!!!!!!!!");
+//		print("Not found!!!!!!!!!!!!!!");
 //		return Integer.MIN_VALUE;
 //	}
 
 	public void sendObjectMessage(AID receiver, Object content, int msgCode) {
 		ACLMessage message = new ACLMessage(msgCode);
+		
 		try {
 			message.setContentObject((Serializable) content);
 		} catch (IOException e) {
@@ -757,7 +761,18 @@ public class AgentPDDCOP extends Agent {
 		}
 		message.addReceiver(receiver);
 		send(message);
+		
+		print("send message " + content + " to agent " + receiver.getLocalName());
 	}
+	
+	 public void sendStringMessage(AID receiver, String content, int msgCode) {
+	    ACLMessage message = new ACLMessage(msgCode);
+	    message.setContent(content);
+	    message.addReceiver(receiver);
+	    send(message);
+	    
+	    print("sends message type " + MESSAGE_TYPE.msgTypes.get(msgCode) + " to agent " + receiver.getLocalName() + ": " + content);
+	  }
 
 	public void sendObjectMessageWithTime(AID receiver, Object content, int msgCode, long time) {
 		ACLMessage message = new ACLMessage(msgCode);
@@ -769,39 +784,47 @@ public class AgentPDDCOP extends Agent {
 		message.addReceiver(receiver);
 		message.setLanguage(String.valueOf(time));
 		send(message);
+		
+    print("sends message type " + MESSAGE_TYPE.msgTypes.get(msgCode) + " to agent " + receiver.getLocalName() + ": " + content);
 	}
 
 	public void printTree() {
-		System.out.println("************");
-		System.out.println("My ID is: " + agentID);
+		print("************");
+		print("My ID is: " + agentID);
 		if (!isRoot)
-			System.out.println("My parent is: " + parentAID.getLocalName());
-		System.out.println("My children are: ");
-		for (int i = 0; i < childrenAIDList.size(); i++) {
-			System.out.print(childrenAIDList.get(i).getLocalName() + " ");
+			print("My parent is: " + parentAID.getLocalName());
+		print("My children are: ");
+		
+		for (AID children : childrenAIDSet) {
+      System.out.print(children.getLocalName() + " ");
 		}
-		System.out.println();
+		
+		print();
 
-		System.out.println("My pseudo_parents are: ");
-		for (int i = 0; i < pseudoParentAIDList.size(); i++) {
-			System.out.print(pseudoParentAIDList.get(i).getLocalName() + " ");
-		}
-		System.out.println();
+		print("My pseudo_parents are: ");
+		
+    for (AID pseudoParent : pseudoParentAIDSet) {
+      System.out.print(pseudoParent.getLocalName() + " ");
+    }
+		print();
 
-		System.out.println("My pseudo_children are: ");
-		for (int i = 0; i < pseudoChildrenAIDList.size(); i++) {
-			System.out.print(pseudoChildrenAIDList.get(i).getLocalName() + " ");
-		}
-		System.out.println();
-
+		print("My pseudo_children are: ");
+    for (AID pseudoChild : pseudoChildrenAIDSet) {
+      System.out.print(pseudoChild.getLocalName() + " ");
+    }
+    print();
 	}
 
-	public void parseInputFile(String inputFileName) {
-		final String RANDOM_VARIABLE = "random";
+	private void parseInputFile(String inputFileName) {
 		final String DECISION_VARIABLE = "decision";
-		final String REWARD_TABLE_PREFIX = "rewardTable";
+    final String RANDOM_VARIABLE = "random";
+		final String REWARD_TABLE_PREFIX = "constraint";
 		final String TRANS_FUNC_PREFIX = "transition";
-		final String INIT_PROB_PREFIX = "initProbability";
+		final String INIT_PROB_PREFIX = "initial_distribution";
+		
+		Map<String, Set<String>> neighborSetMap = new HashMap<>(); 
+		Map<String, Integer> randHeuristicMap = new HashMap<>();
+		Set<String> allRandomVariableSet = new HashSet<>();
 
 		try (BufferedReader br = new BufferedReader(
 				new FileReader(System.getProperty("user.dir") + '/' + inputFileName))) {
@@ -809,13 +832,13 @@ public class AgentPDDCOP extends Agent {
 
 			String line = br.readLine();
 			while (line != null) {
-				if (line.length() == 0 || line.startsWith("%") == true) {
+			  if (line.length() == 0 || line.startsWith("%") == true) {
 					line = br.readLine();
 					continue;
 				}
 
-				// concatenate line until meet ';'
-				if (line.endsWith(";") == false) {
+				// concatenate lines until meet ';'
+				if (!line.endsWith(";")) {
 					do {
 						line += br.readLine();
 					} while (line.endsWith(";") == false);
@@ -823,28 +846,79 @@ public class AgentPDDCOP extends Agent {
 
 				line = line.replace(" ", "");
 				line = line.replace(";", "");
+        
+				if (isPrinting()) {
+          print(line);
+        }
+        
 				lineWithSemiColonList.add(line);
 				line = br.readLine();
 			}
 
 			// Process line by line;
 			for (String lineWithSemiColon : lineWithSemiColonList) {
-				// print input file for agent0
+			  // print input file for agent0
 				String nameMzn = lineWithSemiColon.split("=")[0];
 				String valueMzn = lineWithSemiColon.split("=")[1];
 
+        /** DECISION_VARIABLE */
+        // read decision variable domain
+        if (nameMzn.contains(DECISION_VARIABLE)) {
+          // process name
+          String decisionVariable;
+          List<String> valueOfDecisionVariableList = new ArrayList<>();
+          decisionVariable = nameMzn.replace(DECISION_VARIABLE + "_x", "");
+
+          // process values
+          valueMzn = valueMzn.replace("[", "");
+          valueMzn = valueMzn.replace("]", "");
+          for (int value = Integer.parseInt(valueMzn.split(",")[0]); value <= Integer.parseInt(valueMzn.split(",")[1]); value++) {
+            valueOfDecisionVariableList.add(String.valueOf(value));
+          }
+
+          decisionVariableList.add(decisionVariable);
+          decisionVariableDomainMap.put(decisionVariable, valueOfDecisionVariableList);
+          
+          if (isPrinting()) {
+            print("decisionVariableList " + decisionVariableList);
+            print("decisionVariableDomainMap " + decisionVariableDomainMap);
+          }
+        }
+        /** RANDOM_VARIABLE */
+        // read decision variable domain
+        if (nameMzn.contains(RANDOM_VARIABLE)) {
+          // process name
+          String randomVariable;
+          List<String> randomDomain = new ArrayList<>();
+          randomVariable = nameMzn.replace(RANDOM_VARIABLE + "_y", "");
+
+          // process values
+          valueMzn = valueMzn.replace("[", "");
+          valueMzn = valueMzn.replace("]", "");
+          for (int value = Integer.parseInt(valueMzn.split(",")[0]); value <= Integer.parseInt(valueMzn.split(",")[1]); value++) {
+            randomDomain.add(String.valueOf(value));
+          }
+          
+          allRandomVariableSet.add(randomVariable);
+          
+          //TODO: Only add random variable that is constrained with regionID
+          if (randomVariable.equals(agentID)) {
+            selfRandomVariableDomainMap.put(randomVariable, randomDomain);
+          }
+          
+          if (isPrinting()) {
+            print("randomVariableDomainMap " + selfRandomVariableDomainMap);
+          }
+        }
 				/** TRANS_FUNC_PREFIX */
-				if (nameMzn.contains(TRANS_FUNC_PREFIX)) {
+        if (nameMzn.contains(TRANS_FUNC_PREFIX)) {
 					String randomVariable;
 					List<List<Double>> newTransitionMatrix;
 
-					nameMzn = nameMzn.replaceAll(TRANS_FUNC_PREFIX, "");
-					randomVariable = nameMzn;
+					randomVariable = nameMzn.replaceAll(TRANS_FUNC_PREFIX + "_y", "");
 
 					// Read variables related to agentID only
-					if (!randomVariable.equals(agentID)) {
-						continue;
-					}
+					if (!randomVariable.equals(agentID)) {continue;}
 
 					/** create transition function **/
 					newTransitionMatrix = new ArrayList<List<Double>>();
@@ -852,7 +926,7 @@ public class AgentPDDCOP extends Agent {
 					/** process table values **/
 					valueMzn = valueMzn.replace("[", "");
 					valueMzn = valueMzn.replace("]", "");
-					valueMzn = valueMzn.substring(1, valueMzn.length() - 1);
+//					valueMzn = valueMzn.substring(1, valueMzn.length() - 1);
 					listOfRow = new ArrayList<String>(Arrays.asList(valueMzn.split("\\|")));
 					for (String oneRow : listOfRow) {
 						List<String> valueStrList = new ArrayList<String>(Arrays.asList(oneRow.split(",")));
@@ -864,66 +938,41 @@ public class AgentPDDCOP extends Agent {
 						newTransitionMatrix.add(valueDoubleList);
 					}
 					TransitionFunction newTransitionFunction = new TransitionFunction(
-							randomVariableDomainMap.get(randomVariable), newTransitionMatrix);
+							selfRandomVariableDomainMap.get(randomVariable), newTransitionMatrix);
 					transitionFunctionMap.put(randomVariable, newTransitionFunction);
+					
+          if (isPrinting()) {
+            print("transitionFunctionMap " + transitionFunctionMap);
+          }
 				}
 				/** INIT_PROB_PREFIX */
 				if (nameMzn.contains(INIT_PROB_PREFIX)) {
 					String randomVariable;
 					List<String> initProbabilityStrList;
-					List<Double> initProbabilityDoubleList = new ArrayList<Double>();
-					nameMzn = nameMzn.replace(INIT_PROB_PREFIX, "");
+//					List<Double> initProbabilityDoubleList = new ArrayList<Double>();
+					nameMzn = nameMzn.replace(INIT_PROB_PREFIX + "_y", "");
 					randomVariable = nameMzn;
 
 					// Read variable with agentID only
-					if (!randomVariable.equals(agentID))
-						continue;
+//					if (!randomVariable.equals(agentID)) {
+//						continue;
+//					}
 
 					// process values
 					valueMzn = valueMzn.replace("[", "");
 					valueMzn = valueMzn.replace("]", "");
 					initProbabilityStrList = new ArrayList<>(Arrays.asList(valueMzn.split(",")));
-					for (String strValue : initProbabilityStrList) {
-						initProbabilityDoubleList.add(Double.parseDouble(strValue));
+	        
+					int randomDomainSize = initProbabilityStrList.size();
+          probabilityAtEachTimeStepMap.put(randomVariable, new double[horizon + 1][randomDomainSize]);
+					
+					for (int i = 0; i < initProbabilityStrList.size(); i++) {					    
+	          probabilityAtEachTimeStepMap.get(randomVariable)[0][i] = Double.parseDouble(initProbabilityStrList.get(i));
 					}
-					initProabilityMap.put(randomVariable, initProbabilityDoubleList);
-				}
-				/** DECISION_VARIABLE */
-				// read decision variable domain
-				if (nameMzn.contains(DECISION_VARIABLE)) {
-					// process name
-					String decisionVariable;
-					List<String> valueOfDecisionVariableList;
-					nameMzn = nameMzn.replace(DECISION_VARIABLE, "");
-					decisionVariable = nameMzn;
-
-					// process values
-					valueMzn = valueMzn.replace("[", "");
-					valueMzn = valueMzn.replace("]", "");
-					valueOfDecisionVariableList = new ArrayList<String>(Arrays.asList(valueMzn.split(",")));
-
-					decisionVariableList.add(decisionVariable);
-					decisionVariableDomainMap.put(decisionVariable, valueOfDecisionVariableList);
-				}
-				/** RANDOM_VARIABLE */
-				// read random variable domain
-				if (nameMzn.contains(RANDOM_VARIABLE)) {
-					// process name
-					String randomVariable;
-					List<String> valueOfRandomVariableList;
-					nameMzn = nameMzn.replace(RANDOM_VARIABLE, "");
-					randomVariable = nameMzn;
-
-					// Read variable with agentID only
-					if (randomVariable.equals(agentID) == false)
-						continue;
-
-					// process values
-					valueMzn = valueMzn.replace("[", "");
-					valueMzn = valueMzn.replace("]", "");
-					valueOfRandomVariableList = new ArrayList<String>(Arrays.asList(valueMzn.split(",")));
-					randomVariableList.add(randomVariable);
-					randomVariableDomainMap.put(randomVariable, valueOfRandomVariableList);
+										
+          if (isPrinting()) {
+            print("initProabilityMap " + probabilityAtEachTimeStepMap.get(randomVariable)[0]);
+          }
 				}
 				/** REWARD_TABLE_PREFIX */
 				/**
@@ -931,34 +980,39 @@ public class AgentPDDCOP extends Agent {
 				 * corresponding name
 				 **/
 				if (nameMzn.contains(REWARD_TABLE_PREFIX)) {
-					Table newRewardTable;
-					List<String> variableLabel;
-					List<String> listOfRow;
-					nameMzn = nameMzn.replaceAll(REWARD_TABLE_PREFIX + "_", "");
+          nameMzn = nameMzn.replaceAll(REWARD_TABLE_PREFIX + "_", "");
 
-					variableLabel = new ArrayList<String>(Arrays.asList(nameMzn.split("_")));
-					/**
-					 * Variable List does not contain its agent variable So we
-					 * skip to process the next line
-					 */
-					if (variableLabel.contains("d" + agentID) == false)
-						continue;
+				  Table newRewardTable;
+					List<String> variableLabel = new ArrayList<String>(Arrays.asList(nameMzn.split("_")));
+					List<String> listOfRow;
+
+					// Do not add random variables to the neighbor list
+					if (!nameMzn.contains("y")) {
+					  String var1 = variableLabel.get(0).replace("x", "");
+					  String var2 = variableLabel.get(1).replace("x", "");
+					  
+					  neighborSetMap.computeIfAbsent(var1, x -> new HashSet<>()).add(var2);
+					  neighborSetMap.computeIfAbsent(var2, x -> new HashSet<>()).add(var1);
+					}
+					
+					if (!variableLabel.contains("x" + agentID)) {continue;}
 					/**** WITHOUT random variable **********/
 					boolean notContainRandom = true;
 					for (String var : variableLabel) {
-						if (var.startsWith("r")) {
+						if (var.contains("y")) {
 							notContainRandom = false;
 							break;
 						}
 					}
-					if (notContainRandom == true) {
+					if (notContainRandom) {
 						/** add variable to neighborList **/
 						List<String> variableLabel_new = new ArrayList<>();
 						for (String var : variableLabel) {
 							/* add to neighbor list */
-							var = var.replace("d", "");
-							if (!var.equals(agentID) && !neighborStrList.contains(var))
-								neighborStrList.add(var);
+							var = var.replace("x", "");
+							if (!var.equals(agentID) && !neighborStrSet.contains(var)) {
+								neighborStrSet.add(var);
+							}
 							variableLabel_new.add(var);
 						}
 						/** create Table **/
@@ -967,7 +1021,7 @@ public class AgentPDDCOP extends Agent {
 						/** process table values **/
 						valueMzn = valueMzn.replace("[", "");
 						valueMzn = valueMzn.replace("]", "");
-						valueMzn = valueMzn.substring(1, valueMzn.length() - 1);
+
 						listOfRow = new ArrayList<String>(Arrays.asList(valueMzn.split("\\|")));
 
 						for (String oneRow : listOfRow) {
@@ -979,6 +1033,10 @@ public class AgentPDDCOP extends Agent {
 						}
 //						constraintTableWithoutRandomList.add(newRewardTable);
 						rawDecisionTableList.add(newRewardTable);
+						
+	          if (isPrinting()) {
+	            print("rawDecisionTableList " + rawDecisionTableList);
+	          }
 					}
 					/**** WITH random variable **********/
 					else {
@@ -987,37 +1045,35 @@ public class AgentPDDCOP extends Agent {
 						List<String> decVarLabel = new ArrayList<String>();
 						List<String> randVarLabel = new ArrayList<String>();
 						for (String var : variableLabel) {
-							if (var.startsWith("d")) {
+							if (var.startsWith("x")) {
 								decisionVarCount++;
-								decVarLabel.add(var.replace("d", ""));
-							} else if (var.startsWith("r")) {
-								randVarLabel.add(var.replace("r", ""));
+								decVarLabel.add(var.replace("x", ""));
+							} else if (var.startsWith("y")) {
+								randVarLabel.add(var.replace("y", ""));
 							}
 						}
 						/** add variable to neighborList **/
 						for (String var : decVarLabel) {
 							/* add to neighbor list */
-							if (!neighborStrList.contains(var) && !var.equals(agentID)) {
-								neighborStrList.add(var);
+							if (!var.equals(agentID)) {
+								neighborStrSet.add(var);
 							}
 						}
 						/** create Table **/
-						// System.out.println("!" + decVarLabel + " " +
+						// print("!" + decVarLabel + " " +
 						// randVarLabel);
 						newRewardTable = new Table(decVarLabel, randVarLabel);
 
 						/** process table values **/
 						valueMzn = valueMzn.replace("[", "");
 						valueMzn = valueMzn.replace("]", "");
-						valueMzn = valueMzn.substring(1, valueMzn.length() - 1);
 						listOfRow = new ArrayList<String>(Arrays.asList(valueMzn.split("\\|")));
 						for (String oneRow : listOfRow) {
-							List<String> decAndRandValueList = new ArrayList<String>(
-									Arrays.asList(oneRow.split(",")));
+							List<String> decAndRandValueList = new ArrayList<String>(Arrays.asList(oneRow.split(",")));
 							List<String> decValueList = new ArrayList<String>();
 							List<String> randValueList = new ArrayList<String>();
-							double utility = Double
-									.parseDouble(decAndRandValueList.get(decAndRandValueList.size() - 1));
+							double utility = Double.parseDouble(decAndRandValueList.get(decAndRandValueList.size() - 1));
+							
 							decAndRandValueList.remove(decAndRandValueList.size() - 1);
 							for (int i = 0; i < decisionVarCount; i++) {
 								decValueList.add(decAndRandValueList.get(i));
@@ -1030,8 +1086,45 @@ public class AgentPDDCOP extends Agent {
 						}
 //						constraintTableWithRandomList.add(newRewardTable);
 						rawRandomTableList.add(newRewardTable);
+            if (isPrinting()) {
+              print("rawRandomTableList " + rawRandomTableList);
+            }
 					}
 				}
+			}
+			
+			// Compute randHeuristicMap
+			for (Entry<String, Set<String>> entry : neighborSetMap.entrySet()) {
+			  String agent = entry.getKey();
+			  int count = 0;
+			  for (String neighbor : entry.getValue()) {
+			    if (allRandomVariableSet.contains(neighbor)) {count++;}
+			  }
+			  
+			  randHeuristicMap.put(agent, count);
+			}
+			
+			// Compute heuristic values for each agent
+			SortedSet<String> allAgents = new TreeSet<>(neighborSetMap.keySet());
+			double maxValue = -Double.MAX_VALUE;
+//			print("AgentID=" + agentID + " has neighborSetMap=" + neighborSetMap);
+			
+			for (String agent : allAgents) {
+			  int agentRandHeuristic = (allRandomVariableSet.contains(agent) ? 1 + 1 : 1 + 0) * randHeuristicMap.get(agent);
+			  double value = heuristicWeight * agentRandHeuristic + (1 - heuristicWeight) * neighborSetMap.get(agent).size();
+			  agentHeuristicStringMap.put(agent, value);
+			  
+			  if (Double.compare(value, maxValue) > 0) {
+			    maxValue = value;
+			    rootAgent = agent;
+			  }
+			}
+			
+			if (isPrinting()) {
+			  print("neighborSetMap=" + neighborSetMap);
+			  print("allRandomVariableSet=" + allRandomVariableSet);
+			  print("has randHeuristicMap=" + randHeuristicMap);
+			  print("agentHeuristicStringMap=" + agentHeuristicStringMap);
 			}
 
 			/** Place to test printing out */
@@ -1039,17 +1132,33 @@ public class AgentPDDCOP extends Agent {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+				
+    // Set root
+    isRoot = agentID.equals(rootAgent);
 	}
 
-	public void registerWithDF() {
+	private boolean isPrinting() {
+	  return agentID.equals("1");
+  }
+
+  public void registerWithDF() {
 		DFAgentDescription dfd = new DFAgentDescription();
 		dfd.setName(getAID());
-		for (int i = 0; i < neighborStrList.size(); i++) {
-			ServiceDescription sd = new ServiceDescription();
-			sd.setType(neighborStrList.get(i));
-			sd.setName(agentID);
-			dfd.addServices(sd);
-		}
+		
+    for (String neighborStr : neighborStrSet) {
+      ServiceDescription sd = new ServiceDescription();
+      sd.setType(neighborStr);
+      sd.setName(agentID);
+      dfd.addServices(sd);
+    }
+		
+//		for (int i = 0; i < neighborStrSet.size(); i++) {
+//			ServiceDescription sd = new ServiceDescription();
+//			sd.setType(neighborStrSet.get(i));
+//			sd.setName(agentID);
+//			dfd.addServices(sd);
+//		}
+		
 		try {
 			DFService.register(this, dfd);
 		} catch (FIPAException fe) {
@@ -1169,7 +1278,7 @@ public class AgentPDDCOP extends Agent {
 
     int randDomainSize = 1;
     for (String randVar : randLabel) {
-      randDomainSize *= randomVariableDomainMap.get(randVar).size();
+      randDomainSize *= selfRandomVariableDomainMap.get(randVar).size();
     }
 
     double expectedUtility = 0;
@@ -1181,7 +1290,7 @@ public class AgentPDDCOP extends Agent {
       double initProb = 1;
       for (int idx = 0; idx < randLabel.size(); idx++) {
         String rand = randLabel.get(idx);
-        initProb *= probabilityAtEachTimeStepMap.get(rand)[timeStep][randomVariableDomainMap.get(rand)
+        initProb *= probabilityAtEachTimeStepMap.get(rand)[timeStep][selfRandomVariableDomainMap.get(rand)
             .indexOf(randValueList.get(idx))];
       }
       expectedUtility += initProb * row.getUtility();
@@ -1211,7 +1320,7 @@ public class AgentPDDCOP extends Agent {
     int noOfEquations = 1;
     for (String randVar : randVarLabel) {
 //      noOfEquations *= agent.getRandomVariableDomainMap().get(randVar).size();
-      noOfEquations *= randomVariableDomainMap.get(randVar).size();
+      noOfEquations *= selfRandomVariableDomainMap.get(randVar).size();
     }
 
     // traverse each row of tableWithRandom
@@ -1257,7 +1366,7 @@ public class AgentPDDCOP extends Agent {
           coefficients[row][noOfEquations] = Math.pow(discountFactor, timeStep) * randomTable.getUtilityFromTableGivenDecAndRand(decValueList, rowTuple);
         }
 
-        // System.out.println(Arrays.deepToString(coefficients));
+        // print(Arrays.deepToString(coefficients));
         List<Double> utilityList = gaussian(coefficients, noOfEquations);
 
         // create new row with a fix dec values, but different rand values
@@ -1364,28 +1473,20 @@ public class AgentPDDCOP extends Agent {
 		this.isLeaf = isLeaf;
 	}
 
-	public List<AID> getNeighborAIDList() {
-		return neighborAIDList;
+	public Set<AID> getNeighborAIDSet() {
+		return neighborAIDSet;
 	}
 
-	public void setNeighborAIDList(List<AID> neighborAIDList) {
-		this.neighborAIDList = neighborAIDList;
+	public void setNeighborAIDSet(Set<AID> neighborAIDSet) {
+		this.neighborAIDSet = neighborAIDSet;
 	}
 
-	public List<String> getNeighborStrList() {
-		return neighborStrList;
+	public Set<String> getNeighborStrSet() {
+		return neighborStrSet;
 	}
 
-	public void setNeighborStrList(List<String> neighborStrList) {
-		this.neighborStrList = neighborStrList;
-	}
-
-	public Map<AID, Integer> getConstraintInfoMap() {
-		return constraintInfoMap;
-	}
-
-	public void setConstraintInfoMap(HashMap<AID, Integer> constraintInfoMap) {
-		this.constraintInfoMap = constraintInfoMap;
+	public void setNeighborStrSet(Set<String> neighborStrSet) {
+		this.neighborStrSet = neighborStrSet;
 	}
 
 	public boolean isNotVisited() {
@@ -1396,12 +1497,12 @@ public class AgentPDDCOP extends Agent {
 		this.notVisited = notVisited;
 	}
 
-	public List<AID> getChildrenAIDList() {
-		return childrenAIDList;
+	public Set<AID> getChildrenAIDSet() {
+		return childrenAIDSet;
 	}
 
-	public void setChildrenAIDList(List<AID> childrenAIDList) {
-		this.childrenAIDList = childrenAIDList;
+	public void setChildrenAIDList(Set<AID> childrenAIDSet) {
+		this.childrenAIDSet = childrenAIDSet;
 	}
 
 	public AID getParentAID() {
@@ -1420,20 +1521,20 @@ public class AgentPDDCOP extends Agent {
 		this.parentAndPseudoStrList = parentAndPseudoStrList;
 	}
 
-	public List<AID> getPseudoChildrenAIDList() {
-		return pseudoChildrenAIDList;
+	public Set<AID> getPseudoChildrenAIDSet() {
+		return pseudoChildrenAIDSet;
 	}
 
-	public void setPseudoChildrenAIDList(List<AID> pseudoChildrenAIDList) {
-		this.pseudoChildrenAIDList = pseudoChildrenAIDList;
+	public void setPseudoChildrenAIDSet(Set<AID> pseudoChildrenAIDSet) {
+		this.pseudoChildrenAIDSet = pseudoChildrenAIDSet;
 	}
 
-	public List<AID> getPseudoParentAIDList() {
-		return pseudoParentAIDList;
+	public Set<AID> getPseudoParentAIDList() {
+		return pseudoParentAIDSet;
 	}
 
-	public void setPseudoParentAIDList(List<AID> pseudoParentAIDList) {
-		this.pseudoParentAIDList = pseudoParentAIDList;
+	public void setPseudoParentAIDList(Set<AID> pseudoParentAIDSet) {
+		this.pseudoParentAIDSet = pseudoParentAIDSet;
 	}
 
 	public ThreadMXBean getBean() {
@@ -1645,15 +1746,18 @@ public class AgentPDDCOP extends Agent {
 		return convertedArray;
 	}
 
-	// each row is a timeStep from 0 to finalTimeStep
-	// each column is a value from domain
-	public String simulateRandom(int currentTimeStep) {
+	/**
+	 * Randomly pick a value from the hybrid distribution at this time step
+	 * @param currentTimeStep
+	 * @return
+	 */
+	private String simulateHybridRandom(int currentTimeStep) {
 		// randomVar is the same as decisionVar string
 		String randomVar = agentID;
 		double distribution[] = null;
-		// if currentTimeStep = 0 -> get from initial distribution
+
 		if (currentTimeStep == 0) {
-			distribution = toArray(initProabilityMap.get(randomVar));
+			distribution = probabilityAtEachTimeStepMap.get(randomVar)[0];
 		}
 		// get distribution from transition function, from the previous random
 		// values
@@ -1666,13 +1770,15 @@ public class AgentPDDCOP extends Agent {
 		double accumualatedProbability = 0;
 		for (int i = 0; i < distribution.length; i++) {
 			accumualatedProbability += distribution[i];
-			if (rand < accumualatedProbability)
-				return randomVariableDomainMap.get(randomVar).get(i);
+			if (rand < accumualatedProbability) {
+				return selfRandomVariableDomainMap.get(randomVar).get(i);
+			}
 		}
+		
 		return null;
 	}
 
-	public void addReactRandomTableToList(int timeStep) {
+	private void addReactRandomTableToList(int timeStep) {
 		// traverse to each random table
 		for (Table randTable : rawRandomTableList) {
 			List<String> decLabel = randTable.getDecVarLabel();
@@ -1680,7 +1786,7 @@ public class AgentPDDCOP extends Agent {
 			// and add the corresponding random values
 
 			Table newTable = new Table(decLabel);
-			String simulatedRandomValues = simulateRandom(timeStep);
+			String simulatedRandomValues = simulateHybridRandom(timeStep);
 			addPickedRandomMap(timeStep, simulatedRandomValues);
 
 			for (Row row : randTable.getRowList()) {
@@ -1691,7 +1797,7 @@ public class AgentPDDCOP extends Agent {
 		}
 	}
 
-	public static double[] multiply(double[] vector, TransitionFunction transFunc) {
+	private static double[] multiply(double[] vector, TransitionFunction transFunc) {
 		int size = vector.length;
 		if (size != transFunc.getSize()) {
 			System.err.println("Not a square matrix");
@@ -1761,9 +1867,13 @@ public class AgentPDDCOP extends Agent {
   public int getInstanceID() {
     return instanceID;
   }
-
-  public void setInstanceID(int instanceID) {
-    this.instanceID = instanceID;
+  
+  public double getHeuristicWeight() {
+    return heuristicWeight;
+  }
+  
+  public Map<String, Double> getAgentHeuristicStringMap() {
+    return agentHeuristicStringMap;
   }
   
   public boolean isRunningAlgorithm(DcopAlgorithm algorithm) {
@@ -1786,8 +1896,8 @@ public class AgentPDDCOP extends Agent {
     return discountFactor;
   }
 
-  public HashMap<String, List<String>> getRandomVariableDomainMap() {
-    return randomVariableDomainMap;
+  public HashMap<String, List<String>> getSelfRandomVariableDomainMap() {
+    return selfRandomVariableDomainMap;
   }
 
   public HashMap<String, double[][]> getProbabilityAtEachTimeStepMap() {
@@ -1857,5 +1967,25 @@ public class AgentPDDCOP extends Agent {
    */
   public void stopStimulatedTiming() {
     simulatedTime += bean.getCurrentThreadUserTime() - currentStartTime;    
+  }
+  
+  public void print() {
+    System.out.println();
+  }
+  
+  public void print(String s) {
+    System.out.println("Agent " + agentID + " " + s);
+  }
+
+  public long getBestLocalSearchRuntime() {
+    return bestLocalSearchRuntime;
+  }
+
+  public void setBestLocalSearchRuntime(long bestLocalSearchRuntime) {
+    this.bestLocalSearchRuntime = bestLocalSearchRuntime;
+  }
+
+  public boolean isRunningLocalSearch() {
+    return algorithm == DcopAlgorithm.LS_RAND || algorithm == DcopAlgorithm.LS_SDPOP;
   }
 }

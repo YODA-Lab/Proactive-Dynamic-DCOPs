@@ -60,7 +60,7 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 //		agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
 		agent.stopStimulatedTiming();
 		
-		for (AID neighbor:agent.getNeighborAIDList()) {
+		for (AID neighbor : agent.getNeighborAIDSet()) {
 			agent.sendObjectMessageWithTime(neighbor, "", LS_ITERATION_DONE, agent.getSimulatedTime());
 		}
 	}
@@ -68,7 +68,7 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
   private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
-    while (messageList.size() < agent.getNeighborAIDList().size()) {
+    while (messageList.size() < agent.getNeighborAIDSet().size()) {
       agent.startSimulatedTiming();
       
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
@@ -94,6 +94,7 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 
 	@Override
 	public boolean done() {
+	  agent.print("is done RECEIVE_VALUE: " + agent.getLocalSearchIteration());
 		return agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION;
 	}		
 }

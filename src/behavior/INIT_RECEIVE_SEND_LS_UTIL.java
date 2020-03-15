@@ -62,7 +62,7 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
   private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode) {
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
-	  while (messageList.size() < agent.getChildrenAIDList().size()) {
+	  while (messageList.size() < agent.getChildrenAIDSet().size()) {
 	    agent.startSimulatedTiming();
 	    
 	    MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);

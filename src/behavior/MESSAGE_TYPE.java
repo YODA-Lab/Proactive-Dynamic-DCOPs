@@ -1,5 +1,8 @@
 package behavior;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * @author khoihd
  *
@@ -17,7 +20,24 @@ public interface MESSAGE_TYPE {
 	public static final int PSEUDOTREE = 9;
 	public static final int INFO = 10;
 	public static final int INIT_LS_UTIL = 11;
-	public static final String msgTypes[] = {"DPOP_UTIL", "DPOP_VALUE", "PROPAGATE_DPOP_VALUE", "SWICHING_COST",
-										"LS_IMPROVE", "LS_VALUE", "LS_UTIL", "RAND_VALUE", "LS_ITERATION_DONE",
-										"PSEUDOTREE" , "INFO", "INIT_LS_UTIL"};
+	
+	public static final Map<Integer, String> msgTypes = createMap();
+	
+	static Map<Integer, String> createMap() {
+	    Map<Integer,String> myMap = new HashMap<>();
+	    myMap.put(DPOP_UTIL, "DPOP_UTIL");
+	    myMap.put(DPOP_VALUE, "DPOP_VALUE");
+      myMap.put(PROPAGATE_DPOP_VALUE, "PROPAGATE_DPOP_VALUE");
+      myMap.put(SWICHING_COST, "SWICHING_COST");
+      myMap.put(LS_IMPROVE, "LS_IMPROVE");
+      myMap.put(LS_VALUE, "LS_VALUE");
+      myMap.put(LS_UTIL, "LS_UTIL");
+      myMap.put(RAND_VALUE, "RAND_VALUE");
+      myMap.put(LS_ITERATION_DONE, "LS_ITERATION_DONE");
+      myMap.put(PSEUDOTREE, "PSEUDOTREE");
+      myMap.put(INFO, "INFO");
+      myMap.put(INIT_LS_UTIL, "INIT_LS_UTIL");
+
+	    return myMap;
+	}
 }

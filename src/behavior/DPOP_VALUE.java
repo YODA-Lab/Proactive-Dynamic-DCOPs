@@ -54,7 +54,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 	public void action() {		
 		if (agent.isRoot()) {
 			agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getChosenValueAtEachTimeStep(currentTimeStep));
-			for (AID childrenAgentAID:agent.getChildrenAIDList()) {
+			for (AID childrenAgentAID:agent.getChildrenAIDSet()) {
 				agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(),
 								DPOP_VALUE, agent.getSimulatedTime());
 			}
@@ -125,7 +125,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 				}
 				agent_value.add(String.valueOf(agent.getCurrentLocalSearchSolutionQuality()));
 				
-				for (AID children:agent.getChildrenAIDList()) {
+				for (AID children:agent.getChildrenAIDSet()) {
 					agent.sendObjectMessageWithTime(children, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE, agent.getSimulatedTime());
 				}
 			}

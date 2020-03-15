@@ -1,5 +1,7 @@
 package behavior;
 
+import java.io.IOException;
+
 import agent.AgentPDDCOP;
 import jade.core.behaviours.OneShotBehaviour;
 
@@ -21,6 +23,16 @@ public class AGENT_TERMINATE extends OneShotBehaviour {
 	@Override
 	public void action() {
 		agent.doDelete();
+    if (agent.isRoot()) {
+      try {
+        @SuppressWarnings("unused")
+        Process p = new ProcessBuilder(
+            "killall", 
+            "-9", 
+            "java").start();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
 	}
-	
 }

@@ -1,6 +1,10 @@
 package behavior;
 
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import agent.AgentPDDCOP;
 import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
@@ -16,6 +20,8 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 	private static final long serialVersionUID = 4730436360893574779L;
 	
 	private static final boolean WAITING_FOR_MSG = true;
+	
+	private Map<AID, Double> neighborHeuristicMap = new HashMap<>();
 
 	AgentPDDCOP agent;
 	
@@ -25,38 +31,40 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 	}
 	
 	public AID returnAndRemoveNeighborCurrentBestInfo() {
-		double maxInfo = Integer.MIN_VALUE;
+		double maxInfo = -Double.MAX_VALUE;
 		AID agentWithBestInfo = null;
 		
-		for (AID innerAgent:agent.getConstraintInfoMap().keySet()) {
-			if (agent.getConstraintInfoMap().get(innerAgent) > maxInfo) {
-				maxInfo = agent.getConstraintInfoMap().get(innerAgent);
-				agentWithBestInfo = innerAgent;
-			}
+		for (Entry<AID, Double> entry : neighborHeuristicMap.entrySet()) {
+		  if (Double.compare(entry.getValue(), maxInfo) > 0) {
+        maxInfo = entry.getValue();
+        agentWithBestInfo = entry.getKey();
+      }
 		}
-		agent.getConstraintInfoMap().remove(agentWithBestInfo);
+		
+		neighborHeuristicMap.remove(agentWithBestInfo);
 		return agentWithBestInfo;
 	}
 	
 	@Override
-	public void action() {
+	public void action() {	    
+    for (AID neighbor : agent.getNeighborAIDSet()) {
+      neighborHeuristicMap.put(neighbor, agent.getAgentHeuristicStringMap().get(neighbor.getLocalName()));
+    }
+	  
 		if (agent.isRoot()) {
 			agent.setNotVisited(false);
 		
 			//remove best children and add to childrenList
 			AID childrenWithBestInfo = returnAndRemoveNeighborCurrentBestInfo();
-			agent.getChildrenAIDList().add(childrenWithBestInfo);
+			agent.getChildrenAIDSet().add(childrenWithBestInfo);
 			
-			//send an CHILD message to randomChosenNeighborAID
-			ACLMessage childMessage = new ACLMessage(PSEUDOTREE);
-			childMessage.setContent("CHILD");
-			childMessage.addReceiver(childrenWithBestInfo);
-			agent.send(childMessage);
+			agent.sendStringMessage(childrenWithBestInfo, "CHILD", PSEUDOTREE);
 		}
 		
 		while (WAITING_FOR_MSG) {
 			MessageTemplate template = MessageTemplate.MatchPerformative(PSEUDOTREE);
 			ACLMessage receivedMessage = myAgent.receive(template);
+			
 			if (receivedMessage != null) {
 				AID sender = receivedMessage.getSender();
 				
@@ -65,16 +73,16 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 					agent.setNotVisited(false);
 					//add all neighbors to open_neighbors, except sender;
 					//v2: remove sender from infoMap
-					agent.getConstraintInfoMap().remove(sender);						
+					neighborHeuristicMap.remove(sender);						
 					//set parent
 					agent.setParentAID(sender);
 //					agent.getParentAndPseudoStrList().add(sender.getLocalName());
 
 				}//end of first IF
-				else if (receivedMessage.getContent().equals("CHILD") && agent.getConstraintInfoMap().containsKey(sender)) {
+				else if (receivedMessage.getContent().equals("CHILD") && neighborHeuristicMap.containsKey(sender)) {
 					//remove sender from open_neighbors and add to pseudo_children
-					agent.getConstraintInfoMap().remove(sender);
-					agent.getPseudoChildrenAIDList().add(sender);
+				  neighborHeuristicMap.remove(sender);
+					agent.getPseudoChildrenAIDSet().add(sender);
 					
 					//send PSEUDO message to sender;
 					ACLMessage pseudoMsg = new ACLMessage(PSEUDOTREE);
@@ -87,18 +95,18 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 				else if (receivedMessage.getContent().equals("PSEUDO")) {
 					
 					//remove sender from children_agent, and add to pseudo_parent
-					agent.getChildrenAIDList().remove(sender);
+					agent.getChildrenAIDSet().remove(sender);
 					agent.getPseudoParentAIDList().add(sender);
 //					agent.getParentAndPseudoStrList().add(sender.getLocalName());
 				}
 				
 				//Forward the CHILD message to the next open neighbor
 				//Check if it has open neighbors
-				if (agent.getConstraintInfoMap().size() > 0) {
+				if (neighborHeuristicMap.size() > 0) {
 					//choose a random agent from openNeighborAIDList, and delete from openNeighborAIDList
 					//v2: choose a best children
 					AID childrenWithBestInfo = returnAndRemoveNeighborCurrentBestInfo();
-					agent.getChildrenAIDList().add(childrenWithBestInfo);
+					agent.getChildrenAIDSet().add(childrenWithBestInfo);
 					
 					//send the message to y0
 					ACLMessage childMsg = new ACLMessage(PSEUDOTREE);
@@ -117,7 +125,7 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 //					printTree(isRoot);
 					
 					//assign leaf
-					if (agent.getChildrenAIDList().size() == 0)
+					if (agent.getChildrenAIDSet().size() == 0)
 						agent.setLeaf(true);
 					
 					break;
@@ -132,7 +140,7 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 		//if root, send message to all the children
 		//set pseudotree_process = true
 		if (agent.isRoot()) {
-			for (AID childrenAID:agent.getChildrenAIDList()) {
+			for (AID childrenAID:agent.getChildrenAIDSet()) {
 				ACLMessage treeFinishMsg = new ACLMessage(PSEUDOTREE);
 				treeFinishMsg.setContent("TREE_FINISH");
 				treeFinishMsg.addReceiver(childrenAID);
@@ -148,7 +156,7 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 				ACLMessage receivedMessage = myAgent.receive(template);
 				if (receivedMessage != null) {
 					if (receivedMessage.getContent().equals("TREE_FINISH")) {							
-						for (AID childrenAgentAID:agent.getChildrenAIDList()) {
+						for (AID childrenAgentAID:agent.getChildrenAIDSet()) {
 							ACLMessage treeFinishMsg = new ACLMessage(PSEUDOTREE);
 							treeFinishMsg.setContent("TREE_FINISH");
 							treeFinishMsg.addReceiver(childrenAgentAID);
@@ -162,9 +170,15 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 			}
 		}
 	
-		for (AID pseudo_parent:agent.getPseudoParentAIDList())
+		for (AID pseudo_parent : agent.getPseudoParentAIDList()) {
 			agent.getParentAndPseudoStrList().add(pseudo_parent.getLocalName());
-		if (agent.isRoot() == false)
+		}
+		
+		if (agent.isRoot() == false) {
 			agent.getParentAndPseudoStrList().add(agent.getParentAID().getLocalName());
+		}
+		
+    agent.getDpopDecisionTableList().addAll(agent.getTableWithoutChildrenAndPseudochilren(agent.getRawDecisionTableList()));
+    agent.getDpopRandomTableList().addAll(agent.getTableWithoutChildrenAndPseudochilren(agent.getRawRandomTableList()));
 	}
 }	

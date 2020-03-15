@@ -2,6 +2,9 @@ package transition;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+
+import table.Row;
 
 /**
  * @author khoihd
@@ -58,4 +61,31 @@ public class TransitionFunction {
 		return transitionMatrix.size(); 
 	}
 
+  @Override
+  public int hashCode() {
+    return Objects.hash(domain, transitionMatrix);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (!(obj instanceof TransitionFunction)) {
+      return false;
+    }
+    TransitionFunction other = (TransitionFunction) obj;
+    return Objects.equals(domain, other.domain) && Objects.equals(transitionMatrix, other.transitionMatrix);
+  }
+
+  @Override
+  public String toString() {
+    StringBuffer sb = new StringBuffer();
+    sb.append("TransitionFunction: domain=");
+    sb.append(domain);
+    sb.append(", transitionMatrix=\n");
+    sb.append(transitionMatrix + "\n");
+    
+    return sb.toString();
+  }
 }

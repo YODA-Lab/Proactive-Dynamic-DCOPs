@@ -31,9 +31,11 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
 	}
 	
 	@Override
-	public void action() {		
+	public void action() {
+	  agent.print("iteration " + agent.getLocalSearchIteration());
+	  
     double utilFromChildren = 0;
-    List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(INIT_LS_UTIL);
+    List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(LS_UTIL);
     
     agent.startSimulatedTiming();
     
@@ -56,29 +58,29 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
 		else {
 		  if (Double.compare(agent.getCurentLocalSearchQuality(), agent.getBestLocalSearchQuality()) > 0) {
 		    agent.setBestLocalSearchQuality(agent.getCurentLocalSearchQuality());
-		    //TODO: store runtime of best solution so far
+		    agent.setBestLocalSearchRuntime(agent.getSimulatedTime());
 		  }
-		  
-		  Utilities.writeResult(agent);
 		}
 		
 		agent.incrementLocalSearchIteration();
 		
 		if (agent.getLocalSearchIteration() < AgentPDDCOP.MAX_ITERATION) {
-//			agent.archivedSendImprove(lastTimeStep);
 			agent.sendImprove(lastTimeStep);
+		} else if (agent.isRoot()) {
+      Utilities.writeResult(agent);
 		}
 	}
 
 	@Override
 	public boolean done() {
+	  agent.print("is done LS_RECEIVE_SEND_LS_UTIL: " + agent.getLocalSearchIteration());
 		return agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION;
 	}
 	
   private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode) {
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
-    while (messageList.size() < agent.getChildrenAIDList().size()) {
+    while (messageList.size() < agent.getChildrenAIDSet().size()) {
       agent.startSimulatedTiming();
       
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);

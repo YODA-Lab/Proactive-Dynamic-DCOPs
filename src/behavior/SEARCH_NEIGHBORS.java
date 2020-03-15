@@ -29,15 +29,15 @@ public class SEARCH_NEIGHBORS extends OneShotBehaviour implements MESSAGE_TYPE {
 		serviceDescription.setType(agent.getAgentID());
 		templateDF.addServices(serviceDescription);
 		
-		while (agent.getNeighborAIDList().size() < agent.getNeighborStrList().size()) {
+		while (agent.getNeighborAIDSet().size() < agent.getNeighborStrSet().size()) {
 			try {
 				DFAgentDescription[] foundAgentList = DFService.search(myAgent, templateDF);
-				agent.getNeighborAIDList().clear();
+				agent.getNeighborAIDSet().clear();
 				for (int foundAgentIndex=0; foundAgentIndex<foundAgentList.length; foundAgentIndex++)
-					agent.getNeighborAIDList().add(foundAgentList[foundAgentIndex].getName());
+					agent.getNeighborAIDSet().add(foundAgentList[foundAgentIndex].getName());
 			} catch (FIPAException e) {
 				e.printStackTrace();
 			}
-		}
+		}		
 	}
 }
