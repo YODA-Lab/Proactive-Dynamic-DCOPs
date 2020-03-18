@@ -55,9 +55,14 @@ public class Table implements Serializable {
     return -Double.MAX_VALUE;
 	}
 	
-	public Table(List<String> newLabel) {
-	  this.decVarLabel.addAll(newLabel);
-	}
+	 /**
+	 * @param newLabel
+	 * @param isRandTable
+	 */
+	public Table(List<String> newLabel, boolean isRandTable) {
+	    this.decVarLabel.addAll(newLabel);
+	    this.isRandTable = isRandTable;
+	  }
 	
 	public Table(List<String> decVarList, List<String> randVarList) {
 		decVarLabel.addAll(decVarList);

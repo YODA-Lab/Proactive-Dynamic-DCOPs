@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import agent.AgentPDDCOP;
-import agent.AgentPDDCOP.DcopAlgorithm;
-import agent.AgentPDDCOP.DynamicType;
 import utilities.*;
 import jade.core.behaviours.Behaviour;
 import jade.lang.acl.ACLMessage;

@@ -1,19 +1,11 @@
 package behavior;
 
-import static java.nio.file.StandardOpenOption.APPEND;
-import static java.nio.file.StandardOpenOption.CREATE;
 import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -59,7 +51,8 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 								DPOP_VALUE, agent.getSimulatedTime());
 			}
 		}
-		else {//leaf or internal nodes
+		else {
+		  //leaf or internal nodes
 			ACLMessage receivedMessage = waitingForMessageFromParent(DPOP_VALUE);
 			agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
 			

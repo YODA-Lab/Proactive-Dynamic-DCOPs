@@ -53,28 +53,27 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 			}
 			else {
 				for (int ts=0; ts <= lastTimeStep; ts++) {
-					//exist a neighbor that dominate my improve, so I set my best improve value to null
+				  // Set my best improve value list to null if one of the neighbors has better improved utility
 					if (Double.compare(improveUtilFromNeighbor.get(ts), 0) > 0 && 
 					      Double.compare(improveUtilFromNeighbor.get(ts), agent.getBestImproveUtilityList().get(ts)) > 0) {
 						agent.getBestImproveValueList().set(ts, null);
 					}
 				}
-				//if not, my best improve value dominates all
 			}
 		}
 		
-		//if I cannot improve any at all, I set my value to null
+		// Set value of the time step to 0 if self improve is negative
     for (int index = 0; index <= lastTimeStep; index++) {
 			if (Double.compare(agent.getBestImproveUtilityList().get(index), 0) <= 0) {
 				agent.getBestImproveValueList().set(index, null);
 			}
 		}
 		
-		//update my values base on my best improve
+		// Set local assignment based on the best improve value list
     for (int index = 0; index <= lastTimeStep; index++) {
 			String improvedValue = agent.getBestImproveValueList().get(index);
 			if (improvedValue != null) {
-				System.err.println(agent.getAgentID() + " " + improvedValue);
+				agent.print("improvedValue at timestep=" + index + " is: " + improvedValue);
 				agent.setValueAtTimeStep(index, improvedValue);
 			}
 		}

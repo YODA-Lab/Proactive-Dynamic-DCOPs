@@ -28,10 +28,11 @@ public class RAND_PICK_VALUE extends OneShotBehaviour {
 	  agent.startSimulatedTiming();
 		
 		List<String> domain = agent.getDecisionVariableDomainMap().get(agent.getAgentID());
-		int domainSize = domain.size();
+//		int domainSize = ;
+		
 		Random rdn = new Random();
-		for (int ts=0; ts<=agent.getHorizon(); ts++) {
-			agent.getChosenValueAtEachTSMap().put(ts,domain.get(rdn.nextInt(domainSize)));
+		for (int ts = 0; ts <= agent.getHorizon(); ts++) {
+			agent.getChosenValueAtEachTSMap().put(ts, domain.get(rdn.nextInt(domain.size())));
 		}
 		
 		agent.print("choose random values=" + agent.getChosenValueAtEachTSMap());

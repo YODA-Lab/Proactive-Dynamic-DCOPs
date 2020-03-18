@@ -21,9 +21,12 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 
 	AgentPDDCOP agent;
 	
-	public RECEIVE_VALUE(AgentPDDCOP agent) {
+	private int lastTimeStep;
+	
+	public RECEIVE_VALUE(AgentPDDCOP agent, int lastTimeStep) {
 		super(agent);
 		this.agent = agent;
+		this.lastTimeStep = lastTimeStep;
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -38,18 +41,19 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 		agent.startSimulatedTiming();
 						
 		for (ACLMessage msg:messageList) {
-			List<String> valuesFromNeighbor = new ArrayList<String>();
+			List<String> valuesFromNeighbor = new ArrayList<>();
 			try {
 				valuesFromNeighbor = (ArrayList<String>) msg.getContentObject();
 			} catch (UnreadableException e) {
 				e.printStackTrace();
 			}
 			
-			//update agent_view?
+			// Update agent view only value from neighbor is not null
 			if (valuesFromNeighbor != null) {
-				for (int ts=0; ts <= agent.getHorizon(); ts++) {
+				for (int ts=0; ts <= lastTimeStep; ts++) {
 					String valueFromNeighbor = valuesFromNeighbor.get(ts);
 					String sender = msg.getSender().getLocalName();
+					
 					if (valueFromNeighbor != null) {
 						agent.getAgentViewEachTimeStepMap().get(sender).put(ts, valueFromNeighbor);
 					}
@@ -57,7 +61,6 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 			}
 		}
 		
-//		agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
 		agent.stopStimulatedTiming();
 		
 		for (AID neighbor : agent.getNeighborAIDSet()) {
@@ -88,6 +91,7 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
           block();
       }
     }
+    
     agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
     return messageList;
   }

@@ -1,12 +1,9 @@
 package behavior;
 
-import utilities.Utilities;
-
 import java.util.ArrayList;
 import java.util.List;
 
 import agent.AgentPDDCOP;
-import agent.AgentPDDCOP.DcopAlgorithm;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
@@ -55,7 +52,9 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
 			agent.sendObjectMessageWithTime(agent.getParentAID(), agent.getCurentLocalSearchQuality(), INIT_LS_UTIL, agent.getSimulatedTime());
 		}
 		else {
+		  // First time
 			agent.setBestLocalSearchQuality(agent.getCurentLocalSearchQuality());
+			agent.setBestLocalSearchRuntime(agent.getSimulatedTime());
 		}
 	}
 	
