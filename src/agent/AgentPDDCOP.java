@@ -20,6 +20,8 @@ import java.util.Map.Entry;
 
 import com.google.common.collect.Sets;
 
+import agent.AgentPDDCOP.DynamicType;
+
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -225,6 +227,10 @@ public class AgentPDDCOP extends Agent {
   private int agentCount;
   // Used when reading the input file
   private String rootAgent = null;
+  
+  private boolean recomputingDPOP_UTIL = true; // default, all agents have to recompute everything
+  private Table storedReuseTable;
+  private Set<String> reuseChildUTIL = new HashSet<>();
 
 	public AgentPDDCOP() {
 	}
@@ -313,8 +319,8 @@ public class AgentPDDCOP extends Agent {
      		
 		if (isAlgorithmIn(new DcopAlgorithm[]{DcopAlgorithm.LS_RAND, DcopAlgorithm.LS_SDPOP})) {
 		  for (int timeIndex  = 0; timeIndex <= theLastTimeStep; timeIndex++) {
-		    discountedExpectedTableEachTSMap.get(timeIndex).addAll(computeDiscountedDecisionTableList(rawDecisionTableList, timeIndex, discountFactor));
-        discountedExpectedTableEachTSMap.get(timeIndex).addAll(computeDiscountedDecisionTableList(rawRandomTableList, timeIndex, discountFactor));
+		    discountedExpectedTableEachTSMap.get(timeIndex).addAll(computeDiscountedDecisionTableList(rawDecisionTableList, timeIndex));
+        discountedExpectedTableEachTSMap.get(timeIndex).addAll(computeDiscountedDecisionTableList(rawRandomTableList, timeIndex));
 		  }
 		  
 		  mainSequentialBehaviourList.addSubBehaviour(new INIT_PROPAGATE_DPOP_VALUE(this));
@@ -1287,7 +1293,7 @@ public class AgentPDDCOP extends Agent {
 	  * @return
 	  */
 	 public double switchingCostFunction(String oldValue, String newValue) {
-	   if (newValue == null) {return 0;}
+	   if (oldValue == null || newValue == null) {return 0;}
 	   
 	   boolean equal = oldValue.equals(newValue);
 	   
@@ -1309,6 +1315,8 @@ public class AgentPDDCOP extends Agent {
 	   return -Double.MAX_VALUE;
 	 }	 
 	 
+	 
+	 
   /**
    * Has taken into account the sum of discounted utility when FINITE and timeStep = horizon
    * @param decisionTableList
@@ -1316,20 +1324,20 @@ public class AgentPDDCOP extends Agent {
    * @param discountFactor
    * @return
    */
-  public List<Table> computeDiscountedDecisionTableList(List<Table> decisionTableList, int timeStep, double discountFactor) {
+  public List<Table> computeDiscountedDecisionTableList(List<Table> decisionTableList, int timeStep) {
     List<Table> tableList = new ArrayList<>();
     
     for (Table decisionTable : decisionTableList) {
-      tableList.add(computeDiscountedDecisionTable(decisionTable, timeStep, discountFactor));
+      tableList.add(computeDiscountedDecisionTable(decisionTable, timeStep));
     }
     return tableList;
   }
   
-  public List<Table> computeDiscountedExpectedRandomTableList(List<Table> randomTableList, int timeStep, double discountFactor) {   
+  public List<Table> computeDiscountedExpectedRandomTableList(List<Table> randomTableList, int timeStep) {   
     List<Table> tableList = new ArrayList<>();
     
     for (Table randomTable : randomTableList) {
-      tableList.add(computeDiscountedExpectedTable(randomTable, timeStep, discountFactor));
+      tableList.add(computeDiscountedExpectedTable(randomTable, timeStep));
     }
     return tableList;
   }
@@ -1340,9 +1348,9 @@ public class AgentPDDCOP extends Agent {
    * @param discountFactor
    * @return
    */
-  public Table computeDiscountedExpectedTable(Table randomTable, int timeStep, double discountFactor) {   
+  public Table computeDiscountedExpectedTable(Table randomTable, int timeStep) {   
     if (dynamicType == DynamicType.FINITE_HORIZON && timeStep == horizon) {
-      return computeLongtermExpectedTable(randomTable, timeStep, discountFactor);
+      return computeLongtermExpectedTable(randomTable, timeStep);
     }
     
     List<String> decLabel = randomTable.getDecVarLabel();
@@ -1386,7 +1394,7 @@ public class AgentPDDCOP extends Agent {
     return discountedExpectedTable;
   }
   
-  public Table computeLongtermExpectedTable(Table randomTable, int timeStep, double discountFactor) {
+  public Table computeLongtermExpectedTable(Table randomTable, int timeStep) {
     Set<List<String>> processedDecValues = new HashSet<List<String>>();
 
     List<String> decVarLabel = randomTable.getDecVarLabel();
@@ -1522,7 +1530,9 @@ public class AgentPDDCOP extends Agent {
    * @param discountFactor
    * @return
    */
-  public Table computeDiscountedDecisionTable(Table decisionTable, int timeStep, double discountFactor) {
+  public Table computeDiscountedDecisionTable(Table decisionTable, int timeStep) {    
+    if (decisionTable == null) {return null;}
+    
     Table discountedTable = new Table(decisionTable.getDecVarLabel(), DECISION_TABLE);
     
     for (Row decisionTableRow : decisionTable.getRowList()) {
@@ -1537,7 +1547,134 @@ public class AgentPDDCOP extends Agent {
       }
     }
     return discountedTable;
- }
+  }
+  
+  public List<Table> computeCollapsedRandomTableList(List<Table> randomTableList, int lastTimeStep) {
+    List<Table> collapedDecistionTableList = new ArrayList<>();
+    for (Table randomTable : randomTableList) {
+      List<Table> similarTableList = new ArrayList<>();
+
+      for (int timeStep = 0; timeStep <= lastTimeStep; timeStep++) {
+        if (isDynamic(DynamicType.FINITE_HORIZON) && timeStep == horizon) {
+          similarTableList.add(computeLongtermExpectedTable(randomTable, timeStep));
+        } 
+        else {
+          similarTableList.add(computeDiscountedExpectedTable(randomTable, timeStep));
+        }
+      }
+      
+      collapedDecistionTableList.add(computeCollapsedTableFromList(similarTableList, AgentPDDCOP.RANDOM_TABLE));
+    }
+    
+    return collapedDecistionTableList;
+  }
+  
+  // they have the same entry, only different utility
+  public Table computeCollapsedTableFromList(List<Table> tableList, boolean isRandTable) {
+    if (tableList.size() == 0) {
+      return null;
+    }
+    Table joinedTable = new Table(tableList.get(0).getDecVarLabel(), isRandTable);
+    
+    int variableCount = tableList.get(0).getDecVarLabel().size();
+    int rowCount = tableList.get(0).getRowCount();
+    int tableCount = tableList.size();
+    int totalSize = (int) Math.pow(rowCount, tableCount);
+
+    for (int count = 0; count < totalSize; count++) {
+      List<String> valueTuple = new ArrayList<String>(variableCount);
+      for (int i = 0; i < variableCount; i++) {
+        valueTuple.add("");
+      }
+      
+      double sumUtility = 0;
+      int quotient = count;
+      // for each table count, decide the index of each column, then add to the tuple
+      for (int tableIndex = tableCount - 1; tableIndex >= 0; tableIndex--) {
+        int remainder = quotient % rowCount;
+        quotient = quotient / rowCount;
+        Row row = tableList.get(tableIndex).getRowList().get(remainder);
+        sumUtility += row.getUtility();
+        List<String> valueList = row.getValueList();
+        for (int idx = 0; idx < valueList.size(); idx++) {
+          valueTuple.set(idx, valueList.get(idx) + "," + valueTuple.get(idx));
+        }
+      }
+      for (int idx = 0; idx < valueTuple.size(); idx++) {
+        valueTuple.set(idx, valueTuple.get(idx).substring(0, valueTuple.get(idx).length() - 1));
+      }
+      joinedTable.addRow(new Row(valueTuple, sumUtility));
+    }
+
+    return joinedTable;
+  }
+  
+  /**
+   * @param decisionTableList
+   * @param lastTimeStep
+   * @param discountFactor
+   * @return
+   */
+  public List<Table> computeCollapsedDecisionTableList(List<Table> decisionTableList, int lastTimeStep) {
+    List<Table> collapedDecistionTableList = new ArrayList<>();
+    for (Table decTable : decisionTableList) {
+      List<Table> similarTableList = new ArrayList<>();
+
+      for (int timeStep = 0; timeStep <= lastTimeStep; timeStep++) {
+        similarTableList.add(computeDiscountedDecisionTable(decTable, timeStep));
+      }
+      
+      collapedDecistionTableList.add(computeCollapsedTableFromList(similarTableList, AgentPDDCOP.DECISION_TABLE));
+    }
+    
+    return collapedDecistionTableList;
+  }
+  
+  /**
+   * Compute unary switching cost table given domain and a number of time step
+   * @param domain
+   * @param timeStep
+   * @return
+   */
+  public Table computeCollapsedSwitchingCostTable(List<String> domain, int timeStep) {
+    List<String> label = new ArrayList<>();
+    
+    label.add(agentID);
+    
+    Table collapsedSwitchingCostTable = new Table(label, AgentPDDCOP.DECISION_TABLE);
+    
+    List<Set<String>> domainSetList = new ArrayList<Set<String>>();
+    for (int timeIndex = 0; timeIndex <= timeStep; timeIndex++) {
+      domainSetList.add(new HashSet<>(domain));
+    }
+    
+    Set<List<String>> productValues = Sets.cartesianProduct(domainSetList);
+    
+    for (List<String> valueList : productValues) {
+      double sCost = 0;
+      
+      String valueListString = "";
+      for (int i = 0; i < valueList.size(); i++) {
+        if (i < valueList.size() - 1) {
+          sCost += Math.pow(discountFactor, i) * switchingCostFunction(valueList.get(i), valueList.get(i + 1));
+        }
+        valueListString += valueList.get(i) + ",";
+      }
+      valueListString = valueListString.substring(0, valueListString.length() - 1); // delete the last comma
+      List<String> finalValueWithCommas = new ArrayList<>();
+      finalValueWithCommas.add(valueListString);
+      
+      // Add the switching cost from horizon h-1 to h if the value is not null
+      // If the value is null, the 
+      if (timeStep == horizon - 1) {
+        sCost += Math.pow(discountFactor, horizon) * switchingCostFunction(valueList.get(valueList.size() - 1), chosenValueAtEachTSMap.get(horizon));
+      }
+      
+      collapsedSwitchingCostTable.addRow(new Row(finalValueWithCommas, -sCost)); 
+    }
+    
+    return collapsedSwitchingCostTable;
+  }
 
 	public String getAgentID() {
 		return agentID;
@@ -2062,5 +2199,37 @@ public class AgentPDDCOP extends Agent {
 
   public boolean isRunningLocalSearch() {
     return algorithm == DcopAlgorithm.LS_RAND || algorithm == DcopAlgorithm.LS_SDPOP;
+  }
+
+  /**
+   * True by default, all agents are assumed to recompute everything
+   * @return
+   */
+  public boolean isRecomputingDPOP_UTIL() {
+    return recomputingDPOP_UTIL;
+  }
+
+  /**
+   * Need only set to false
+   * @param recomputingDPOP_UTIL
+   */
+  public void setRecomputingDPOP_UTILToFalse() {
+    this.recomputingDPOP_UTIL = false;
+  }
+
+  public Table getStoredReuseTable() {
+    return storedReuseTable;
+  }
+
+  public void setStoredReuseTable(Table storedReuseTable) {
+    this.storedReuseTable = storedReuseTable;
+  }
+
+  public Set<String> getReuseChildUTIL() {
+    return reuseChildUTIL;
+  }
+
+  public void setReuseChildUTIL(Set<String> reuseChildUTIL) {
+    this.reuseChildUTIL = reuseChildUTIL;
   }
 }

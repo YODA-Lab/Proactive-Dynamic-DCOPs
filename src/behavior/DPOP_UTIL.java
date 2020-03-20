@@ -2,6 +2,7 @@ package behavior;
 
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
+
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
@@ -16,12 +17,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.List;
-import java.util.Set;
-
-import com.google.common.collect.Sets;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 
 import agent.AgentPDDCOP;
 import agent.AgentPDDCOP.DcopAlgorithm;
@@ -68,7 +65,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	private int currentTimeStep;
 	
 	private List<Table> dpopTableList = new ArrayList<>();
-	
+		
 	public DPOP_UTIL(AgentPDDCOP agent, int currentTimeStep) {
 		super(agent);
 		this.agent = agent;
@@ -77,53 +74,78 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	
 	@Override
 	public void action() {	  
-	  // Reuse table in LS_SDPOP
-	  
-	  
-	  
-	  // Compute the corresponding table list for DPOP to run
-	  dpopTableList.addAll(computeDpopAndSwitchingCostTables(agent.getDynamicType(), agent.getAlgorithm(), currentTimeStep));
+	  // Combine all local constraints and store in non-discounted forms
+	  if (agent.isRunningAlgorithm(DcopAlgorithm.LS_SDPOP) && isFirstTimeUTIL()) {
+      Table joinedDecisionTable = null;
+      for (Table decisionLocalConstraints : agent.getDpopDecisionTableList()) {
+        joinedDecisionTable = joinTable(joinedDecisionTable, decisionLocalConstraints);
+      }
+      agent.setStoredReuseTable(joinedDecisionTable);
+	  } 
+	  else if (agent.isRunningAlgorithm(DcopAlgorithm.LS_SDPOP) && !isFirstTimeUTIL()) {
+	    // Do not need to join local decision constraints again
+	    // Do nothing
+	  }
+	  else {
+	    // Compute decision, random and switching cost tables
+	    // Add all of them to the dpopTableList
+	    dpopTableList.addAll(computeDpopAndSwitchingCostTables(agent.getDynamicType(), agent.getAlgorithm(), currentTimeStep));
+	  }
 		
 		if (agent.isLeaf()) {
 			leafDoUtilProcess();
 		} 
 		else if (agent.isRoot()){
-			rootDoUtilProcess();
-			
-			//TODO: Write to file for each algorithm
-			if (agent.isRunningAlgorithm(DcopAlgorithm.REACT) || agent.isRunningAlgorithm(DcopAlgorithm.HYBRID)) {
-				writeTimeToFile();
-			}
-			if (agent.isRunningAlgorithm(DcopAlgorithm.FORWARD) || agent.isRunningAlgorithm(DcopAlgorithm.BACKWARD)) {
-				if (currentTimeStep == agent.getHorizon()) {
-//					Utilities.writeUtil_Time_FW_BW(agent);
-				}
-			}
+			try {
+        rootDoUtilProcess();
+      } catch (UnreadableException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+			//TODO
 		}
 		else {
-			internalNodeDoUtilProcess();
+			try {
+        internalNodeDoUtilProcess();
+      } catch (UnreadableException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
 		}
 	}		
 	
   private void leafDoUtilProcess() {
-//	  agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
-    agent.startSimulatedTiming();
-		
-		Table combinedTable = dpopTableList.get(0);
-		System.out.println(combinedTable);
-		//joining other tables with table 0
-		int currentTableListDPOPsize = dpopTableList.size();
-		for (int index = 1; index<currentTableListDPOPsize; index++) {
-			Table pseudoParentTable = dpopTableList.get(index);
-			System.out.println(pseudoParentTable);
-			combinedTable = joinTable(combinedTable, pseudoParentTable);
-		}
-		
+		agent.startSimulatedTiming();
+    
+		Table combinedTable = null;
+		// Leafs behave the same even when in all DPOP runs
+    if (agent.isRunningAlgorithm(DcopAlgorithm.LS_SDPOP)) {
+      if (!agent.isRecomputingDPOP_UTIL()) {
+        return ;
+      }
+      
+      combinedTable = agent.computeDiscountedDecisionTable(agent.getStoredReuseTable(), currentTimeStep);
+      for (Table localRandomConstraints : agent.getDpopRandomTableList()) {
+        Table expectedTable = agent.computeDiscountedExpectedTable(localRandomConstraints, currentTimeStep);
+        combinedTable = joinTable(combinedTable, expectedTable);
+      }
+    
+      // If not a rand table, no need to compute in later DPOP rounds
+      if (!combinedTable.isRandTable()) {
+        agent.setRecomputingDPOP_UTILToFalse();
+      }
+    }
+    else {
+      //joining all tables together
+      for (Table pseudoParentTable : dpopTableList) {
+        agent.print("dpopTableList = " + pseudoParentTable);
+        combinedTable = joinTable(combinedTable, pseudoParentTable);
+      }
+    }
 		agent.setAgentViewTable(combinedTable);
+		
 		Table projectedTable = projectOperator(combinedTable, agent.getLocalName());
 
-//		agent.setSimulatedTime(agent.getSimulatedTime()
-//					+ agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());		
 		agent.stopStimulatedTiming();
 		
 		agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());
@@ -131,24 +153,16 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		agent.print("leaf is done");
 	}
 	
-	private void internalNodeDoUtilProcess() {			
-		List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
-			
-//		agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
-		agent.startSimulatedTiming();
-	
-		Table combinedUtilAndConstraintTable = combineMessage(receivedUTILmsgList);
+	private void internalNodeDoUtilProcess() throws UnreadableException {	
+    Table combinedTable = computeCombinedTableAtNonLeave();
+    
+    // It means agents are not recomputing tables
+    if (combinedTable == null) {return ;}
 
-		for (Table pseudoParentTable : dpopTableList) {
-			combinedUtilAndConstraintTable = joinTable(combinedUtilAndConstraintTable, pseudoParentTable);
-		}
+		agent.setAgentViewTable(combinedTable);
 
-		agent.setAgentViewTable(combinedUtilAndConstraintTable);
-
-		Table projectedTable = projectOperator(combinedUtilAndConstraintTable, agent.getLocalName());
+		Table projectedTable = projectOperator(combinedTable, agent.getLocalName());
 		
-//		agent.setSimulatedTime(agent.getSimulatedTime() +
-//					agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
 		agent.stopStimulatedTiming();
 
 		agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());
@@ -156,28 +170,82 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     agent.print("Internal node is done");
 	}
 	
-	private void rootDoUtilProcess() {
-		List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
-		
-//		agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
-		agent.startSimulatedTiming();
+	private Table computeCombinedTableAtNonLeave() throws UnreadableException {
+	  Table combinedTable = null;
+	  
+    if (agent.isRunningAlgorithm(DcopAlgorithm.LS_SDPOP) && isFirstTimeUTIL()) {
+      combinedTable = agent.getStoredReuseTable();
+      
+      List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+      // Separate children into children with decision and children with random 
+      List<Table> decisionUtil = new ArrayList<>();
+      List<Table> randomUtil = new ArrayList<>();
+      for (ACLMessage msg : receivedUTILmsgList) {
+        Table utilTable = (Table) msg.getContentObject();
+        
+        if (utilTable.isRandTable()) {
+          randomUtil.add(utilTable);
+        } 
+        else {
+          decisionUtil.add(utilTable);
+          agent.getReuseChildUTIL().add(msg.getSender().getLocalName());
+        }
+      }
+      
+      for (Table decisionTable : decisionUtil) {
+        combinedTable = joinTable(combinedTable, decisionTable);
+      }
+      agent.setStoredReuseTable(combinedTable);
+      
+      for (Table randomTable : randomUtil) {
+        combinedTable = joinTable(combinedTable, randomTable);
+      }
+    }
+    else if (agent.isRunningAlgorithm(DcopAlgorithm.LS_SDPOP) && !isFirstTimeUTIL()) {    
+      if (!agent.isRecomputingDPOP_UTIL()) {return null;}
+      
+      List<ACLMessage> randomUtilMessages = waitingForMessageFromChildrenWithTime(DPOP_UTIL, agent.getChildrenAIDSet().size() - agent.getReuseChildUTIL().size());
 
-		Table combinedUtilAndConstraintTable = combineMessage(receivedUTILmsgList);
-		for (Table pseudoParentTable : dpopTableList) {
-			combinedUtilAndConstraintTable = joinTable(combinedUtilAndConstraintTable, pseudoParentTable);
-		}
+      agent.startSimulatedTiming();
+      
+      combinedTable = agent.computeDiscountedDecisionTable(agent.getStoredReuseTable(), currentTimeStep);
+      // Join with discounted random local constraints
+      for (Table localRandomConstraints : agent.getDpopRandomTableList()) {
+        Table expectedTable = agent.computeDiscountedExpectedTable(localRandomConstraints, currentTimeStep);
+        combinedTable = joinTable(combinedTable, expectedTable);
+      }
+      // Join with UTIL which contains only random UTIL
+      combinedTable = joinTable(combinedTable, combineMessage(randomUtilMessages));   }
+    // Not LS_SDPOP
+    else {
+      List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+      
+      agent.startSimulatedTiming();
+
+      combinedTable = combineMessage(receivedUTILmsgList);
+      
+      for (Table pseudoParentTable : dpopTableList) {
+        combinedTable = joinTable(combinedTable, pseudoParentTable);
+      }
+    }
+    
+    return combinedTable;
+	}
+	
+	private void rootDoUtilProcess() throws UnreadableException {
+	  Table combinedTable = computeCombinedTableAtNonLeave();
 		
 		//pick value with smallest utility
 		//since agent 0 is always at the beginning of the row formatted: agent0,agent1,..,agentN -> utility
-		double maxUtility = Integer.MIN_VALUE;
+		double maxUtility = -Double.MAX_VALUE;
 		
-		System.err.println("Timestep " +  currentTimeStep + " Combined messages at root:");
+		agent.print("Timestep " +  currentTimeStep + " combined messages at root:");
 		
-		System.out.println(combinedUtilAndConstraintTable);
+		agent.print("" + combinedTable);
 		
 		String chosenValue = "";
 		
-		for (Row row : combinedUtilAndConstraintTable.getRowList()) {
+		for (Row row : combinedTable.getRowList()) {
 			if (Double.compare(row.getUtility(), maxUtility) > 0) {
 				maxUtility = row.getUtility();
 				chosenValue = row.getValueAtPosition(0);
@@ -196,25 +264,32 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     agent.stopStimulatedTiming();
 	}
 	
+	/**
+	 * This function is called only when the algorithm is not LS_SDPOP due to reusing tables
+	 * @param dynamicType
+	 * @param algorithm
+	 * @param timeStep
+	 * @return
+	 */
 	private List<Table> computeDpopAndSwitchingCostTables(DynamicType dynamicType, DcopAlgorithm algorithm, int timeStep) {
-    List<Table> tableList = new ArrayList<>();
+	  List<Table> tableList = new ArrayList<>();
     if (dynamicType == DynamicType.INFINITE_HORIZON) {
       // When currentTimeStep == agent.getHorizon(), solve for the last time step
       if (currentTimeStep == agent.getHorizon()) {
-        dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon(), agent.getDiscountFactor()));
-        dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), agent.getHorizon(), agent.getDiscountFactor()));      
+        dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon()));
+        dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), agent.getHorizon()));      
       }
       else {
         // Compute the switching cost constraint
         // Collapse DCOPs from t = 0 to t = horizon -  1
         if (algorithm == DcopAlgorithm.C_DPOP) {
-          dpopTableList.addAll(computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon() - 1, agent.getDiscountFactor()));
-          dpopTableList.addAll(computeCollapsedDecisionTableList(agent.getDpopRandomTableList(), agent.getHorizon() - 1, agent.getDiscountFactor()));
-          dpopTableList.add(computeCollapsedSwitchingCostTable(agent.getAgentID(), agent.getSelfDomain(), agent.getHorizon() - 1, agent.getDiscountFactor()));
+          dpopTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon() - 1));
+          dpopTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopRandomTableList(), agent.getHorizon() - 1));
+          dpopTableList.add(agent.computeCollapsedSwitchingCostTable(agent.getSelfDomain(), agent.getHorizon() - 1));
         }
         else if (algorithm == DcopAlgorithm.FORWARD) {
-          dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep, agent.getDiscountFactor()));
-          dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, agent.getDiscountFactor()));
+          dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep));
+          dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep));
           if (currentTimeStep > 0) {
             Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(currentTimeStep - 1)); 
             dpopTableList.add(switchingCostToPreviousSolution);
@@ -226,30 +301,25 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
           }
         }
         else if (algorithm == DcopAlgorithm.BACKWARD) {
-          dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep, agent.getDiscountFactor()));
-          dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, agent.getDiscountFactor()));
+          dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep));
+          dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep));
           // If not at the horizon, add switching cost regarding the solution at timeStep + 1
           if (currentTimeStep < agent.getHorizon()) {
             Table switchingCostToLaterSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(currentTimeStep + 1)); 
             dpopTableList.add(switchingCostToLaterSolution);
           }
         }
-        // Do not add switching cost tables here
-        // Switching costs are taken into account at MGM
-        else if (algorithm == DcopAlgorithm.LS_SDPOP) {
-          dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep, agent.getDiscountFactor()));
-          dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, agent.getDiscountFactor()));
-        }
       }
     }
     else if (dynamicType == DynamicType.FINITE_HORIZON) {
       if (algorithm == DcopAlgorithm.C_DPOP) {
-          dpopTableList.addAll(computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon(), agent.getDiscountFactor()));
-          dpopTableList.addAll(computeCollapsedRandomTableList(agent.getDpopRandomTableList(), agent.getHorizon(), agent.getDiscountFactor()));
+          dpopTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon()));
+          dpopTableList.addAll(agent.computeCollapsedRandomTableList(agent.getDpopRandomTableList(), agent.getHorizon()));
+          dpopTableList.add(agent.computeCollapsedSwitchingCostTable(agent.getSelfDomain(), agent.getHorizon()));
       }
       else {
-        dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep, agent.getDiscountFactor()));
-        dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, agent.getDiscountFactor()));
+        dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep));
+        dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep));
         if (algorithm == DcopAlgorithm.FORWARD) {
           if (currentTimeStep > 0) {
             dpopTableList.add(switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(currentTimeStep - 1))); 
@@ -267,33 +337,40 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	}
 	
 	private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode) {
-		List<ACLMessage> messageList = new ArrayList<ACLMessage>();
-		
-		while (messageList.size() < agent.getChildrenAIDSet().size()) {
-			agent.startSimulatedTiming();
-		  
-		  MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
-			ACLMessage receivedMessage = myAgent.receive(template);
-			
-      agent.stopStimulatedTiming();
-			if (receivedMessage != null) {
-				long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
-								
-				if (timeFromReceiveMessage > agent.getSimulatedTime()) {
-					agent.setSimulatedTime(timeFromReceiveMessage);
-				}
-				messageList.add(receivedMessage);	
-			}
-			else
-				block();
-		}
-		
-		agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
-		return messageList;
+	  return waitingForMessageFromChildrenWithTime(msgCode, agent.getChildrenAIDSet().size());
 	}
+	
+	 private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode, int childCount) {
+	    List<ACLMessage> messageList = new ArrayList<ACLMessage>();
+	    
+	    while (messageList.size() < childCount) {
+	      agent.startSimulatedTiming();
+	      
+	      MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
+	      ACLMessage receivedMessage = myAgent.receive(template);
+	      
+	      agent.stopStimulatedTiming();
+	      if (receivedMessage != null) {
+	        long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
+	                
+	        if (timeFromReceiveMessage > agent.getSimulatedTime()) {
+	          agent.setSimulatedTime(timeFromReceiveMessage);
+	        }
+	        messageList.add(receivedMessage); 
+	      }
+	      else
+	        block();
+	    }
+	    
+	    agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
+	    return messageList;
+	  }
 
 	private Table joinTable(Table table1, Table table2) {
-		//get commonVariables
+	  if (table1 == null) {return table2;}
+	  if (table2 == null) {return table1;}
+	  
+	  //get commonVariables
 		List<String> commonVariables = getCommonVariables(table1.getDecVarLabel(), table2.getDecVarLabel());
 		
 		//create indexList1, indexList2
@@ -402,6 +479,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	//	add to new Table
 	public Table projectOperator(Table table, String variableToProject) {
 		int indexEliminated = getIndexOfContainedVariable(table.getDecVarLabel(), variableToProject);
+		
 		if (indexEliminated == -1) {
 			return null;
 		}
@@ -547,47 +625,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	      System.err.println(x);
 	    }
 	}
-  
-  /**
-   * @param decisionTableList
-   * @param lastTimeStep
-   * @param discountFactor
-   * @return
-   */
-  private List<Table> computeCollapsedDecisionTableList(List<Table> decisionTableList, int lastTimeStep, double discountFactor) {
-    List<Table> collapedDecistionTableList = new ArrayList<>();
-    for (Table decTable : decisionTableList) {
-      List<Table> similarTableList = new ArrayList<>();
-
-      for (int timeStep = 0; timeStep <= lastTimeStep; timeStep++) {
-        similarTableList.add(agent.computeDiscountedDecisionTable(decTable, timeStep, discountFactor));
-      }
-      
-      collapedDecistionTableList.add(computeCollapsedTableFromList(similarTableList, AgentPDDCOP.DECISION_TABLE));
-    }
-    
-    return collapedDecistionTableList;
-  }
-  
-  private List<Table> computeCollapsedRandomTableList(List<Table> randomTableList, int lastTimeStep, double discountFactor) {
-    List<Table> collapedDecistionTableList = new ArrayList<>();
-    for (Table randomTable : randomTableList) {
-      List<Table> similarTableList = new ArrayList<>();
-
-      for (int timeStep = 0; timeStep <= lastTimeStep; timeStep++) {
-        if (agent.isDynamic(DynamicType.FINITE_HORIZON) && timeStep == agent.getHorizon()) {
-          similarTableList.add(agent.computeLongtermExpectedTable(randomTable, timeStep, discountFactor));
-        } 
-        else {
-          similarTableList.add(agent.computeDiscountedExpectedTable(randomTable, timeStep, discountFactor));
-        }
-      }
-      
-      collapedDecistionTableList.add(computeCollapsedTableFromList(similarTableList, AgentPDDCOP.RANDOM_TABLE));
-    }
-    
-    return collapedDecistionTableList;
-  }
  
 // private List<Table> computeLongtermExpectedTableList(List<Table> randomTableList, double discountFactor) {
 //   List<Table> tableList = new ArrayList<>();
@@ -597,46 +634,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 //   
 //   return tableList;
 // }
- 
- // they have the same entry, only different utility
- private Table computeCollapsedTableFromList(List<Table> tableList, boolean isRandTable) {
-   if (tableList.size() == 0) {
-     return null;
-   }
-   Table joinedTable = new Table(tableList.get(0).getDecVarLabel(), isRandTable);
-   
-   int variableCount = tableList.get(0).getDecVarLabel().size();
-   int rowCount = tableList.get(0).getRowCount();
-   int tableCount = tableList.size();
-   int totalSize = (int) Math.pow(rowCount, tableCount);
 
-   for (int count = 0; count < totalSize; count++) {
-     List<String> valueTuple = new ArrayList<String>(variableCount);
-     for (int i = 0; i < variableCount; i++) {
-       valueTuple.add("");
-     }
-     
-     double sumUtility = 0;
-     int quotient = count;
-     // for each table count, decide the index of each column, then add to the tuple
-     for (int tableIndex = tableCount - 1; tableIndex >= 0; tableIndex--) {
-       int remainder = quotient % rowCount;
-       quotient = quotient / rowCount;
-       Row row = tableList.get(tableIndex).getRowList().get(remainder);
-       sumUtility += row.getUtility();
-       List<String> valueList = row.getValueList();
-       for (int idx = 0; idx < valueList.size(); idx++) {
-         valueTuple.set(idx, valueList.get(idx) + "," + valueTuple.get(idx));
-       }
-     }
-     for (int idx = 0; idx < valueTuple.size(); idx++) {
-       valueTuple.set(idx, valueTuple.get(idx).substring(0, valueTuple.get(idx).length() - 1));
-     }
-     joinedTable.addRow(new Row(valueTuple, sumUtility));
-   }
-
-   return joinedTable;
- }
  
 // private double computeSwitchingCost(List<String> valueTuple, double discountFactor) {
 //   double scost = 0;
@@ -669,41 +667,9 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
    
    return unarySwitchingCostTable;
  }
- 
-  /**
-   * Compute unary switching cost table given domain and a number of time step
-   * @param domain
-   * @param timeStep
-   * @return
-   */
-  private Table computeCollapsedSwitchingCostTable(String id, List<String> domain, int timeStep, double df) {
-    List<String> label = new ArrayList<>();
-    
-    label.add(id);
-    
-    Table collapsedSwitchingCostTable = new Table(label, AgentPDDCOP.DECISION_TABLE);
-    
-    List<Set<String>> domainSetList = new ArrayList<Set<String>>();
-    for (int timeIndex = 0; timeIndex <= timeStep; timeIndex++) {
-      domainSetList.add(new HashSet<>(domain));
-    }
-    Set<List<String>> productValues = Sets.cartesianProduct(domainSetList);
-    for (List<String> valueList : productValues) {
-      double sc = 0;
-      String valueListString = "";
-      for (int i = 0; i < valueList.size(); i++) {
-        if (i < valueList.size() - 1) {
-          sc += agent.switchingCostFunction(valueList.get(i), valueList.get(i + 1));
-        }
-        valueListString += valueList.get(i) + ",";
-      }
-      valueListString = valueListString.substring(0, valueListString.length() - 1);
-      List<String> finalValue = new ArrayList<>();
-      finalValue.add(valueListString);
-      
-      collapsedSwitchingCostTable.addRow(new Row(finalValue, -sc)); 
-    }
-    
-    return collapsedSwitchingCostTable;
+  
+  private boolean isFirstTimeUTIL() {
+    return (agent.isDynamic(DynamicType.INFINITE_HORIZON) && currentTimeStep == agent.getHorizon()) 
+        || (agent.isDynamic(DynamicType.FINITE_HORIZON) && currentTimeStep == 0);
   }
 }
