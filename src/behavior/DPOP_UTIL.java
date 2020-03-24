@@ -86,6 +86,9 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	    // Do not need to join local decision constraints again
 	    // Do nothing
 	  }
+	  else if (agent.isRunningAlgorithm(DcopAlgorithm.REACT)) {
+	    dpopTableList = agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep);
+	  }
 	  else {
 	    // Compute decision, random and switching cost tables
 	    // Add all of them to the dpopTableList
@@ -99,16 +102,13 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 			try {
         rootDoUtilProcess();
       } catch (UnreadableException e) {
-        // TODO Auto-generated catch block
         e.printStackTrace();
       }
-			//TODO
 		}
 		else {
 			try {
         internalNodeDoUtilProcess();
       } catch (UnreadableException e) {
-        // TODO Auto-generated catch block
         e.printStackTrace();
       }
 		}
@@ -124,9 +124,9 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
         return ;
       }
       
-      combinedTable = agent.computeDiscountedDecisionTable(agent.getStoredReuseTable(), currentTimeStep);
+      combinedTable = agent.computeDiscountedDecisionTable(agent.getStoredReuseTable(), currentTimeStep, agent.getDiscountFactor());
       for (Table localRandomConstraints : agent.getDpopRandomTableList()) {
-        Table expectedTable = agent.computeDiscountedExpectedTable(localRandomConstraints, currentTimeStep);
+        Table expectedTable = agent.computeDiscountedExpectedTable(localRandomConstraints, currentTimeStep, agent.getDiscountFactor());
         combinedTable = joinTable(combinedTable, expectedTable);
       }
     
@@ -208,10 +208,10 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
       agent.startSimulatedTiming();
       
-      combinedTable = agent.computeDiscountedDecisionTable(agent.getStoredReuseTable(), currentTimeStep);
+      combinedTable = agent.computeDiscountedDecisionTable(agent.getStoredReuseTable(), currentTimeStep, agent.getDiscountFactor());
       // Join with discounted random local constraints
       for (Table localRandomConstraints : agent.getDpopRandomTableList()) {
-        Table expectedTable = agent.computeDiscountedExpectedTable(localRandomConstraints, currentTimeStep);
+        Table expectedTable = agent.computeDiscountedExpectedTable(localRandomConstraints, currentTimeStep, agent.getDiscountFactor());
         combinedTable = joinTable(combinedTable, expectedTable);
       }
       // Join with UTIL which contains only random UTIL
@@ -232,7 +232,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     return combinedTable;
 	}
 	
-	private void rootDoUtilProcess() throws UnreadableException {
+	private void rootDoUtilProcess() throws UnreadableException {	  
 	  Table combinedTable = computeCombinedTableAtNonLeave();
 		
 		//pick value with smallest utility
@@ -257,6 +257,9 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     
     agent.storeDpopSolution(chosenValue, currentTimeStep);
     
+    // Compute the difference between two time steps
+    agent.setDpopSolvingTime(currentTimeStep, agent.getSimulatedTime());
+    
     if (agent.isAlgorithmIn(new DcopAlgorithm[]{DcopAlgorithm.C_DPOP, DcopAlgorithm.FORWARD, DcopAlgorithm.BACKWARD})) { 
       agent.updateSolutionQuality(maxUtility);
     }  		
@@ -276,20 +279,20 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     if (dynamicType == DynamicType.INFINITE_HORIZON) {
       // When currentTimeStep == agent.getHorizon(), solve for the last time step
       if (currentTimeStep == agent.getHorizon()) {
-        dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon()));
-        dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), agent.getHorizon()));      
+        dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon(), 1D));
+        dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), agent.getHorizon(), 1D));      
       }
       else {
         // Compute the switching cost constraint
         // Collapse DCOPs from t = 0 to t = horizon -  1
         if (algorithm == DcopAlgorithm.C_DPOP) {
-          dpopTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon() - 1));
-          dpopTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopRandomTableList(), agent.getHorizon() - 1));
+          dpopTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon() - 1, 1D));
+          dpopTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopRandomTableList(), agent.getHorizon() - 1, 1D));
           dpopTableList.add(agent.computeCollapsedSwitchingCostTable(agent.getSelfDomain(), agent.getHorizon() - 1));
         }
         else if (algorithm == DcopAlgorithm.FORWARD) {
-          dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep));
-          dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep));
+          dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep, 1D));
+          dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, 1D));
           if (currentTimeStep > 0) {
             Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(currentTimeStep - 1)); 
             dpopTableList.add(switchingCostToPreviousSolution);
@@ -301,8 +304,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
           }
         }
         else if (algorithm == DcopAlgorithm.BACKWARD) {
-          dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep));
-          dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep));
+          dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep, 1D));
+          dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, 1D));
           // If not at the horizon, add switching cost regarding the solution at timeStep + 1
           if (currentTimeStep < agent.getHorizon()) {
             Table switchingCostToLaterSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(currentTimeStep + 1)); 
@@ -312,14 +315,16 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       }
     }
     else if (dynamicType == DynamicType.FINITE_HORIZON) {
+      double df = agent.getDiscountFactor();
+      
       if (algorithm == DcopAlgorithm.C_DPOP) {
-          dpopTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon()));
-          dpopTableList.addAll(agent.computeCollapsedRandomTableList(agent.getDpopRandomTableList(), agent.getHorizon()));
+          dpopTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon(), df));
+          dpopTableList.addAll(agent.computeCollapsedRandomTableList(agent.getDpopRandomTableList(), agent.getHorizon(), df));
           dpopTableList.add(agent.computeCollapsedSwitchingCostTable(agent.getSelfDomain(), agent.getHorizon()));
       }
       else {
-        dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep));
-        dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep));
+        dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep, df));
+        dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, df));
         if (algorithm == DcopAlgorithm.FORWARD) {
           if (currentTimeStep > 0) {
             dpopTableList.add(switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(currentTimeStep - 1))); 
@@ -330,6 +335,23 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
             dpopTableList.add(switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(currentTimeStep + 1))); 
           }
         }
+      }
+    }
+    //TODO: Hybrid can be used as both INFINITE and FINITE
+    else if (algorithm == DcopAlgorithm.HYBRID) {
+      double df = agent.getDiscountFactor();
+      dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep, df));
+      dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, df));
+
+      if (currentTimeStep > 0) {
+        Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(currentTimeStep - 1)); 
+        dpopTableList.add(switchingCostToPreviousSolution);
+      }
+    }
+    else if (algorithm == DcopAlgorithm.REACT) {
+      if (currentTimeStep > 0) {
+        Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(currentTimeStep - 1)); 
+        dpopTableList.add(switchingCostToPreviousSolution);
       }
     }
     

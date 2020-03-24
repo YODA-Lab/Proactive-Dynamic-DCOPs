@@ -44,7 +44,7 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
 				
 		// Send the partial quality of the subtree to parent
 		agent.setCurentLocalSearchQuality(utilFromChildren + 
-				agent.utilityWithParentAndPseudoAndUnary(lastTimeStep) - agent.calculcatingSwitchingCost());
+				agent.utilityWithParentAndPseudoAndUnary(lastTimeStep) - agent.computeSwitchingCostAllTimeStep());
 		
 		agent.stopStimulatedTiming();
 

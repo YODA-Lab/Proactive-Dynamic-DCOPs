@@ -46,7 +46,7 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
     }
 		
     agent.setCurentLocalSearchQuality(utilFromChildren + 
-        agent.utilityWithParentAndPseudoAndUnary(lastTimeStep) - agent.calculcatingSwitchingCost());
+        agent.utilityWithParentAndPseudoAndUnary(lastTimeStep) - agent.computeSwitchingCostAllTimeStep());
     
     agent.stopStimulatedTiming();
 

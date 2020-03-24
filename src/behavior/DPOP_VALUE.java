@@ -9,6 +9,7 @@ import jade.lang.acl.UnreadableException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
 
 import agent.AgentPDDCOP;
 import agent.AgentPDDCOP.DcopAlgorithm;
@@ -44,9 +45,12 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void action() {		
+	  agent.getValuesToSendInVALUEPhase().clear();
+	  
 		if (agent.isRoot()) {
 			agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getChosenValueAtEachTimeStep(currentTimeStep));
-			for (AID childrenAgentAID:agent.getChildrenAIDSet()) {
+			
+			for (AID childrenAgentAID : agent.getChildrenAIDSet()) {
 				agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(),
 								DPOP_VALUE, agent.getSimulatedTime());
 			}
@@ -54,7 +58,8 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 		else {
 		  //leaf or internal nodes
 			ACLMessage receivedMessage = waitingForMessageFromParent(DPOP_VALUE);
-			agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
+//			agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
+			agent.startSimulatedTiming();
 			
 			HashMap<Integer, String> variableAgentViewIndexValueMap = new HashMap<Integer, String>();
 			HashMap<String, String> valuesFromParent = new HashMap<String, String>();
@@ -64,61 +69,67 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 				e.printStackTrace();
 			}
 
-			for (String agentKey:valuesFromParent.keySet()) {
-				int positionInParentMessage = agent.getAgentViewTable().getDecVarLabel().indexOf(agentKey);
-				if (positionInParentMessage == -1) //not in agentView
-					continue;
-				//if exist this agent in agent view, add to values to send
-				agent.addValuesToSendInValuePhase(agentKey, valuesFromParent.get(agentKey));
-				variableAgentViewIndexValueMap.put(positionInParentMessage						
-											,valuesFromParent.get(agentKey));
+			for (Entry<String, String> valuesEntry : valuesFromParent.entrySet()) {
+			  String agentKey = valuesEntry.getKey();
+			  String agentValue = valuesEntry.getValue();
+			  
+        int positionInParentMessage = agent.getAgentViewTable().getDecVarLabel().indexOf(agentKey);
+
+        if (positionInParentMessage == -1) {// not in agentView
+          continue;
+        }
+        // if exist this agent in agent view, add to values to send
+        agent.addValuesToSendInValuePhase(agentKey, agentValue);
+
+        variableAgentViewIndexValueMap.put(positionInParentMessage, agentValue);
 			}
-			int agentIndex = agent.getAgentViewTable().getDecVarLabel().indexOf(agent.getAgentID());
+			
+			int selfAgentIndex = agent.getAgentViewTable().getDecVarLabel().indexOf(agent.getAgentID());
 
 			Row chosenRow = new Row();
-			double maxUtility = Integer.MIN_VALUE;
-			for (Row agentViewRow:agent.getAgentViewTable().getRowList()) {
+			double maxUtility = -Double.MAX_VALUE;
+			
+			for (Row agentViewRow : agent.getAgentViewTable().getRowList()) {
 				boolean isMatch = true;	
 
 				//check for each of index, get values and compared to the agentViewRow's values
 				//if one of the values is not match, set flag to false and skip to the next row
-				for (Integer variableIndex : variableAgentViewIndexValueMap.keySet()) {
-					if (agentViewRow.getValueAtPosition(variableIndex).equals(variableAgentViewIndexValueMap.get(variableIndex)) == false) {
-						isMatch = false;
-						break;
-					}
+				for (Entry<Integer, String> valuePositionEntry : variableAgentViewIndexValueMap.entrySet()) {
+				  int position = valuePositionEntry.getKey();
+				  String value = valuePositionEntry.getValue();
+          
+				  if (agentViewRow.getValueAtPosition(position).equals(value) == false) {
+            isMatch = false;
+            break;
+          }
 				}
-				if (isMatch == false)
+				
+				// Continue because row values doesn't match VALUE
+				// Otherwise, match
+				if (isMatch == false) {
 					continue;
+				}
 
-				if (agentViewRow.getUtility() > maxUtility) {
+				if (Double.compare(agentViewRow.getUtility(), maxUtility) > 0){
 					maxUtility = agentViewRow.getUtility();
 					chosenRow = agentViewRow;
 				}
 			}
 			
-			String chosenValue = chosenRow.getValueAtPosition(agentIndex);
+			String chosenValue = chosenRow.getValueAtPosition(selfAgentIndex);
 			
-			agent.setChosenValueAtEachTimeStep(currentTimeStep, chosenValue);
+	    agent.storeDpopSolution(chosenValue, currentTimeStep);
 
 			agent.addValuesToSendInValuePhase(agent.getAgentID(), chosenValue);
 			
-      if (agent.isRunningAlgorithm(DcopAlgorithm.C_DPOP)) {
-        agent.setChosenValueAtEachTimeStep(currentTimeStep, chosenValue);
-      }
+//			agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
 			
-			agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
-			
-			if (agent.isLeaf() == false) {
-				List<String> agent_value = new ArrayList<String>();
-				agent_value.add(agent.getAgentID());
-				agent_value.add(chosenValue);
+			if (!agent.isLeaf()) {
 				if (agent.isRunningAlgorithm(DcopAlgorithm.C_DPOP)) {
 					System.out.println("Chosen value is " + chosenValue);
 				}
-				agent_value.add(String.valueOf(agent.getCurrentLocalSearchSolutionQuality()));
 				
-				for (AID children:agent.getChildrenAIDSet()) {
+				for (AID children : agent.getChildrenAIDSet()) {
 					agent.sendObjectMessageWithTime(children, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE, agent.getSimulatedTime());
 				}
 			}

@@ -55,6 +55,7 @@ public class Utilities {
       sb.append(df.format(agent.getBestLocalSearchQuality()) + "\t");
       sb.append(agent.getBestLocalSearchRuntime()/1000000+ "\t");      
     }
+    sb.append(agent.getActualSolutionQuality());
     sb.append(agent.getAlgorithm() + "\t");
     sb.append(agent.getDynamicType() + "\t");
     sb.append(agent.getAgentCount() + "\t");
@@ -104,6 +105,7 @@ public class Utilities {
     sb.append("InstanceID" + "\t");
     sb.append("Utility" + "\t");
     sb.append("Time (ms)" + "\t");
+    sb.append("Actual Utility" + "\t");
     sb.append("Algorithm" + "\t");
     sb.append("Dynamic" + "\t");
     sb.append("Agents" + "\t");

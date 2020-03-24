@@ -20,6 +20,7 @@ public interface MESSAGE_TYPE {
 	public static final int PSEUDOTREE = 9;
 	public static final int INFO = 10;
 	public static final int INIT_LS_UTIL = 11;
+	public static final int ACTUAL_LS_UTIL = 12;
 	
 	public static final Map<Integer, String> msgTypes = createMap();
 	
@@ -37,7 +38,8 @@ public interface MESSAGE_TYPE {
       myMap.put(PSEUDOTREE, "PSEUDOTREE");
       myMap.put(INFO, "INFO");
       myMap.put(INIT_LS_UTIL, "INIT_LS_UTIL");
-
+      myMap.put(ACTUAL_LS_UTIL, "ACTUAL_LS_UTIL");
+      
 	    return myMap;
 	}
 }

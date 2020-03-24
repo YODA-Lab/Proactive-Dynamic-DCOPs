@@ -17,15 +17,15 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 
 import com.google.common.collect.Sets;
-
-import agent.AgentPDDCOP.DynamicType;
 
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
+import behavior.ACTUAL_RECEIVE_SEND_UTIL;
 import behavior.AGENT_TERMINATE;
 import behavior.DPOP_UTIL;
 import behavior.DPOP_VALUE;
@@ -93,12 +93,10 @@ public class AgentPDDCOP extends Agent {
     LS_SDPOP, 
     LS_RAND, 
     FORWARD, 
-    BACKWARD, 
-    MULTI_CDPOP, 
-    SDPOP, 
+    BACKWARD,  
+    SDPOP,
     REACT, 
-    HYBRID,
-    JESP
+    HYBRID
   }
   
   public static enum SwitchingType {
@@ -112,8 +110,6 @@ public class AgentPDDCOP extends Agent {
   public static enum DynamicType {
     FINITE_HORIZON,
     INFINITE_HORIZON,
-    HYBRID,
-    REACT
   }
   
   public static final String INPUT_FOLDER = "input_files";
@@ -121,7 +117,6 @@ public class AgentPDDCOP extends Agent {
   public static final SwitchingType SWITCHING_TYPE = SwitchingType.CONSTANT;
   public static final int MAX_ITERATION = 3;
   public static final int MARKOV_CONVERGENCE_TIME_STEP = 40;
-  public static final double DOUBLE_TOLERANCE = 1E-6;
   public static final boolean RANDOM_TABLE = true;
   public static final boolean DECISION_TABLE = false;
 
@@ -137,13 +132,12 @@ public class AgentPDDCOP extends Agent {
   private double discountFactor;
   private String inputFileName;
   private double heuristicWeight;
-
 	/*
-	 * To be read from input file
+	 * Read from input file
 	 */
 	private int instanceID;
 	/*
-	 * To be computed from the arguments
+	 * Computed from the arguments
 	 */
 	private String outputFileName;
 
@@ -231,6 +225,10 @@ public class AgentPDDCOP extends Agent {
   private boolean recomputingDPOP_UTIL = true; // default, all agents have to recompute everything
   private Table storedReuseTable;
   private Set<String> reuseChildUTIL = new HashSet<>();
+  private Random rdn = new Random();
+  private Map<Integer, List<Table>> actualDpopTableAcrossTimeStep = new HashMap<>();
+  private double actualSolutionQuality;
+  private Map<Integer, Long> dpopSolvingTime = new HashMap<>(); 
 
 	public AgentPDDCOP() {
 	}
@@ -263,6 +261,8 @@ public class AgentPDDCOP extends Agent {
 		}
 		
 		outputFileName = algorithm + "_d=" + agentCount + "_sw=" + (int) switchingCost + "_h=" + horizon + ".txt";
+		// Different seed values for combination of (instanceID, agentID)
+		rdn.setSeed(instanceID * Integer.valueOf(agentID));
 	}
 
 	protected void setup() {	
@@ -277,7 +277,7 @@ public class AgentPDDCOP extends Agent {
       print("Switching cost = " + switchingCost);
       print("Discount factor = " + discountFactor);
       print("Horizon = " + horizon);
-      print("heuristicWeight = " + heuristicWeight);
+      print("Heuristic weight = " + heuristicWeight);
       print("Max iteration=" + MAX_ITERATION);   
     }
       		
@@ -301,7 +301,7 @@ public class AgentPDDCOP extends Agent {
       mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, theLastTimeStep));
       mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, theLastTimeStep));
     }
-    else if (isAlgorithmIn(new DcopAlgorithm[]{DcopAlgorithm.LS_SDPOP, DcopAlgorithm.FORWARD})) {
+    else if (isAlgorithmIn(new DcopAlgorithm[]{DcopAlgorithm.LS_SDPOP, DcopAlgorithm.FORWARD, DcopAlgorithm.HYBRID, DcopAlgorithm.REACT})) {
       for (int i = 0; i <= theLastTimeStep; i++) {
         mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
         mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
@@ -319,8 +319,8 @@ public class AgentPDDCOP extends Agent {
      		
 		if (isAlgorithmIn(new DcopAlgorithm[]{DcopAlgorithm.LS_RAND, DcopAlgorithm.LS_SDPOP})) {
 		  for (int timeIndex  = 0; timeIndex <= theLastTimeStep; timeIndex++) {
-		    discountedExpectedTableEachTSMap.get(timeIndex).addAll(computeDiscountedDecisionTableList(rawDecisionTableList, timeIndex));
-        discountedExpectedTableEachTSMap.get(timeIndex).addAll(computeDiscountedDecisionTableList(rawRandomTableList, timeIndex));
+		    discountedExpectedTableEachTSMap.get(timeIndex).addAll(computeDiscountedDecisionTableList(rawDecisionTableList, timeIndex, discountFactor));
+        discountedExpectedTableEachTSMap.get(timeIndex).addAll(computeDiscountedDecisionTableList(rawRandomTableList, timeIndex, discountFactor));
 		  }
 		  
 		  mainSequentialBehaviourList.addSubBehaviour(new INIT_PROPAGATE_DPOP_VALUE(this));
@@ -335,6 +335,7 @@ public class AgentPDDCOP extends Agent {
       mainSequentialBehaviourList.addSubBehaviour(localSearch);
 		}
 
+    mainSequentialBehaviourList.addSubBehaviour(new ACTUAL_RECEIVE_SEND_UTIL(this));
 		mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
 		addBehaviour(mainSequentialBehaviourList);
 	}
@@ -345,7 +346,20 @@ public class AgentPDDCOP extends Agent {
    * @return
    */
   private int computeDistributionForAllTimeSteps() {    
-    if (dynamicType == DynamicType.INFINITE_HORIZON) {
+    if (algorithm == DcopAlgorithm.HYBRID && !selfRandomVariableDomainMap.isEmpty()) {
+      // Sample value for the current time step
+      // Compute distribution for the next time step
+      for (int indexTime = 0; indexTime <= horizon; indexTime++) {
+        pickedRandomMap.put(indexTime, simulateHybridValue(indexTime));
+        createProbabilityWithObservation(indexTime + 1);
+      }
+    }
+    // For each random table, create new table with only rows with the corresponding simulated random values
+    else if (algorithm == DcopAlgorithm.REACT && !selfRandomVariableDomainMap.isEmpty()) {
+      // Do nothing
+      // The tables are added in the beginning of each UTIL
+    } 
+    else if (dynamicType == DynamicType.INFINITE_HORIZON) {
       for (int timeIndex = 1; timeIndex <= horizon - 1; timeIndex++) {
         computeExpectedProbabilityAtTimeStep(timeIndex);
       }
@@ -355,18 +369,7 @@ public class AgentPDDCOP extends Agent {
       for (int timeIndex = 1; timeIndex <= horizon; timeIndex++) {
         computeExpectedProbabilityAtTimeStep(timeIndex);
       }
-    }
-    // TODO: review HYBRID and REACT later
-    else if (dynamicType == DynamicType.HYBRID) {
-      for (int indexTime = 0; indexTime <= horizon; indexTime++) {
-        addPickedRandomMap(indexTime, simulateHybridRandom(indexTime));
-        createProbabilityWithObservation(indexTime);
-      }
-    }
-    else if (dynamicType == DynamicType.REACT) {
-      // TODO?
-      addReactRandomTableToList(-1);
-    }    
+    }   
     
     return dynamicType == DynamicType.INFINITE_HORIZON ? horizon - 1 : horizon;
   }
@@ -641,17 +644,19 @@ public class AgentPDDCOP extends Agent {
 		return utilityList;
 	}
 
+	/**
+	 * Assign the distribution for this time step given the observed value from the previous one
+	 * @param timeStep
+	 */
 	public void createProbabilityWithObservation(int timeStep) {
-		if (timeStep == 0) {
-//			computeExpectedProbabilityAtTimeStep(0);
+		if (timeStep == 0 && timeStep > horizon) {
 			return;
 		}
 		
-		for (String randVariable : selfRandomVariableDomainMap.keySet()) {
-			double distribution[] = toArray(
-					transitionFunctionMap.get(randVariable).getTransitionOf(pickedRandomMap.get(timeStep - 1)));
-			probabilityAtEachTimeStepMap.get(randVariable)[timeStep] = distribution;
-		}
+		String randVariable = agentID;
+		
+    double distribution[] = toArray(transitionFunctionMap.get(randVariable).getTransitionOf(pickedRandomMap.get(timeStep - 1)));
+		probabilityAtEachTimeStepMap.get(randVariable)[timeStep] = distribution;	
 	}
 
 	public void computeExpectedProbabilityAtTimeStep(int timeStep) {
@@ -1227,6 +1232,34 @@ public class AgentPDDCOP extends Agent {
 			fe.printStackTrace();
 		}
 	}
+  
+  /**
+   * @return the actual local solution quality at the subtree in ACTUAL_UTIL phase 
+   */
+  public double computeActualUtilityWithParentAndPseudoParent() {
+    double sumUtility = 0;
+
+    for (int ts = 0; ts < chosenValueAtEachTSMap.size(); ts++) {
+      List<Table> tableList = actualDpopTableAcrossTimeStep.get(ts);
+      
+      for (Table constraintTable : tableList) {
+        List<String> decisionLabel = constraintTable.getDecVarLabel();
+        List<String> decValueList = new ArrayList<String>();
+
+        for (String variableInLabel : decisionLabel) {
+          if (variableInLabel.equals(agentID)) {
+            decValueList.add(chosenValueAtEachTSMap.get(ts));
+          }
+          else {
+            decValueList.add(agentViewEachTimeStepMap.get(variableInLabel).get(ts));
+          }
+        }
+        sumUtility += constraintTable.getUtilityGivenDecValueList(decValueList);
+      }
+    }
+    
+    return sumUtility;
+  }
 
 	// get utility with parents, pseudoparents
 	// then add its switching cost
@@ -1267,22 +1300,19 @@ public class AgentPDDCOP extends Agent {
 	  return decisionVariableDomainMap.get(agentID);
 	}
 
-	/**
-	 * TODO: review calculcatingSwitchingCost
-	 * @return
-	 */
-	public double calculcatingSwitchingCost() {
-		double sC = 0;
+	public double computeSwitchingCostAllTimeStep() {
+		double switchingCost = 0;
 		
 		if (chosenValueAtEachTSMap.size() == 1) {
-			return 0;
+			return Double.MAX_VALUE;
 		}
 		
-		for (int i = 0; i < chosenValueAtEachTSMap.size() - 1; i++) {
-			sC += switchingCostFunction(chosenValueAtEachTSMap.get(i), chosenValueAtEachTSMap.get(i + 1));
+		// Compute switching costs from the first time step to the horizon
+		for (int timeStep = 0; timeStep < horizon; timeStep++) {
+			switchingCost += Math.pow(discountFactor, timeStep) * switchingCostFunction(chosenValueAtEachTSMap.get(timeStep), chosenValueAtEachTSMap.get(timeStep + 1));
 		}
 		
-		return sC;
+		return switchingCost;
 	}
 	
 	 /**
@@ -1324,20 +1354,20 @@ public class AgentPDDCOP extends Agent {
    * @param discountFactor
    * @return
    */
-  public List<Table> computeDiscountedDecisionTableList(List<Table> decisionTableList, int timeStep) {
+  public List<Table> computeDiscountedDecisionTableList(List<Table> decisionTableList, int timeStep, double df) {
     List<Table> tableList = new ArrayList<>();
     
     for (Table decisionTable : decisionTableList) {
-      tableList.add(computeDiscountedDecisionTable(decisionTable, timeStep));
+      tableList.add(computeDiscountedDecisionTable(decisionTable, timeStep, df));
     }
     return tableList;
   }
   
-  public List<Table> computeDiscountedExpectedRandomTableList(List<Table> randomTableList, int timeStep) {   
+  public List<Table> computeDiscountedExpectedRandomTableList(List<Table> randomTableList, int timeStep, double df) {   
     List<Table> tableList = new ArrayList<>();
     
     for (Table randomTable : randomTableList) {
-      tableList.add(computeDiscountedExpectedTable(randomTable, timeStep));
+      tableList.add(computeDiscountedExpectedTable(randomTable, timeStep, df));
     }
     return tableList;
   }
@@ -1348,9 +1378,9 @@ public class AgentPDDCOP extends Agent {
    * @param discountFactor
    * @return
    */
-  public Table computeDiscountedExpectedTable(Table randomTable, int timeStep) {   
+  public Table computeDiscountedExpectedTable(Table randomTable, int timeStep, double df) {   
     if (dynamicType == DynamicType.FINITE_HORIZON && timeStep == horizon) {
-      return computeLongtermExpectedTable(randomTable, timeStep);
+      return computeLongtermExpectedTable(randomTable, timeStep, df);
     }
     
     List<String> decLabel = randomTable.getDecVarLabel();
@@ -1384,7 +1414,7 @@ public class AgentPDDCOP extends Agent {
 
       // last turn
       if (index % randDomainSize == randDomainSize - 1) {
-        Row newRow = new Row(decValueList, expectedUtility * Math.pow(discountFactor, timeStep));
+        Row newRow = new Row(decValueList, expectedUtility * Math.pow(df, timeStep));
         discountedExpectedTable.addRow(newRow);
         expectedUtility = 0; // reset the expected value for the next decision variable value combination
       }
@@ -1394,7 +1424,13 @@ public class AgentPDDCOP extends Agent {
     return discountedExpectedTable;
   }
   
-  public Table computeLongtermExpectedTable(Table randomTable, int timeStep) {
+  /**
+   * Used for FINITE_HORIZON at the horizon only
+   * @param randomTable
+   * @param timeStep
+   * @return
+   */
+  public Table computeLongtermExpectedTable(Table randomTable, int timeStep, double df) {
     Set<List<String>> processedDecValues = new HashSet<List<String>>();
 
     List<String> decVarLabel = randomTable.getDecVarLabel();
@@ -1445,13 +1481,13 @@ public class AgentPDDCOP extends Agent {
             }
 
             if (row == column)
-              coefficients[row][column] = 1 - discountFactor * transProb;
+              coefficients[row][column] = 1 - df * transProb;
             else
-              coefficients[row][column] = -discountFactor * transProb;
+              coefficients[row][column] = -df * transProb;
 
           }
           // set utility
-          coefficients[row][noOfEquations] = Math.pow(discountFactor, timeStep) * randomTable.getUtilityFromTableGivenDecAndRand(decValueList, rowTuple);
+          coefficients[row][noOfEquations] = Math.pow(df, timeStep) * randomTable.getUtilityFromTableGivenDecAndRand(decValueList, rowTuple);
         }
 
         // print(Arrays.deepToString(coefficients));
@@ -1530,7 +1566,7 @@ public class AgentPDDCOP extends Agent {
    * @param discountFactor
    * @return
    */
-  public Table computeDiscountedDecisionTable(Table decisionTable, int timeStep) {    
+  public Table computeDiscountedDecisionTable(Table decisionTable, int timeStep, double df) {    
     if (decisionTable == null) {return null;}
     
     Table discountedTable = new Table(decisionTable.getDecVarLabel(), DECISION_TABLE);
@@ -1540,26 +1576,26 @@ public class AgentPDDCOP extends Agent {
       double utility = decisionTableRow.getUtility();
       
       if (dynamicType == DynamicType.FINITE_HORIZON && timeStep == horizon) {
-        discountedTable.addRow(new Row(valueList, utility * Math.pow(discountFactor, timeStep) / (1 - discountFactor)));
+        discountedTable.addRow(new Row(valueList, utility * Math.pow(df, timeStep) / (1 - df)));
       }
       else {
-        discountedTable.addRow(new Row(valueList, utility * Math.pow(discountFactor, timeStep)));
+        discountedTable.addRow(new Row(valueList, utility * Math.pow(df, timeStep)));
       }
     }
     return discountedTable;
   }
   
-  public List<Table> computeCollapsedRandomTableList(List<Table> randomTableList, int lastTimeStep) {
+  public List<Table> computeCollapsedRandomTableList(List<Table> randomTableList, int lastTimeStep, double df) {
     List<Table> collapedDecistionTableList = new ArrayList<>();
     for (Table randomTable : randomTableList) {
       List<Table> similarTableList = new ArrayList<>();
 
       for (int timeStep = 0; timeStep <= lastTimeStep; timeStep++) {
         if (isDynamic(DynamicType.FINITE_HORIZON) && timeStep == horizon) {
-          similarTableList.add(computeLongtermExpectedTable(randomTable, timeStep));
+          similarTableList.add(computeLongtermExpectedTable(randomTable, timeStep, discountFactor));
         } 
         else {
-          similarTableList.add(computeDiscountedExpectedTable(randomTable, timeStep));
+          similarTableList.add(computeDiscountedExpectedTable(randomTable, timeStep, discountFactor));
         }
       }
       
@@ -1615,13 +1651,13 @@ public class AgentPDDCOP extends Agent {
    * @param discountFactor
    * @return
    */
-  public List<Table> computeCollapsedDecisionTableList(List<Table> decisionTableList, int lastTimeStep) {
+  public List<Table> computeCollapsedDecisionTableList(List<Table> decisionTableList, int lastTimeStep, double df) {
     List<Table> collapedDecistionTableList = new ArrayList<>();
     for (Table decTable : decisionTableList) {
       List<Table> similarTableList = new ArrayList<>();
 
       for (int timeStep = 0; timeStep <= lastTimeStep; timeStep++) {
-        similarTableList.add(computeDiscountedDecisionTable(decTable, timeStep));
+        similarTableList.add(computeDiscountedDecisionTable(decTable, timeStep, df));
       }
       
       collapedDecistionTableList.add(computeCollapsedTableFromList(similarTableList, AgentPDDCOP.DECISION_TABLE));
@@ -1966,7 +2002,7 @@ public class AgentPDDCOP extends Agent {
 	 * @param currentTimeStep
 	 * @return
 	 */
-	private String simulateHybridRandom(int currentTimeStep) {
+	public String simulateHybridValue(int currentTimeStep) {
 		// randomVar is the same as decisionVar string
 		String randomVar = agentID;
 		double distribution[] = null;
@@ -1974,42 +2010,22 @@ public class AgentPDDCOP extends Agent {
 		if (currentTimeStep == 0) {
 			distribution = probabilityAtEachTimeStepMap.get(randomVar)[0];
 		}
-		// get distribution from transition function, from the previous random
-		// values
+		// get distribution from transition function, from the previous random values
 		else {
-			String previousRandValue = getPickedRandomAt(currentTimeStep - 1);
+			String previousRandValue = pickedRandomMap.get(currentTimeStep - 1);
 			distribution = toArray(transitionFunctionMap.get(randomVar).getTransitionOf(previousRandValue));
 		}
 
-		double rand = Math.random();
 		double accumualatedProbability = 0;
+		
 		for (int i = 0; i < distribution.length; i++) {
 			accumualatedProbability += distribution[i];
-			if (rand < accumualatedProbability) {
+			if (Double.compare(rdn.nextDouble(), accumualatedProbability) < 0) {
 				return selfRandomVariableDomainMap.get(randomVar).get(i);
 			}
 		}
 		
 		return null;
-	}
-
-	private void addReactRandomTableToList(int timeStep) {
-		// traverse to each random table
-		for (Table randTable : rawRandomTableList) {
-			List<String> decLabel = randTable.getDecVarLabel();
-			// at current time step, create a new table, simulate the random,
-			// and add the corresponding random values
-
-			Table newTable = new Table(decLabel, DECISION_TABLE);
-			String simulatedRandomValues = simulateHybridRandom(timeStep);
-			addPickedRandomMap(timeStep, simulatedRandomValues);
-
-			for (Row row : randTable.getRowList()) {
-				if (row.getRandomList().get(0).equals(simulatedRandomValues))
-					newTable.addRow(new Row(row.getValueList(), row.getUtility()));
-			}
-			discountedExpectedTableEachTSMap.get(timeStep).add(newTable);
-		}
 	}
 
 	private static double[] multiply(double[] vector, TransitionFunction transFunc) {
@@ -2154,10 +2170,9 @@ public class AgentPDDCOP extends Agent {
         }
       }
     }
-    else if (isAlgorithmIn(new DcopAlgorithm[]{
-        DcopAlgorithm.FORWARD, DcopAlgorithm.BACKWARD, DcopAlgorithm.LS_SDPOP})) { 
+    else {
       chosenValueAtEachTSMap.put(timeStep, value);
-    }    
+    }
   }
   
   /**
@@ -2231,5 +2246,33 @@ public class AgentPDDCOP extends Agent {
 
   public void setReuseChildUTIL(Set<String> reuseChildUTIL) {
     this.reuseChildUTIL = reuseChildUTIL;
+  }
+
+  public Map<Integer, List<Table>> getActualDpopTableAcrossTimeStep() {
+    return actualDpopTableAcrossTimeStep;
+  }
+  
+  public List<Table> getActualDpopTableAcrossTimeStep(int timeStep) {
+    return actualDpopTableAcrossTimeStep.get(timeStep);
+  }
+
+  public void setActualDpopTableAcrossTimeStep(Map<Integer, List<Table>> actualDpopTableAcrossTimeStep) {
+    this.actualDpopTableAcrossTimeStep = actualDpopTableAcrossTimeStep;
+  }
+
+  public double getActualSolutionQuality() {
+    return actualSolutionQuality;
+  }
+
+  public void setActualSolutionQuality(double actualSolutionQuality) {
+    this.actualSolutionQuality = actualSolutionQuality;
+  }
+
+  public long getDpopSolvingTime(int timeStep) {
+    return dpopSolvingTime.get(timeStep);
+  }
+
+  public void setDpopSolvingTime(int timeStep, long dpopSolvingTimes) {
+    dpopSolvingTime.put(timeStep, dpopSolvingTimes);
   }
 }
