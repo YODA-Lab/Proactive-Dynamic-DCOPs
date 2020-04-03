@@ -10,6 +10,7 @@ import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 
 /**
+ * REVIEWED 
  * @author khoihd
  *
  */
@@ -43,8 +44,8 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
 		}
 				
 		// Send the partial quality of the subtree to parent
-		agent.setCurentLocalSearchQuality(utilFromChildren + 
-				agent.utilityWithParentAndPseudoAndUnary(lastTimeStep) - agent.computeSwitchingCostAllTimeStep());
+    double localSearchQuality = utilFromChildren + 
+        agent.utilityLSWithParentAndPseudoAndUnary(lastTimeStep) - agent.computeSwitchingCostAllTimeStep();
 		
 		agent.stopStimulatedTiming();
 
@@ -53,7 +54,7 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
 		}
 		else {
 		  // First time
-			agent.setBestLocalSearchQuality(agent.getCurentLocalSearchQuality());
+			agent.setBestLocalSearchQuality(localSearchQuality);
 			agent.setBestLocalSearchRuntime(agent.getSimulatedTime());
 		}
 	}

@@ -1,6 +1,5 @@
 package behavior;
 
-import jade.core.AID;
 import jade.core.behaviours.Behaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
@@ -12,10 +11,11 @@ import java.util.List;
 import agent.AgentPDDCOP;
 
 /**
+ * REVIEWED
  * @author khoihd
  *
  */
-public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
+public class LS_RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 
 	private static final long serialVersionUID = 3951196053602788669L;
 
@@ -23,7 +23,7 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 	
 	private int lastTimeStep;
 	
-	public RECEIVE_VALUE(AgentPDDCOP agent, int lastTimeStep) {
+	public LS_RECEIVE_VALUE(AgentPDDCOP agent, int lastTimeStep) {
 		super(agent);
 		this.agent = agent;
 		this.lastTimeStep = lastTimeStep;
@@ -40,7 +40,7 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 		
 		agent.startSimulatedTiming();
 						
-		for (ACLMessage msg:messageList) {
+		for (ACLMessage msg : messageList) {
 			List<String> valuesFromNeighbor = new ArrayList<>();
 			try {
 				valuesFromNeighbor = (ArrayList<String>) msg.getContentObject();
@@ -49,7 +49,7 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 			}
 			
 			// Update agent view only value from neighbor is not null
-			if (valuesFromNeighbor != null) {
+			if (valuesFromNeighbor != null && !valuesFromNeighbor.isEmpty()) {
 				for (int ts=0; ts <= lastTimeStep; ts++) {
 					String valueFromNeighbor = valuesFromNeighbor.get(ts);
 					String sender = msg.getSender().getLocalName();
@@ -63,9 +63,9 @@ public class RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 		
 		agent.stopStimulatedTiming();
 		
-		for (AID neighbor : agent.getNeighborAIDSet()) {
-			agent.sendObjectMessageWithTime(neighbor, "", LS_ITERATION_DONE, agent.getSimulatedTime());
-		}
+//		for (AID neighbor : agent.getNeighborAIDSet()) {
+//			agent.sendObjectMessageWithTime(neighbor, "", LS_ITERATION_DONE, agent.getSimulatedTime());
+//		}
 	}
 	
   private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {

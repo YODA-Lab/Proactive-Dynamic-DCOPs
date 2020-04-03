@@ -6,27 +6,29 @@ import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map.Entry;
 
 import agent.AgentPDDCOP;
 import agent.AgentPDDCOP.DcopAlgorithm;
 import table.Row;
-/*	1. IF X is a root
- * 		Send the value of root to all the children
- *		PRINT OUT the value picked
- *		STOP
+
+/**
+ * @author khoihd
+ * REVIEWED <br>
+ *  1. IF X is a root
+ *    Send the value of root to all the children
+ *    PRINT OUT the value picked
+ *    STOP
  * 
  *  2. ELSE (not a root)
- *  	Waiting from message from the parent
- *  	From the received parent_value, pick X_value from the store (parent_value, X_value)
- *  	//which is the corresponding X_value to parent_value with the minimum utility
- *  	2.1 IF (X is not a leaf)
- *  		Send the value to all the children
- *  	PRINT_OUT the picked value
- *  	STOP 
+ *    Waiting from message from the parent
+ *    From the received parent_value, pick X_value from the store (parent_value, X_value)
+ *    //which is the corresponding X_value to parent_value with the minimum utility
+ *    2.1 IF (X is not a leaf)
+ *      Send the value to all the children
+ *    PRINT_OUT the picked value
+ *    STOP 
  */
 public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 
@@ -45,6 +47,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void action() {		
+	  // VALUE might be called multiple times
 	  agent.getValuesToSendInVALUEPhase().clear();
 	  
 		if (agent.isRoot()) {
@@ -58,7 +61,6 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 		else {
 		  //leaf or internal nodes
 			ACLMessage receivedMessage = waitingForMessageFromParent(DPOP_VALUE);
-//			agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
 			agent.startSimulatedTiming();
 			
 			HashMap<Integer, String> variableAgentViewIndexValueMap = new HashMap<Integer, String>();
@@ -73,15 +75,16 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 			  String agentKey = valuesEntry.getKey();
 			  String agentValue = valuesEntry.getValue();
 			  
-        int positionInParentMessage = agent.getAgentViewTable().getDecVarLabel().indexOf(agentKey);
+        int positionInAgentView = agent.getAgentViewTable().getDecVarLabel().indexOf(agentKey);
 
-        if (positionInParentMessage == -1) {// not in agentView
+        // not in agentView
+        if (positionInAgentView == -1) {
           continue;
         }
         // if exist this agent in agent view, add to values to send
         agent.addValuesToSendInValuePhase(agentKey, agentValue);
 
-        variableAgentViewIndexValueMap.put(positionInParentMessage, agentValue);
+        variableAgentViewIndexValueMap.put(positionInAgentView, agentValue);
 			}
 			
 			int selfAgentIndex = agent.getAgentViewTable().getDecVarLabel().indexOf(agent.getAgentID());
@@ -98,31 +101,32 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 				  int position = valuePositionEntry.getKey();
 				  String value = valuePositionEntry.getValue();
           
-				  if (agentViewRow.getValueAtPosition(position).equals(value) == false) {
+				  // this row does not match the values
+				  if (!agentViewRow.getValueAtPosition(position).equals(value)) {
             isMatch = false;
             break;
           }
 				}
 				
-				// Continue because row values doesn't match VALUE
-				// Otherwise, match
-				if (isMatch == false) {
-					continue;
-				}
-
-				if (Double.compare(agentViewRow.getUtility(), maxUtility) > 0){
-					maxUtility = agentViewRow.getUtility();
-					chosenRow = agentViewRow;
-				}
+				// Only compare if this row matches the value
+				if (isMatch && Double.compare(agentViewRow.getUtility(), maxUtility) > 0) {
+          maxUtility = agentViewRow.getUtility();
+          chosenRow = agentViewRow;
+        }
 			}
 			
 			String chosenValue = chosenRow.getValueAtPosition(selfAgentIndex);
 			
 	    agent.storeDpopSolution(chosenValue, currentTimeStep);
+	    // Set random solution for REACT algorithm
+	    if (agent.isRunningAlgorithm(DcopAlgorithm.REACT) && currentTimeStep == 0) {
+	      int randomIndex = agent.getRandom().nextInt(agent.getSelfDomain().size());
+	      agent.getChosenValueAtEachTSMap().put(-1, agent.getSelfDomain().get(randomIndex));
+	    }
 
 			agent.addValuesToSendInValuePhase(agent.getAgentID(), chosenValue);
 			
-//			agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
+			agent.stopStimulatedTiming();
 			
 			if (!agent.isLeaf()) {
 				if (agent.isRunningAlgorithm(DcopAlgorithm.C_DPOP)) {

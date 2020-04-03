@@ -11,25 +11,27 @@ import java.util.List;
 
 import agent.AgentPDDCOP;;
 
-public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
+/**
+ * REVIEWED 
+ * @author khoihd
+ *
+ */
+public class LS_RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 
 	private static final long serialVersionUID = -5530908625966260157L;
 
 	private AgentPDDCOP agent;
 	private int lastTimeStep;
 	
-	public RECEIVE_IMPROVE(AgentPDDCOP agent, int lastTimeStep) {
+	public LS_RECEIVE_IMPROVE(AgentPDDCOP agent, int lastTimeStep) {
 		super(agent);
 		this.agent = agent;
 		this.lastTimeStep = lastTimeStep;
 	}
 	
 	@SuppressWarnings("unchecked")
-	@Override
+  @Override
 	public void action() {
-		// backup oldSimulatedTime
-//		long oldSimulatedTime = agent.getSimulatedTime();
-	  
     if (agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION) {
       return;
     }
@@ -62,7 +64,7 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 			}
 		}
 		
-		// Set value of the time step to 0 if self improve is negative
+		// Set value of the time step to null if self improve is negative
     for (int index = 0; index <= lastTimeStep; index++) {
 			if (Double.compare(agent.getBestImproveUtilityList().get(index), 0) <= 0) {
 				agent.getBestImproveValueList().set(index, null);
@@ -78,8 +80,8 @@ public class RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 			}
 		}
 		
-		agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
-		
+    agent.stopStimulatedTiming();
+    
 		for (AID neighbor:agent.getNeighborAIDSet()) { 
 			agent.sendObjectMessageWithTime(neighbor, agent.getBestImproveValueList(), 
 						LS_VALUE, agent.getSimulatedTime());	

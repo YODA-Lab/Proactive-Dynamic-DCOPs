@@ -12,6 +12,8 @@ import java.util.List;
 import agent.AgentPDDCOP;
 
 /**
+ * REVIEWED
+ * 
  * @author khoihd
  *
  */
@@ -31,7 +33,6 @@ public class INIT_RECEIVE_DPOP_VALUE extends OneShotBehaviour implements MESSAGE
 	public void action() {
 		List<ACLMessage> receivedMessageFromNeighborList = waitingForMessageFromNeighborsWithTime(PROPAGATE_DPOP_VALUE);
 		
-//		long currentStartTime = agent.getBean().getCurrentThreadUserTime();
 		agent.startSimulatedTiming();
 		
 		for (ACLMessage receivedMessage : receivedMessageFromNeighborList) {
@@ -47,7 +48,6 @@ public class INIT_RECEIVE_DPOP_VALUE extends OneShotBehaviour implements MESSAGE
 		}
 		
 		agent.stopStimulatedTiming();
-//		agent.addupSimulatedTime(agent.getBean().getCurrentThreadUserTime() - currentStartTime);
 	}
 	
 	private List<ACLMessage> waitingForMessageFromNeighborsWithTime(int msgCode) {

@@ -5,6 +5,8 @@ import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
 
 /**
+ * REVIEWED
+ * 
  * @author khoihd
  *
  */

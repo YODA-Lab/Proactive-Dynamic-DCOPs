@@ -2,13 +2,12 @@ package behavior;
 
 import jade.core.behaviours.OneShotBehaviour;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 import agent.AgentPDDCOP;
 
 /**
+ * REVIEWED
  * @author khoihd
  *
  */
@@ -28,11 +27,9 @@ public class RAND_PICK_VALUE extends OneShotBehaviour {
 	  agent.startSimulatedTiming();
 		
 		List<String> domain = agent.getDecisionVariableDomainMap().get(agent.getAgentID());
-//		int domainSize = ;
 		
-		Random rdn = new Random();
 		for (int ts = 0; ts <= agent.getHorizon(); ts++) {
-			agent.getChosenValueAtEachTSMap().put(ts, domain.get(rdn.nextInt(domain.size())));
+			agent.getChosenValueAtEachTSMap().put(ts, domain.get(agent.getRandom().nextInt(domain.size())));
 		}
 		
 		agent.print("choose random values=" + agent.getChosenValueAtEachTSMap());

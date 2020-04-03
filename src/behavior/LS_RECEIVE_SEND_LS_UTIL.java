@@ -11,6 +11,7 @@ import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 
 /**
+ * REVIEWED
  * @author khoihd
  *
  */
@@ -45,8 +46,8 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
       }
     }
 		
-    agent.setCurentLocalSearchQuality(utilFromChildren + 
-        agent.utilityWithParentAndPseudoAndUnary(lastTimeStep) - agent.computeSwitchingCostAllTimeStep());
+    double localSearchQuality = utilFromChildren + 
+        agent.utilityLSWithParentAndPseudoAndUnary(lastTimeStep) - agent.computeSwitchingCostAllTimeStep();
     
     agent.stopStimulatedTiming();
 
@@ -54,8 +55,8 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
 			agent.sendObjectMessageWithTime(agent.getParentAID(), agent.getCurentLocalSearchQuality(), LS_UTIL, agent.getSimulatedTime());
 		}
 		else {
-		  if (Double.compare(agent.getCurentLocalSearchQuality(), agent.getBestLocalSearchQuality()) > 0) {
-		    agent.setBestLocalSearchQuality(agent.getCurentLocalSearchQuality());
+		  if (Double.compare(localSearchQuality, agent.getBestLocalSearchQuality()) > 0) {
+		    agent.setBestLocalSearchQuality(localSearchQuality);
 		    agent.setBestLocalSearchRuntime(agent.getSimulatedTime());
 		  }
 		}
@@ -63,8 +64,13 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
 		agent.incrementLocalSearchIteration();
 		
 		if (agent.getLocalSearchIteration() < AgentPDDCOP.MAX_ITERATION) {
-			agent.sendImprove(lastTimeStep);
-		} else if (agent.isRoot()) {
+      if (agent.isRoot()) {
+        Utilities.writeLocalSearchResult(agent);
+      }
+      
+		  agent.sendImprove(lastTimeStep);
+		}
+		else if (agent.isRoot()) {
       Utilities.writeResult(agent);
 		}
 	}

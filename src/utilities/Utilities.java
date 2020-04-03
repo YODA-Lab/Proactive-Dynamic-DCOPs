@@ -127,4 +127,9 @@ public class Utilities {
     sb.append("Discount" + "\n");
     return sb.toString();
   }
+
+  public static void writeLocalSearchResult(AgentPDDCOP agent) {
+    // TODO Auto-generated method stub
+    
+  }
 }
