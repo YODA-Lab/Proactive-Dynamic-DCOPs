@@ -56,7 +56,7 @@ public class SEND_RECEIVE_FINAL_VALUE extends OneShotBehaviour implements MESSAG
       int initTimeStep = agent.isRunningAlgorithm(DcopAlgorithm.REACT) ? -1 : 0;
       
       // Update agent view only value from neighbor is not null
-      for (int ts = initTimeStep; ts < agent.getHorizon(); ts++) {
+      for (int ts = initTimeStep; ts <= agent.getHorizon(); ts++) {
         String valueFromNeighbor = valuesFromNeighbor.get(ts);
         String sender = msg.getSender().getLocalName();
         

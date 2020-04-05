@@ -286,7 +286,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     
     agent.storeDpopSolution(chosenValue, currentTimeStep);
 
-    // Set random solution for REACT algorithm
+    // Randomize DPOP solutions for the first time step before solving
     if (agent.isRunningAlgorithm(DcopAlgorithm.REACT) && currentTimeStep == 0) {
       int randomIndex = agent.getRandom().nextInt(agent.getSelfDomain().size());
       agent.getChosenValueAtEachTSMap().put(-1, agent.getSelfDomain().get(randomIndex));

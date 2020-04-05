@@ -2196,8 +2196,8 @@ public class AgentPDDCOP extends Agent {
    * @param timeStep
    * @return
    */
-  public List<Double> computeActualQualityWithoutTime() {
-    List<Double> solutionQualityList = new ArrayList<>();
+  public Map<Integer, Double> computeActualQualityWithoutTime() {
+    Map<Integer, Double> solutionQualityMap = new HashMap<>();
     
     int initTimeStep = algorithm == DcopAlgorithm.REACT ? -1 : 0;
     
@@ -2220,10 +2220,10 @@ public class AgentPDDCOP extends Agent {
         }
         sumUtility += constraintTable.getUtilityGivenDecValueList(decValueList);
       }
-      solutionQualityList.add(sumUtility);
+      solutionQualityMap.put(ts, sumUtility);
     }
     
-    return solutionQualityList;
+    return solutionQualityMap;
   }
   
   /**
@@ -2231,18 +2231,18 @@ public class AgentPDDCOP extends Agent {
    * Compute switching cost for ONLINE algorithms
    * @return
    */
-  public List<Double> computeActualSwitchingCost() {
-    List<Double> switchingCostList = new ArrayList<>();
+  public Map<Integer, Double> computeActualSwitchingCost() {
+    Map<Integer, Double> switchingCostMap = new HashMap<>();
     
     if (algorithm == DcopAlgorithm.REACT) {
-      switchingCostList.add(switchingCostFunction(chosenValueAtEachTSMap.get(-1), chosenValueAtEachTSMap.get(0)));
+      switchingCostMap.put(0, switchingCostFunction(chosenValueAtEachTSMap.get(-1), chosenValueAtEachTSMap.get(0)));
     }
-    else {switchingCostList.add(0D);}
+    else {switchingCostMap.put(0, 0D);}
     
     for (int ts = 1; ts <= horizon; ts++) {
-      switchingCostList.add(switchingCostFunction(chosenValueAtEachTSMap.get(ts - 1), chosenValueAtEachTSMap.get(ts)));
+      switchingCostMap.put(ts, switchingCostFunction(chosenValueAtEachTSMap.get(ts - 1), chosenValueAtEachTSMap.get(ts)));
     }
-    return switchingCostList;
+    return switchingCostMap;
   }
   
   /**

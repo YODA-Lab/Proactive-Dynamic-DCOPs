@@ -1,7 +1,9 @@
 package behavior;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import agent.AgentPDDCOP;
 import agent.AgentPDDCOP.DcopAlgorithm;
@@ -31,8 +33,8 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
   @Override
   public void action() {    
     double pddcop_quality_from_children = 0D;
-    List<Double> actual_quality_from_children = new ArrayList<>();
-    List<Double> actual_switching_cost_from_children = new ArrayList<>();
+    Map<Integer, Double> actual_quality_from_children = new HashMap<>();
+    Map<Integer, Double> actual_switching_cost_from_children = new HashMap<>();
     
     List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(FINAL_UTIL);
     agent.startSimulatedTiming();
@@ -41,8 +43,12 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
       try {
         pddcop_quality_from_children += (Double) ((List) msg.getContentObject()).get(0);
         if (agent.isDynamic(DynamicType.ONLINE)) {
-          actual_quality_from_children = (List<Double>) ((List) msg.getContentObject()).get(1);
-          actual_switching_cost_from_children = (List<Double>) ((List) msg.getContentObject()).get(2);
+          Map<Integer, Double> quality_children = (Map<Integer, Double>) ((List) msg.getContentObject()).get(1);
+          Map<Integer, Double> switching_cost_children = (Map<Integer, Double>) ((List) msg.getContentObject()).get(2);
+          for (int i = -1; i <= agent.getHorizon(); i++) {
+            actual_quality_from_children.merge(i, quality_children.getOrDefault(i, 0D), Double::sum);
+            actual_switching_cost_from_children.merge(i, switching_cost_children.getOrDefault(i, 0D), Double::sum);
+          }
         }
       } catch (UnreadableException e) {
         e.printStackTrace();
@@ -52,29 +58,32 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
     // Send the partial quality of the subtree to parent
     double pddcop_solution_quality = pddcop_quality_from_children + agent.computeActualUtilityWithParentAndPseudoParent()
         - agent.computeSwitchingCostAllTimeStep();
-    List sendUp = new ArrayList();
-    sendUp.add(pddcop_solution_quality);
+    List messageForParent = new ArrayList();
+   
+    messageForParent.add(pddcop_solution_quality);
     
-    List<Double> actual_solution_quality = agent.computeActualQualityWithoutTime();
-    List<Double> actual_switching_cost = agent.computeActualSwitchingCost();
+    Map<Integer, Double> actual_solution_quality = agent.computeActualQualityWithoutTime();
+    Map<Integer, Double> actual_switching_cost = agent.computeActualSwitchingCost();
+    
     if (agent.isDynamic(DynamicType.ONLINE)) {
-      for (int i = 0; i <= agent.getHorizon(); i++) {
-        actual_solution_quality.set(i, actual_solution_quality.get(i) + actual_quality_from_children.get(i));
-        actual_switching_cost.set(i, actual_switching_cost.get(i) + actual_switching_cost_from_children.get(i));
+      for (int i = -1; i <= agent.getHorizon(); i++) {
+        actual_solution_quality.merge(i,
+            actual_solution_quality.getOrDefault(i, 0D) + actual_quality_from_children.getOrDefault(i, 0D), Double::sum);
+        actual_switching_cost.merge(i,
+            actual_switching_cost.getOrDefault(i, 0D) + actual_switching_cost_from_children.getOrDefault(i, 0D), Double::sum);
       }
   
-      sendUp.add(actual_solution_quality);
-      sendUp.add(actual_switching_cost);
+      messageForParent.add(actual_solution_quality);
+      messageForParent.add(actual_switching_cost);
     }
     
     agent.stopStimulatedTiming();
 
     
     if (!agent.isRoot()) {
-      agent.sendObjectMessageWithTime(agent.getParentAID(), sendUp, FINAL_UTIL, agent.getSimulatedTime());
+      agent.sendObjectMessageWithTime(agent.getParentAID(), messageForParent, FINAL_UTIL, agent.getSimulatedTime());
     }
     else {
-      // TODO: Compute effective reward here
       if (agent.isDynamic(DynamicType.ONLINE)) {
         double effectiveReward = 0D;
         if (agent.isRunningAlgorithm(DcopAlgorithm.FORWARD) || agent.isRunningAlgorithm(DcopAlgorithm.HYBRID)) {
@@ -83,10 +92,11 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
           }
         }
         else if (agent.isRunningAlgorithm(DcopAlgorithm.REACT)) {
-          long solvingTime = agent.getDpopSolvingTime(0);
-          long adoptingTime = agent.getTimeBetweenTimeSteps() - solvingTime;
-          
           for (int ts = 0; ts <= agent.getHorizon(); ts++) {
+            long solvingTime = ts == 0 ? agent.getDpopSolvingTime(ts)
+                : agent.getDpopSolvingTime(ts) - agent.getDpopSolvingTime(ts - 1);
+            long adoptingTime = agent.getTimeBetweenTimeSteps() - solvingTime;
+            
             effectiveReward += solvingTime * actual_solution_quality.get(ts - 1) 
                               + adoptingTime * actual_solution_quality.get(ts) 
                               - actual_switching_cost.get(ts); 
