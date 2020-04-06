@@ -134,7 +134,6 @@ public class AgentPDDCOP extends Agent {
   private double discountFactor;
   private String inputFileName;
   private double heuristicWeight;
-  private long timeBetweenTimeSteps;
 	/*
 	 * Read from input file
 	 */
@@ -143,6 +142,7 @@ public class AgentPDDCOP extends Agent {
 	 * Computed from the arguments
 	 */
 	private String outputFileName;
+	private String localSearchOutputFileName;
 
 	private int hybridTS;
 	
@@ -189,8 +189,10 @@ public class AgentPDDCOP extends Agent {
 	 */
 	private double currentLocalSearchSolutionQuality;
 	private double solutionQuality;
-	private double effectiveActualReward;
-
+	private Map<Integer, Double> effectiveQualityMap = new HashMap<>();
+	private Map<Integer, Double> effectiveSwitchingCostMap = new HashMap<>();
+	private Map<Integer, Long> effectiveSolvingTimeMap = new HashMap<>();
+	
 //	private Map<String, List<Double>> initProabilityMap = new HashMap<>();
 	/**
 	 * Random variable -> TransitionFunction
@@ -215,8 +217,8 @@ public class AgentPDDCOP extends Agent {
 	// List<String> neighborWithRandList;
 
 	// Store the quality of the best LS solution
-	private double bestLocalSearchQuality;
-	private long bestLocalSearchRuntime;
+	private Map<Integer, Double> localSearchQualityMap = new HashMap<>();
+	private Map<Integer, Long> localSearchRuntimeMap = new HashMap<>();
 	
 	private boolean stop = false;
 	private double curentLocalSearchQuality;
@@ -230,7 +232,6 @@ public class AgentPDDCOP extends Agent {
   private Set<String> reuseChildUTIL = new HashSet<>();
   private Random rdn = new Random();
   private Map<Integer, List<Table>> actualDpopTableAcrossTimeStep = new HashMap<>();
-  private double actualSolutionQuality;
   private Map<Integer, Long> dpopSolvingTime = new HashMap<>(); 
 
 	public AgentPDDCOP() {
@@ -249,7 +250,6 @@ public class AgentPDDCOP extends Agent {
 		discountFactor = Double.valueOf((String) args[4]);
 		dynamicType = DynamicType.valueOf((String) args[5]);
 		heuristicWeight = Double.valueOf((String) args[6]);
-		timeBetweenTimeSteps = Long.valueOf((String) args[7]);
 		
 		String a[] = inputFileName.substring(inputFileName.indexOf("/") + 1).replaceAll("instance_", "").replaceAll(".dzn", "").split("_");
 		
@@ -263,7 +263,9 @@ public class AgentPDDCOP extends Agent {
 			discountedExpectedTableEachTSMap.put(timeStep, new ArrayList<Table>());
 		}
 		
-		outputFileName = algorithm + "_d=" + agentCount + "_sw=" + (int) switchingCost + "_h=" + horizon + ".txt";
+		outputFileName = algorithm + "_" +  dynamicType + "_d=" + agentCount + "_sw=" + (int) switchingCost + "_h=" + horizon + ".txt";
+		localSearchOutputFileName = "instanceID=" + instanceID + "_" + outputFileName;
+		
 		// Different seed values for combination of (instanceID, agentID)
 		rdn.setSeed(instanceID * Integer.valueOf(agentID) * horizon);
 	}
@@ -344,7 +346,7 @@ public class AgentPDDCOP extends Agent {
       mainSequentialBehaviourList.addSubBehaviour(localSearch);
 		}
 
-    mainSequentialBehaviourList.addSubBehaviour(new SEND_RECEIVE_FINAL_VALUE(this));
+		mainSequentialBehaviourList.addSubBehaviour(new SEND_RECEIVE_FINAL_VALUE(this));
 		mainSequentialBehaviourList.addSubBehaviour(new SEND_RECEIVE_FINAL_UTIL(this));
 
 		mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
@@ -1934,13 +1936,25 @@ public class AgentPDDCOP extends Agent {
 		this.bestImproveValueList = bestImproveValueList;
 	}
 
-	public double getBestLocalSearchQuality() {
-		return bestLocalSearchQuality;
+	public Map<Integer, Double> getLocalSearchQualityMap() {
+		return localSearchQualityMap;
 	}
+	
+  public double getLocalSearchQualityAt(int iteration) {
+    return localSearchQualityMap.get(iteration);
+  }
 
-	public void setBestLocalSearchQuality(double bestLocalSearchQuality) {
-		this.bestLocalSearchQuality = bestLocalSearchQuality;
+	public void setLocalSearchQuality(int iteration, double quality) {
+		this.localSearchQualityMap.put(iteration, quality);
 	}
+	
+  public Map<Integer, Long> getLocalSearchRuntimeMap() {
+    return localSearchRuntimeMap;
+  }
+
+  public void setLocalSearchRuntime(int iteration, long runtime) {
+    this.localSearchRuntimeMap.put(iteration, runtime);
+  }
 
 	public boolean isStop() {
 		return stop;
@@ -2274,14 +2288,6 @@ public class AgentPDDCOP extends Agent {
     System.out.println("Agent " + agentID + " " + s);
   }
 
-  public long getBestLocalSearchRuntime() {
-    return bestLocalSearchRuntime;
-  }
-
-  public void setBestLocalSearchRuntime(long bestLocalSearchRuntime) {
-    this.bestLocalSearchRuntime = bestLocalSearchRuntime;
-  }
-
   public boolean isRunningLocalSearch() {
     return algorithm == DcopAlgorithm.LS_RAND || algorithm == DcopAlgorithm.LS_SDPOP;
   }
@@ -2330,14 +2336,6 @@ public class AgentPDDCOP extends Agent {
     this.actualDpopTableAcrossTimeStep = actualDpopTableAcrossTimeStep;
   }
 
-  public double getActualSolutionQuality() {
-    return actualSolutionQuality;
-  }
-
-  public void setActualSolutionQuality(double actualSolutionQuality) {
-    this.actualSolutionQuality = actualSolutionQuality;
-  }
-
   public long getDpopSolvingTime(int timeStep) {
     return dpopSolvingTime.get(timeStep);
   }
@@ -2350,15 +2348,20 @@ public class AgentPDDCOP extends Agent {
     return rdn;
   }
 
-  public long getTimeBetweenTimeSteps() {
-    return timeBetweenTimeSteps;
+  public String getLocalSearchOutputFileName() {
+    return localSearchOutputFileName;
   }
 
-  public double getEffectiveActualReward() {
-    return effectiveActualReward;
+  public Map<Integer, Double> getEffectiveQualityMap() {
+    return effectiveQualityMap;
   }
 
-  public void setEffectiveActualReward(double effectiveActualReward) {
-    this.effectiveActualReward = effectiveActualReward;
+
+  public Map<Integer, Double> getEffectiveSwitchingCostMap() {
+    return effectiveSwitchingCostMap;
+  }
+
+  public Map<Integer, Long> getEffectiveSolvingTimeMap() {
+    return effectiveSolvingTimeMap;
   }
 }

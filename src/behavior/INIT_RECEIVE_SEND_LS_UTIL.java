@@ -54,8 +54,8 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
 		}
 		else {
 		  // First time
-			agent.setBestLocalSearchQuality(localSearchQuality);
-			agent.setBestLocalSearchRuntime(agent.getSimulatedTime());
+			agent.setLocalSearchQuality(-1, localSearchQuality);
+			agent.setLocalSearchRuntime(-1, agent.getSimulatedTime());
 		}
 	}
 	

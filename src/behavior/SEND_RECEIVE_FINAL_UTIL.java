@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import agent.AgentPDDCOP;
-import agent.AgentPDDCOP.DcopAlgorithm;
 import agent.AgentPDDCOP.DynamicType;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
@@ -85,27 +84,22 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
     }
     else {
       if (agent.isDynamic(DynamicType.ONLINE)) {
-        double effectiveReward = 0D;
-        if (agent.isRunningAlgorithm(DcopAlgorithm.FORWARD) || agent.isRunningAlgorithm(DcopAlgorithm.HYBRID)) {
-          for (int ts = 0; ts <= agent.getHorizon(); ts++) {
-            effectiveReward += agent.getTimeBetweenTimeSteps() * (actual_solution_quality.get(ts) - actual_switching_cost.get(ts)); 
-          }
-        }
-        else if (agent.isRunningAlgorithm(DcopAlgorithm.REACT)) {
-          for (int ts = 0; ts <= agent.getHorizon(); ts++) {
-            long solvingTime = ts == 0 ? agent.getDpopSolvingTime(ts)
-                : agent.getDpopSolvingTime(ts) - agent.getDpopSolvingTime(ts - 1);
-            long adoptingTime = agent.getTimeBetweenTimeSteps() - solvingTime;
-            
-            effectiveReward += solvingTime * actual_solution_quality.get(ts - 1) 
-                              + adoptingTime * actual_solution_quality.get(ts) 
-                              - actual_switching_cost.get(ts); 
-          }
+        for (int ts = 0; ts <= agent.getHorizon(); ts++) {
+          double quality = actual_solution_quality.get(ts);
+          double switchingCost = actual_switching_cost.get(ts);
+          long solvingTime = ts == 0 ? agent.getDpopSolvingTime(ts) : agent.getDpopSolvingTime(ts) - agent.getDpopSolvingTime(ts - 1);
+          
+          agent.getEffectiveQualityMap().put(ts, quality);
+          agent.getEffectiveSwitchingCostMap().put(ts, switchingCost);
+          agent.getEffectiveSolvingTimeMap().put(ts, solvingTime);
         }
         
-        agent.setEffectiveActualReward(effectiveReward);
+        agent.getEffectiveQualityMap().put(-1, actual_solution_quality.getOrDefault(-1, 0D));
+        Utilities.writeEffectiveReward(agent);
       }
-      Utilities.writeResult(agent);
+      
+      // Write final results 
+      Utilities.writeFinalResult(agent);
     }
   }
   

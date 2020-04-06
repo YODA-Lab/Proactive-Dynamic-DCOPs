@@ -55,23 +55,19 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
 			agent.sendObjectMessageWithTime(agent.getParentAID(), agent.getCurentLocalSearchQuality(), LS_UTIL, agent.getSimulatedTime());
 		}
 		else {
-		  if (Double.compare(localSearchQuality, agent.getBestLocalSearchQuality()) > 0) {
-		    agent.setBestLocalSearchQuality(localSearchQuality);
-		    agent.setBestLocalSearchRuntime(agent.getSimulatedTime());
-		  }
+      agent.setLocalSearchQuality(agent.getLocalSearchIteration(),
+          Math.max(localSearchQuality, agent.getLocalSearchQualityAt(agent.getLocalSearchIteration() - 1)));
+      agent.setLocalSearchRuntime(agent.getLocalSearchIteration(), agent.getSimulatedTime());
 		}
 		
 		agent.incrementLocalSearchIteration();
 		
 		if (agent.getLocalSearchIteration() < AgentPDDCOP.MAX_ITERATION) {
-      if (agent.isRoot()) {
-        Utilities.writeLocalSearchResult(agent);
-      }
-      
 		  agent.sendImprove(lastTimeStep);
 		}
 		else if (agent.isRoot()) {
-      Utilities.writeResult(agent);
+		  Utilities.writeLocalSearchResult(agent);
+      Utilities.writeFinalResult(agent);
 		}
 	}
 
