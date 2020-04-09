@@ -6,7 +6,9 @@ import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import agent.AgentPDDCOP;
 
@@ -41,16 +43,16 @@ public class LS_RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 		agent.startSimulatedTiming();
 						
 		for (ACLMessage msg : messageList) {
-			List<String> valuesFromNeighbor = new ArrayList<>();
+			Map<Integer, String> valuesFromNeighbor = new HashMap<>();
 			try {
-				valuesFromNeighbor = (ArrayList<String>) msg.getContentObject();
+				valuesFromNeighbor = (Map<Integer, String>) msg.getContentObject();
 			} catch (UnreadableException e) {
 				e.printStackTrace();
 			}
 			
 			// Update agent view only value from neighbor is not null
 			if (valuesFromNeighbor != null && !valuesFromNeighbor.isEmpty()) {
-				for (int ts=0; ts <= lastTimeStep; ts++) {
+				for (int ts = 0; ts <= lastTimeStep; ts++) {
 					String valueFromNeighbor = valuesFromNeighbor.get(ts);
 					String sender = msg.getSender().getLocalName();
 					
@@ -62,10 +64,6 @@ public class LS_RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 		}
 		
 		agent.stopStimulatedTiming();
-		
-//		for (AID neighbor : agent.getNeighborAIDSet()) {
-//			agent.sendObjectMessageWithTime(neighbor, "", LS_ITERATION_DONE, agent.getSimulatedTime());
-//		}
 	}
 	
   private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {

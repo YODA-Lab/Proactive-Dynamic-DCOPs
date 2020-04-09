@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -117,7 +119,7 @@ public class AgentPDDCOP extends Agent {
   public static final String INPUT_FOLDER = "input_files";
 
   public static final SwitchingType SWITCHING_TYPE = SwitchingType.CONSTANT;
-  public static final int MAX_ITERATION = 3;
+  public static final int MAX_ITERATION = 30;
   public static final int MARKOV_CONVERGENCE_TIME_STEP = 40;
   public static final boolean RANDOM_TABLE = true;
   public static final boolean DECISION_TABLE = false;
@@ -181,13 +183,13 @@ public class AgentPDDCOP extends Agent {
 	// agent -> <values0, values1, ..., values_n>
 	private Map<String, HashMap<Integer, String>> agentViewEachTimeStepMap = new HashMap<>();
 	private List<Double> currentGlobalUtilityList = new ArrayList<>();
-	private List<String> bestImproveValueList = new ArrayList<>();
-  private List<Double> bestImproveUtilityList;
+	private Map<Integer, String> bestImproveValueMap = new HashMap<>();
+  private Map<Integer, Double> bestImproveUtilityMap = new HashMap<>();
 
 	/**
 	 * Object since it could be null
 	 */
-	private double currentLocalSearchSolutionQuality;
+//	private double currentLocalSearchSolutionQuality;
 	private double solutionQuality;
 	private Map<Integer, Double> effectiveQualityMap = new HashMap<>();
 	private Map<Integer, Double> effectiveSwitchingCostMap = new HashMap<>();
@@ -221,9 +223,9 @@ public class AgentPDDCOP extends Agent {
 	private Map<Integer, Long> localSearchRuntimeMap = new HashMap<>();
 	
 	private boolean stop = false;
-	private double curentLocalSearchQuality;
 	private String lastLine = "";
   private int agentCount;
+  private int randomCount;
   // Used when reading the input file
   private String rootAgent = null;
   
@@ -232,9 +234,54 @@ public class AgentPDDCOP extends Agent {
   private Set<String> reuseChildUTIL = new HashSet<>();
   private Random rdn = new Random();
   private Map<Integer, List<Table>> actualDpopTableAcrossTimeStep = new HashMap<>();
-  private Map<Integer, Long> dpopSolvingTime = new HashMap<>(); 
+  private Map<Integer, Long> dpopSolvingTime = new HashMap<>();
+  private long finalRuntime;
+
+  private String CDPOP_value;
+  private long randomSeed; 
+
+  public int decisionDomain;
+  public int randomDomain;
+  
+  public static String OUTPUT_FOLDER;
 
 	public AgentPDDCOP() {
+	}
+	
+	private void setOutputFileName() {
+	  StringBuffer sb = new StringBuffer();
+    OUTPUT_FOLDER = "output_files/" + dynamicType + "/";
+    try {
+      Files.createDirectories(Paths.get(OUTPUT_FOLDER));
+    } catch (IOException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    
+    sb.append("x=" + agentCount);
+    sb.append("_y=" + randomCount);
+    sb.append("_dx=" + decisionDomain);
+    sb.append("_dy=" + randomDomain);
+    sb.append("_sw=" + (int) switchingCost);
+    sb.append("_h=" + horizon);
+    sb.append("_discountFactor=" + discountFactor);
+    sb.append("_heuristicWeight=" + heuristicWeight);
+    sb.append("_" + algorithm + "_" + dynamicType);
+    sb.append(".txt");
+        
+    outputFileName = OUTPUT_FOLDER + sb.toString();    
+    if (isRunningLocalSearch()) {
+      String localSearchFolder = OUTPUT_FOLDER + "/" + algorithm + "/";
+      try {
+        Files.createDirectories(Paths.get(localSearchFolder));
+      } catch (IOException e) {
+        // TODO Auto-generated catch block
+        e.printStackTrace();
+      }
+      
+      sb.insert(0, "instanceID=" + instanceID + "_");
+      localSearchOutputFileName = localSearchFolder + sb.toString();
+    }
 	}
 
 	// done with LS-RAND
@@ -256,6 +303,9 @@ public class AgentPDDCOP extends Agent {
 		instanceID = Integer.valueOf(a[0]);
 		
 		agentCount = Integer.valueOf(a[1].replace("x", ""));
+    randomCount = Integer.valueOf(a[2].replace("y", ""));
+    decisionDomain = Integer.valueOf(a[3].replace("dx", ""));
+    randomDomain = Integer.valueOf(a[4].replace("dy", ""));
 		
 		agentID = getLocalName();
 
@@ -263,16 +313,15 @@ public class AgentPDDCOP extends Agent {
 			discountedExpectedTableEachTSMap.put(timeStep, new ArrayList<Table>());
 		}
 		
-		outputFileName = algorithm + "_" +  dynamicType + "_d=" + agentCount + "_sw=" + (int) switchingCost + "_h=" + horizon + ".txt";
-		localSearchOutputFileName = "instanceID=" + instanceID + "_" + outputFileName;
-		
 		// Different seed values for combination of (instanceID, agentID)
-		rdn.setSeed(instanceID * Integer.valueOf(agentID) * horizon);
+		randomSeed = instanceID * Integer.valueOf(agentID) * horizon;
+		rdn.setSeed(randomSeed);
 	}
 
 	protected void setup() {	
     readArguments();
     parseInputFile(INPUT_FOLDER + "/" + inputFileName);
+    setOutputFileName();
 	  
     if (isRoot) {
       print("AgentID = " + agentID);
@@ -300,14 +349,14 @@ public class AgentPDDCOP extends Agent {
 		// Solve for the last time step for INFINITE
 		if (dynamicType == DynamicType.INFINITE_HORIZON) {
 		  mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, horizon));
-      mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, horizon));
+      mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, horizon));
     }
     
     // Combine DCOPs from 0 -> theLastTimeStep
 		// Take into account the switching cost to the solution at horizon h if there is any
 		if (algorithm == DcopAlgorithm.C_DPOP) {
       mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, theLastTimeStep));
-      mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, theLastTimeStep));
+      mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, theLastTimeStep));
     }
     else if (isAlgorithmIn(new DcopAlgorithm[]{DcopAlgorithm.LS_SDPOP, DcopAlgorithm.FORWARD, DcopAlgorithm.HYBRID, DcopAlgorithm.REACT})) {
       for (int i = 0; i <= theLastTimeStep; i++) {
@@ -327,11 +376,11 @@ public class AgentPDDCOP extends Agent {
 		
     // Add the discounted tables to time steps 0 -> lastTimeStep for all algorithms
 		// In order to compute the PD-DCOP qualities
-    for (int timeIndex  = 0; timeIndex <= theLastTimeStep; timeIndex++) {
+    for (int timeIndex  = 0; timeIndex <= horizon; timeIndex++) {
       discountedExpectedTableEachTSMap.get(timeIndex).addAll(computeDiscountedDecisionTableList(rawDecisionTableList, timeIndex, discountFactor));
       discountedExpectedTableEachTSMap.get(timeIndex).addAll(computeDiscountedExpectedRandomTableList(rawRandomTableList, timeIndex, discountFactor));
     }
-     		
+         		
 		// Behaviors for local search algorithms
 		if (isAlgorithmIn(new DcopAlgorithm[]{DcopAlgorithm.LS_RAND, DcopAlgorithm.LS_SDPOP})) {
 		  mainSequentialBehaviourList.addSubBehaviour(new INIT_PROPAGATE_DPOP_VALUE(this));
@@ -432,32 +481,33 @@ public class AgentPDDCOP extends Agent {
     Set<List<String>> cartesianProduct = Sets.cartesianProduct(domainAcrossTimeSteps); 
     
     double maxUtility = -Double.MAX_VALUE;
+    Map<Integer, String> bestValueMapTS = new HashMap<>();
+    
     for (List<String> valueListTS : cartesianProduct) {
       double evaluation = cumulativeUtilityLSMinusCost(valueListTS);
       if (Double.compare(evaluation, maxUtility) > 0) {
         maxUtility = evaluation;
-        bestImproveValueList = valueListTS;
+        for (int i = 0; i < valueListTS.size(); i++) {
+          bestValueMapTS.put(i, valueListTS.get(i));
+        }
       }
     }
-
-    bestImproveUtilityList = new ArrayList<Double>();
     
     if (Double.compare(maxUtility, -Double.MAX_VALUE) > 0) {
-      Map<Integer, String> bestImproveValueMap = new HashMap<>();
-      for (int i = 0; i < bestImproveValueList.size(); i++) {
-        bestImproveValueMap.put(i, bestImproveValueList.get(i));
-      }
-      
+      bestImproveValueMap.putAll(bestValueMapTS);
       List<Double> bestUtilityList = utilityLSMinusCostOverTS(bestImproveValueMap, lastTimeStep);
       for (int i = 0; i <= lastTimeStep; i++) {
-        bestImproveUtilityList.add(bestUtilityList.get(i) - currentUtilityList.get(i));
+        bestImproveUtilityMap.put(i, bestUtilityList.get(i) - currentUtilityList.get(i));
       }
+    }
+    else {
+      bestImproveValueMap.clear();
     }
 
     stopStimulatedTiming();
 
     for (AID neighbor : neighborAIDSet) {
-      sendObjectMessageWithTime(neighbor, bestImproveUtilityList, MESSAGE_TYPE.LS_IMPROVE, simulatedTime);
+      sendObjectMessageWithTime(neighbor, bestImproveUtilityMap, MESSAGE_TYPE.LS_IMPROVE, simulatedTime);
     }
   }
 	
@@ -479,9 +529,10 @@ public class AgentPDDCOP extends Agent {
 
     for (Table constraintTable : tableList) {
       List<String> intersectList = new ArrayList<>(constraintTable.getDecVarLabel());
+      
       intersectList.remove(agentID);
       intersectList.retainAll(childAndPseudoChildrenStrSet);
-      
+        
       if (intersectList.isEmpty()) {
         resultingTableList.add(constraintTable);
       }
@@ -517,7 +568,7 @@ public class AgentPDDCOP extends Agent {
 			}
 		}
 
-		for (int i = 0; i < valuesOverTS.size(); i++) {
+		for (int i = 0; i < valuesOverTS.size() - 1; i++) {
 			sumCost += Math.pow(discountFactor, i) * switchingCostFunction(valuesOverTS.get(i), valuesOverTS.get(i + 1));
 		}
 		return sumUtility - sumCost;
@@ -702,8 +753,11 @@ public class AgentPDDCOP extends Agent {
 	   
 	   for (String decisionVariable : varLabel) {
 	     Set<String> linkedValueSet = new LinkedHashSet<>();
-	     for (String value : decisionVariableDomainMap.get(decisionVariable)) {
-	       linkedValueSet.add(value);
+	     if (isDecVar) {
+	       linkedValueSet.addAll(decisionVariableDomainMap.get(decisionVariable));
+	     }
+	     else {
+         linkedValueSet.addAll(selfRandomVariableDomainMap.get(decisionVariable));
 	     }
 	     valueSetList.add(linkedValueSet);
 	   }
@@ -838,7 +892,11 @@ public class AgentPDDCOP extends Agent {
 		message.setLanguage(String.valueOf(time));
 		send(message);
 		
-    print("sends message type " + MESSAGE_TYPE.msgTypes.get(msgCode) + " to agent " + receiver.getLocalName() + ": " + content);
+		if (msgCode != MESSAGE_TYPE.DPOP_UTIL) {
+		  print("sends message type " + MESSAGE_TYPE.msgTypes.get(msgCode) + " to agent " + receiver.getLocalName() + ": " + content);
+		} else {
+      print("sends message type " + MESSAGE_TYPE.msgTypes.get(msgCode) + " to agent " + receiver.getLocalName());
+		}
 	}
 
 	public void printTree() {
@@ -900,9 +958,9 @@ public class AgentPDDCOP extends Agent {
 				line = line.replace(" ", "");
 				line = line.replace(";", "");
         
-				if (isPrinting()) {
-          print(line);
-        }
+//				if (isPrinting()) {
+//          print(line);
+//        }
         
 				lineWithSemiColonList.add(line);
 				line = br.readLine();
@@ -932,10 +990,10 @@ public class AgentPDDCOP extends Agent {
           decisionVariableList.add(decisionVariable);
           decisionVariableDomainMap.put(decisionVariable, valueOfDecisionVariableList);
           
-          if (isPrinting()) {
-            print("decisionVariableList " + decisionVariableList);
-            print("decisionVariableDomainMap " + decisionVariableDomainMap);
-          }
+//          if (isPrinting()) {
+//            print("decisionVariableList " + decisionVariableList);
+//            print("decisionVariableDomainMap " + decisionVariableDomainMap);
+//          }
         }
         /** RANDOM_VARIABLE */
         // read decision variable domain
@@ -959,9 +1017,9 @@ public class AgentPDDCOP extends Agent {
             selfRandomVariableDomainMap.put(randomVariable, randomDomain);
           }
           
-          if (isPrinting()) {
-            print("randomVariableDomainMap " + selfRandomVariableDomainMap);
-          }
+//          if (isPrinting()) {
+//            print("randomVariableDomainMap " + selfRandomVariableDomainMap);
+//          }
         }
 				/** TRANS_FUNC_PREFIX */
         if (nameMzn.contains(TRANS_FUNC_PREFIX)) {
@@ -994,9 +1052,9 @@ public class AgentPDDCOP extends Agent {
 							selfRandomVariableDomainMap.get(randomVariable), newTransitionMatrix);
 					transitionFunctionMap.put(randomVariable, newTransitionFunction);
 					
-          if (isPrinting()) {
-            print("transitionFunctionMap " + transitionFunctionMap);
-          }
+//          if (isPrinting()) {
+//            print("transitionFunctionMap " + transitionFunctionMap);
+//          }
 				}
 				/** INIT_PROB_PREFIX */
 				if (nameMzn.contains(INIT_PROB_PREFIX)) {
@@ -1021,9 +1079,9 @@ public class AgentPDDCOP extends Agent {
 	          probabilityAtEachTimeStepMap.get(randomVariable)[0][i] = Double.parseDouble(initProbabilityStrList.get(i));
 					}
 										
-          if (isPrinting()) {
-            print("initProabilityMap " + probabilityAtEachTimeStepMap.get(randomVariable)[0]);
-          }
+//          if (isPrinting()) {
+//            print("initProabilityMap " + Arrays.toString(probabilityAtEachTimeStepMap.get(randomVariable)[0]));
+//          }
 				}
 				/** REWARD_TABLE_PREFIX */
 				/**
@@ -1084,10 +1142,10 @@ public class AgentPDDCOP extends Agent {
 						}
 //						constraintTableWithoutRandomList.add(newRewardTable);
 						rawDecisionTableList.add(newRewardTable);
-						
-	          if (isPrinting()) {
-	            print("rawDecisionTableList " + rawDecisionTableList);
-	          }
+//						
+//	          if (isPrinting()) {
+//	            print("rawDecisionTableList " + rawDecisionTableList);
+//	          }
 					}
 					/**** WITH random variable **********/
 					else {
@@ -1113,7 +1171,7 @@ public class AgentPDDCOP extends Agent {
 						/** create Table **/
 						// print("!" + decVarLabel + " " +
 						// randVarLabel);
-						newRewardTable = new Table(decVarLabel, randVarLabel);
+						newRewardTable = new Table(decVarLabel, randVarLabel, RANDOM_TABLE);
 
 						/** process table values **/
 						valueMzn = valueMzn.replace("[", "");
@@ -1135,11 +1193,10 @@ public class AgentPDDCOP extends Agent {
 							Row newRow = new Row(decValueList, randValueList, utility);
 							newRewardTable.addRow(newRow);
 						}
-//						constraintTableWithRandomList.add(newRewardTable);
 						rawRandomTableList.add(newRewardTable);
-            if (isPrinting()) {
-              print("rawRandomTableList " + rawRandomTableList);
-            }
+//            if (isPrinting()) {
+//              print("rawRandomTableList " + rawRandomTableList);
+//            }
 					}
 				}
 			}
@@ -1154,6 +1211,7 @@ public class AgentPDDCOP extends Agent {
 			  
 			  randHeuristicMap.put(agent, count);
 			}
+//			randomCount = allRandomVariableSet.size();
 			
 			// Compute heuristic values for each agent
 			SortedSet<String> allAgents = new TreeSet<>(neighborSetMap.keySet());
@@ -1180,8 +1238,8 @@ public class AgentPDDCOP extends Agent {
     isRoot = agentID.equals(rootAgent);
 	}
 
-	private boolean isPrinting() {
-	  return agentID.equals("1");
+	public boolean isPrinting() {
+	  return agentID.equals("2");
   }
 
   public void registerWithDF() {
@@ -1244,20 +1302,21 @@ public class AgentPDDCOP extends Agent {
 	 * @param timeSteps
 	 * @return
 	 */
-	public double utilityLSWithParentAndPseudoAndUnary(int timeSteps) {
+	public double utilityLSWithParentAndPseudoAndUnary() {
 		double sumUtility = 0;
 
-		for (int ts = 0; ts <= timeSteps; ts++) {
+		for (int ts = 0; ts <= horizon; ts++) {
 			List<Table> tableList = discountedExpectedTableEachTSMap.get(ts);
+			
 			for (Table constraintTable : tableList) {
 				List<String> decVarList = constraintTable.getDecVarLabel();
 				List<String> decValueList = new ArrayList<String>();
-
-				// Only consider tables with parent and pseudo-parents	
+	
+        // Only consider tables with parent and pseudo-parents
+        // And unary constraint
 				List<String> decLabelMinusAgent = new ArrayList<String>(decVarList);
 				decLabelMinusAgent.remove(agentID);
-				
-				if (!parentAndPseudoStrList.containsAll(decVarList)) {
+				if (!parentAndPseudoStrList.containsAll(decLabelMinusAgent)) {
 				  continue;
 				}
 
@@ -1268,8 +1327,8 @@ public class AgentPDDCOP extends Agent {
 					else {
 						decValueList.add(agentViewEachTimeStepMap.get(variableInList).get(ts));
 					}
-					
 				}
+				
 				sumUtility += constraintTable.getUtilityGivenDecValueList(decValueList);
 			}
 		}
@@ -1369,14 +1428,16 @@ public class AgentPDDCOP extends Agent {
   
   /**
    * REVIEWED <br>
-   * @param randomTable
+   * @param inputRandomTable
    * @param timeStep
    * @param discountFactor
    * @return
    */
-  public Table computeDiscountedExpectedTable(Table randomTable, int timeStep, double df) {   
+  public Table computeDiscountedExpectedTable(Table inputRandomTable, int timeStep, double df) {   
+    Table randomTable = inputRandomTable;
+    
     if (dynamicType == DynamicType.FINITE_HORIZON && timeStep == horizon) {
-      return computeLongtermExpectedTable(randomTable, timeStep, df);
+      randomTable = computeLongtermExpectedTable(randomTable, timeStep, df);
     }
     
     List<String> decLabel = randomTable.getDecVarLabel();
@@ -1434,7 +1495,7 @@ public class AgentPDDCOP extends Agent {
     
     List<List<String>> allTupleValue = getAllTupleValueOfGivenLabeUsingCartesianProduct(randVarLabel, false);
     
-    Table newlyCreatedTable = new Table(decVarLabel, randVarLabel);
+    Table newlyCreatedTable = new Table(decVarLabel, randVarLabel, RANDOM_TABLE);
 
     int noOfEquations = 1;
     for (String randVar : randVarLabel) {
@@ -1488,7 +1549,7 @@ public class AgentPDDCOP extends Agent {
 
         // print(Arrays.deepToString(coefficients));
         List<Double> utilityList = gaussian(coefficients, noOfEquations);
-
+        
         // create new row with a fix dec values, but different rand values
         int i = 0;
         for (List<String> randValueToBeAddedList : allTupleValue) {
@@ -1596,12 +1657,7 @@ public class AgentPDDCOP extends Agent {
       List<Table> similarTableList = new ArrayList<>();
 
       for (int timeStep = 0; timeStep <= lastTimeStep; timeStep++) {
-        if (isDynamic(DynamicType.FINITE_HORIZON) && timeStep == horizon) {
-          similarTableList.add(computeLongtermExpectedTable(randomTable, timeStep, discountFactor));
-        } 
-        else {
-          similarTableList.add(computeDiscountedExpectedTable(randomTable, timeStep, discountFactor));
-        }
+        similarTableList.add(computeDiscountedExpectedTable(randomTable, timeStep, discountFactor));
       }
       
       collapedDecistionTableList.add(computeCollapsedTableFromList(similarTableList, AgentPDDCOP.RANDOM_TABLE));
@@ -1661,7 +1717,7 @@ public class AgentPDDCOP extends Agent {
   }
   
   /**
-   * UNDER REVIEW
+   * REVIEWED
    * @param decisionTableList
    * @param lastTimeStep
    * @param discountFactor
@@ -1712,7 +1768,8 @@ public class AgentPDDCOP extends Agent {
         sCost += Math.pow(df, i) * switchingCostFunction(valueList.get(i), valueList.get(i + 1));
         valueListString += valueList.get(i) + ",";
       }
-      valueListString = valueListString.substring(0, valueListString.length() - 1); // delete the last comma
+      valueListString += valueList.get(valueList.size() - 1);
+
       List<String> finalValueWithCommas = new ArrayList<>();
       finalValueWithCommas.add(valueListString);
       
@@ -1880,14 +1937,6 @@ public class AgentPDDCOP extends Agent {
 		this.currentGlobalUtilityList = currentGlobalUtilityList;
 	}
 
-	public double getCurrentLocalSearchSolutionQuality() {
-		return currentLocalSearchSolutionQuality;
-	}
-
-	public void setCurrentLocalSearchSolutionQuality(double currentLocalSearchSolutionQuality) {
-		this.currentLocalSearchSolutionQuality = currentLocalSearchSolutionQuality;
-	}
-
 	public double getSolutionQuality() {
 		return solutionQuality;
 	}
@@ -1928,13 +1977,13 @@ public class AgentPDDCOP extends Agent {
 		this.localSearchIteration++;
 	}
 
-	public List<String> getBestImproveValueList() {
-		return bestImproveValueList;
+	public Map<Integer, String> getBestImproveValueMap() {
+		return bestImproveValueMap;
 	}
 
-	public void setBestImproveValueListJESP(List<String> bestImproveValueList) {
-		this.bestImproveValueList = bestImproveValueList;
-	}
+//	public void setBestImproveValueListJESP(List<String> bestImproveValueList) {
+//		this.bestImproveValueList = bestImproveValueList;
+//	}
 
 	public Map<Integer, Double> getLocalSearchQualityMap() {
 		return localSearchQualityMap;
@@ -1962,14 +2011,6 @@ public class AgentPDDCOP extends Agent {
 
 	public void setStop(boolean stop) {
 		this.stop = stop;
-	}
-
-	public double getCurentLocalSearchQuality() {
-		return curentLocalSearchQuality;
-	}
-
-	public void setCurentLocalSearchQuality(double curentLocalSearchQuality) {
-		this.curentLocalSearchQuality = curentLocalSearchQuality;
 	}
 
 	public Map<String, String> getValuesToSendInVALUEPhase() {
@@ -2260,10 +2301,10 @@ public class AgentPDDCOP extends Agent {
   }
   
   /**
-   * @return the bestImproveUtilityList
+   * @return the bestImproveUtilityMap
    */
-  public List<Double> getBestImproveUtilityList() {
-    return bestImproveUtilityList;
+  public Map<Integer, Double> getBestImproveUtilityMap() {
+    return bestImproveUtilityMap;
   }
 
   /**
@@ -2282,6 +2323,12 @@ public class AgentPDDCOP extends Agent {
   
   public void print() {
     System.out.println();
+  }
+  
+  public void print(String s, String agentID) {
+    if (agentID.equals(this.agentID)) {
+      print(s);
+    }
   }
   
   public void print(String s) {
@@ -2363,5 +2410,35 @@ public class AgentPDDCOP extends Agent {
 
   public Map<Integer, Long> getEffectiveSolvingTimeMap() {
     return effectiveSolvingTimeMap;
+  }
+
+  public long getFinalRuntime() {
+    return finalRuntime;
+  }
+
+  public void setFinalRuntime(long finalRuntime) {
+    this.finalRuntime = finalRuntime;
+  }
+
+  public String getCDPOP_value() {
+    return CDPOP_value;
+  }
+
+  public void setCDPOP_value(String cDPOP_value) {
+    CDPOP_value = cDPOP_value;
+  }
+
+  /**
+   * @return the randomSeed
+   */
+  public long getRandomSeed() {
+    return randomSeed;
+  }
+
+  /**
+   * @param randomSeed the randomSeed to set
+   */
+  public void setRandomSeed(long randomSeed) {
+    this.randomSeed = randomSeed;
   }
 }

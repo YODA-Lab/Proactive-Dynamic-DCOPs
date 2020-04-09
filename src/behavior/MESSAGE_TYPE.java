@@ -16,12 +16,11 @@ public interface MESSAGE_TYPE {
 	public static final int LS_VALUE = 5;
 	public static final int LS_UTIL = 6;
 	public static final int RAND_VALUE = 7;
-//	public static final int LS_ITERATION_DONE = 8;
 	public static final int PSEUDOTREE = 9;
 	public static final int INFO = 10;
 	public static final int INIT_LS_UTIL = 11;
 	public static final int FINAL_UTIL = 12;
-	public static final int FINAL_VALUE = 12;
+	public static final int FINAL_VALUE = 13;
 	
 	public static final Map<Integer, String> msgTypes = createMap();
 	

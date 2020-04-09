@@ -30,6 +30,7 @@ public class RAND_PICK_VALUE extends OneShotBehaviour {
 		
 		for (int ts = 0; ts <= agent.getHorizon(); ts++) {
 			agent.getChosenValueAtEachTSMap().put(ts, domain.get(agent.getRandom().nextInt(domain.size())));
+//      agent.getChosenValueAtEachTSMap().put(ts, domain.get(ts % domain.size()));
 		}
 		
 		agent.print("choose random values=" + agent.getChosenValueAtEachTSMap());

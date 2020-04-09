@@ -51,7 +51,12 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 	  agent.getValuesToSendInVALUEPhase().clear();
 	  
 		if (agent.isRoot()) {
-			agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getChosenValueAtEachTimeStep(currentTimeStep));
+		  if (agent.isRunningAlgorithm(DcopAlgorithm.C_DPOP)) {
+        agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getCDPOP_value());
+		  }
+		  else {
+		    agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getChosenValueAtEachTimeStep(currentTimeStep));
+		  }
 			
 			for (AID childrenAgentAID : agent.getChildrenAIDSet()) {
 				agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(),
@@ -130,7 +135,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 			
 			if (!agent.isLeaf()) {
 				if (agent.isRunningAlgorithm(DcopAlgorithm.C_DPOP)) {
-					System.out.println("Chosen value is " + chosenValue);
+					agent.print("Chosen value is " + chosenValue);
 				}
 				
 				for (AID children : agent.getChildrenAIDSet()) {

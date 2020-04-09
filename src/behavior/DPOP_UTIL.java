@@ -78,11 +78,15 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	public void action() {	  
 	  // For reuse
 	  // Combine all local constraints and store in non-discounted forms
+//	  if (agent.isPrinting()) {
+//	    agent.print(agent.getDpopRandomTableList() + "");
+//	  }
+	  
 	  if (agent.isRunningAlgorithm(DcopAlgorithm.LS_SDPOP) && isFirstTimeUTIL()) {
-      Table joinedDecisionTable = null;
-      for (Table decisionLocalConstraints : agent.getDpopDecisionTableList()) {
-        joinedDecisionTable = joinTable(joinedDecisionTable, decisionLocalConstraints);
-      }
+      Table joinedDecisionTable = joinTableList(agent.getDpopDecisionTableList());
+//      for (Table decisionLocalConstraints : agent.getDpopDecisionTableList()) {
+//        joinedDecisionTable = joinTable(joinedDecisionTable, decisionLocalConstraints);
+//      }
       agent.setStoredReuseTable(joinedDecisionTable);
 	  } 
 	  else if (agent.isRunningAlgorithm(DcopAlgorithm.LS_SDPOP) && !isFirstTimeUTIL()) {
@@ -98,27 +102,34 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	    dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
 	  }
 	  else {
+	    // For all other algorithms
 	    // Compute decision, random and switching cost tables
 	    // Add all of them to the dpopTableList
 	    dpopTableList.addAll(computeDiscountedDpopAndSwitchingCostTables(agent.getDynamicType(), agent.getAlgorithm(), currentTimeStep));
 	  }
 
 		if (agent.isLeaf()) {
+      agent.print("Leaf is running");
 			leafDoUtilProcess();
+			agent.print("Leaf is done");
 		} 
 		else if (agent.isRoot()){
-			try {
+      agent.print("Root is running");
+		  try {
         rootDoUtilProcess();
       } catch (UnreadableException e) {
         e.printStackTrace();
       }
+			agent.print("Root is done");
 		}
 		else {
+      agent.print("Internal node is running");
 			try {
         internalNodeDoUtilProcess();
       } catch (UnreadableException e) {
         e.printStackTrace();
       }
+			agent.print("Internal node is done");
 		}
 	}		
 	
@@ -136,10 +147,13 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       }
       
       combinedTable = agent.computeDiscountedDecisionTable(agent.getStoredReuseTable(), currentTimeStep, agent.getDiscountFactor());
-      for (Table localRandomConstraints : agent.getDpopRandomTableList()) {
-        Table expectedTable = agent.computeDiscountedExpectedTable(localRandomConstraints, currentTimeStep, agent.getDiscountFactor());
-        combinedTable = joinTable(combinedTable, expectedTable);
-      }
+//      for (Table localRandomConstraints : agent.getDpopRandomTableList()) {
+//        Table expectedTable = agent.computeDiscountedExpectedTable(localRandomConstraints, currentTimeStep, agent.getDiscountFactor());
+//        combinedTable = joinTable(combinedTable, expectedTable);
+//      }
+      
+      combinedTable = joinTable(combinedTable, joinTableList(agent
+          .computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, agent.getDiscountFactor())));
     
       // If not a rand table, no need to compute in later DPOP rounds
       if (!combinedTable.isRandTable()) {
@@ -148,10 +162,10 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     }
     else {
       //joining all tables together
-      for (Table pseudoParentTable : dpopTableList) {
-        agent.print("dpopTableList = " + pseudoParentTable);
-        combinedTable = joinTable(combinedTable, pseudoParentTable);
-      }
+//      for (Table pseudoParentTable : dpopTableList) {
+//        combinedTable = joinTable(combinedTable, pseudoParentTable);
+//      }
+      combinedTable = joinTable(combinedTable, joinTableList(dpopTableList));
     }
 		agent.setAgentViewTable(combinedTable);
 		
@@ -160,9 +174,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		agent.stopStimulatedTiming();
 		
 		agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());
-		
-		agent.print("leaf is done");
-	}
+  }
 	
 	/**
 	 * REVIEWED
@@ -180,9 +192,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		
 		agent.stopStimulatedTiming();
 
-		agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());
-		
-    agent.print("Internal node is done");
+		agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());		
 	}
 	
 	/**
@@ -200,6 +210,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       // Separate children into children with decision and children with random 
       List<Table> decisionUtil = new ArrayList<>();
       List<Table> randomUtil = new ArrayList<>();
+      // Separate decision UTIL and random UTIL
       for (ACLMessage msg : receivedUTILmsgList) {
         Table utilTable = (Table) msg.getContentObject();
         
@@ -211,15 +222,27 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
           agent.getReuseChildUTIL().add(msg.getSender().getLocalName());
         }
       }
+      // Add with decision UTIL and store the non-discount form
+//      for (Table decisionTable : decisionUtil) {
+//        combinedTable = joinTable(combinedTable, decisionTable);
+//      }
+      combinedTable = joinTable(combinedTable, joinTableList(decisionUtil));
       
-      for (Table decisionTable : decisionUtil) {
-        combinedTable = joinTable(combinedTable, decisionTable);
-      }
       agent.setStoredReuseTable(combinedTable);
       
-      for (Table randomTable : randomUtil) {
-        combinedTable = joinTable(combinedTable, randomTable);
-      }
+      // Combine with random UTIL
+//      for (Table randomTable : randomUtil) {
+//        combinedTable = joinTable(combinedTable, randomTable);
+//      }
+      combinedTable = joinTable(combinedTable, joinTableList(randomUtil));
+      
+      // Combine with local random constraint
+//      for (Table randomConstraint : agent.getDpopRandomTableList()) {
+//        combinedTable = joinTable(combinedTable,
+//            agent.computeDiscountedExpectedTable(randomConstraint, currentTimeStep, agent.getDiscountFactor()));
+//      }
+      combinedTable = joinTable(combinedTable, joinTableList(agent
+          .computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, agent.getDiscountFactor())));
 
       if (!combinedTable.isRandTable()) {
         agent.setRecomputingDPOP_UTILToFalse();
@@ -281,10 +304,13 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 			}
 		}
 			
-		System.out.println("Root agent " + agent.getAgentID() + "has chosen value " + chosenValue);
-    System.out.println("Root agent " + agent.getAgentID() + "has chosen utility " + maxUtility);
+		agent.print("has chosen value " + chosenValue);
+    agent.print("has chosen utility " + maxUtility);
     
     agent.storeDpopSolution(chosenValue, currentTimeStep);
+    if (agent.isRunningAlgorithm(DcopAlgorithm.C_DPOP)) {
+      agent.setCDPOP_value(chosenValue);
+    }
 
     // Randomize DPOP solutions for the first time step before solving
     if (agent.isRunningAlgorithm(DcopAlgorithm.REACT) && currentTimeStep == 0) {
@@ -497,7 +523,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		
 		int listSize = indexList1.size();
 		//check if same values
-		for (int i=0; i<listSize; i++) {
+		for (int i = 0; i < listSize; i++) {
 			if (row1.getValueList().get(indexList1.get(i)).equals
 			(row2.getValueList().get(indexList2.get(i))) == false) {
 				return null;
@@ -507,7 +533,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		//join two row
 		List<String> joinedValues = new ArrayList<String>(row1.getValueList());//(row1.getValueList());
 		
-		for (int i=0; i<row2.getValueList().size(); i++) {
+		for (int i = 0; i < row2.getValueList().size(); i++) {
 			if (!indexList2.contains(i)) {
 				joinedValues.add(row2.getValueList().get(i));
 			}
@@ -629,7 +655,9 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	//for each message received from the children
 	//sum the utility that received from the children
 	Table combineMessage(List<ACLMessage> list) {
-		List<Table> listTable = new ArrayList<Table>();
+		if (list.isEmpty()) {return null;}
+	  
+	  List<Table> listTable = new ArrayList<Table>();
 		for (ACLMessage msg:list) {
 			try {
 				listTable.add((Table) msg.getContentObject());
@@ -674,26 +702,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	      System.err.println(x);
 	    }
 	}
- 
-// private List<Table> computeLongtermExpectedTableList(List<Table> randomTableList, double discountFactor) {
-//   List<Table> tableList = new ArrayList<>();
-//   for (Table table : randomTableList) {
-//     tableList.add(computeLongtermExpectedTable(table, discountFactor));
-//   }
-//   
-//   return tableList;
-// }
-
- 
-// private double computeSwitchingCost(List<String> valueTuple, double discountFactor) {
-//   double scost = 0;
-//   
-//   for (int index = 0; index < valueTuple.size() - 1; index++) {
-//     scost += Math.pow(discountFactor, index) * agent.switchingCostFunction(valueTuple.get(index), valueTuple.get(index + 1));
-//   }
-//   
-//   return scost;
-// }
  
  /**
   * REVIEWED <br>
@@ -755,6 +763,23 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     }
     
     return tableList;
+  }
+  
+  /**
+   * Improving speed and reducing memory when joining tables
+   * @param tableList
+   * @return
+   */
+  public Table joinTableList(List<Table> tableList) {
+    int size = tableList.size();
+    
+    if (tableList.isEmpty()) {return null;}
+    else if (size == 1) {return tableList.get(0);}
+    else if (size == 2) {return joinTable(tableList.get(0), tableList.get(1));
+    }
+    else {
+      return joinTable(joinTableList(tableList.subList(0, size/2)), joinTableList(tableList.subList(size/2, size)));
+    }
   }
   
 }

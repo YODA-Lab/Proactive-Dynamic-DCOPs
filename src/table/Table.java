@@ -64,9 +64,10 @@ public class Table implements Serializable {
 	    this.isRandTable = isRandTable;
 	  }
 	
-	public Table(List<String> decVarList, List<String> randVarList) {
+	public Table(List<String> decVarList, List<String> randVarList, boolean isRandTable) {
 		decVarLabel.addAll(decVarList);
 		randVarLabel.addAll(randVarList);
+		this.isRandTable = isRandTable;
 	}
 	
 	public void addRow(Row newRow) {
@@ -127,7 +128,9 @@ public class Table implements Serializable {
     sb.append("Table: decVarLabel=");
     sb.append(decVarLabel);
     sb.append(", randVarLabel=");
-    sb.append(randVarLabel + "\n");
+    sb.append(randVarLabel);
+    sb.append(", isRandTable=");
+    sb.append(isRandTable + "\n");
     for (Row row : rowList) {
       sb.append(row + "\n");
     }

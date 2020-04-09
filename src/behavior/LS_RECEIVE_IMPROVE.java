@@ -7,7 +7,9 @@ import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import agent.AgentPDDCOP;;
 
@@ -43,9 +45,9 @@ public class LS_RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 		agent.setCurrentStartTime(agent.getBean().getCurrentThreadUserTime());
 		
 		for (ACLMessage msg : messageList) {
-			List<Double> improveUtilFromNeighbor = new ArrayList<Double>();
+			Map<Integer, Double> improveUtilFromNeighbor = new HashMap<>();
 			try {
-				improveUtilFromNeighbor = (ArrayList<Double>) msg.getContentObject();
+				improveUtilFromNeighbor = (Map<Integer, Double>) msg.getContentObject();
 			} catch (UnreadableException e) {
 				e.printStackTrace();
 			}
@@ -54,28 +56,21 @@ public class LS_RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 				continue;
 			}
 			else {
-				for (int ts=0; ts <= lastTimeStep; ts++) {
+				for (int ts = 0; ts <= lastTimeStep; ts++) {
 				  // Set my best improve value list to null if one of the neighbors has better improved utility
-					if (Double.compare(improveUtilFromNeighbor.get(ts), 0) > 0 && 
-					      Double.compare(improveUtilFromNeighbor.get(ts), agent.getBestImproveUtilityList().get(ts)) > 0) {
-						agent.getBestImproveValueList().set(ts, null);
+					if (Double.compare(agent.getBestImproveUtilityMap().getOrDefault(ts, 0D), 0) <= 0 || 
+					      Double.compare(improveUtilFromNeighbor.get(ts), agent.getBestImproveUtilityMap().get(ts)) > 0) {
+						agent.getBestImproveValueMap().put(ts, null);
 					}
 				}
 			}
 		}
 		
-		// Set value of the time step to null if self improve is negative
-    for (int index = 0; index <= lastTimeStep; index++) {
-			if (Double.compare(agent.getBestImproveUtilityList().get(index), 0) <= 0) {
-				agent.getBestImproveValueList().set(index, null);
-			}
-		}
-		
 		// Set local assignment based on the best improve value list
     for (int index = 0; index <= lastTimeStep; index++) {
-			String improvedValue = agent.getBestImproveValueList().get(index);
+			String improvedValue = agent.getBestImproveValueMap().get(index);
 			if (improvedValue != null) {
-				agent.print("improvedValue at timestep=" + index + " is: " + improvedValue);
+				agent.print("has improvedValue at timestep=" + index + " is: " + improvedValue);
 				agent.setValueAtTimeStep(index, improvedValue);
 			}
 		}
@@ -83,7 +78,7 @@ public class LS_RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
     agent.stopStimulatedTiming();
     
 		for (AID neighbor:agent.getNeighborAIDSet()) { 
-			agent.sendObjectMessageWithTime(neighbor, agent.getBestImproveValueList(), 
+			agent.sendObjectMessageWithTime(neighbor, agent.getBestImproveValueMap(), 
 						LS_VALUE, agent.getSimulatedTime());	
 		}
 	}
@@ -117,7 +112,7 @@ public class LS_RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 
 	@Override
 	public boolean done() {
-	  agent.print("is done RECEIVE_IMPROVE: " + agent.getLocalSearchIteration());
+	  agent.print("is done RECEIVE_IMPROVE at iteration = " + agent.getLocalSearchIteration());
 		return agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION;
 	}
 }

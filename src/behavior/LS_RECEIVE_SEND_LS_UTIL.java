@@ -47,12 +47,12 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
     }
 		
     double localSearchQuality = utilFromChildren + 
-        agent.utilityLSWithParentAndPseudoAndUnary(lastTimeStep) - agent.computeSwitchingCostAllTimeStep();
+        agent.utilityLSWithParentAndPseudoAndUnary() - agent.computeSwitchingCostAllTimeStep();
     
     agent.stopStimulatedTiming();
 
 		if (!agent.isRoot()) {
-			agent.sendObjectMessageWithTime(agent.getParentAID(), agent.getCurentLocalSearchQuality(), LS_UTIL, agent.getSimulatedTime());
+			agent.sendObjectMessageWithTime(agent.getParentAID(), localSearchQuality, LS_UTIL, agent.getSimulatedTime());
 		}
 		else {
       agent.setLocalSearchQuality(agent.getLocalSearchIteration(),

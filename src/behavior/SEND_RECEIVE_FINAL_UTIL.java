@@ -34,6 +34,7 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
     double pddcop_quality_from_children = 0D;
     Map<Integer, Double> actual_quality_from_children = new HashMap<>();
     Map<Integer, Double> actual_switching_cost_from_children = new HashMap<>();
+    agent.print("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap());
     
     List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(FINAL_UTIL);
     agent.startSimulatedTiming();
@@ -55,16 +56,20 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
     }
             
     // Send the partial quality of the subtree to parent
-    double pddcop_solution_quality = pddcop_quality_from_children + agent.computeActualUtilityWithParentAndPseudoParent()
+    double pddcop_solution_quality = pddcop_quality_from_children + agent.utilityLSWithParentAndPseudoAndUnary()
         - agent.computeSwitchingCostAllTimeStep();
+
     List messageForParent = new ArrayList();
    
     messageForParent.add(pddcop_solution_quality);
     
-    Map<Integer, Double> actual_solution_quality = agent.computeActualQualityWithoutTime();
-    Map<Integer, Double> actual_switching_cost = agent.computeActualSwitchingCost();
-    
+    Map<Integer, Double> actual_solution_quality = new HashMap<>();
+    Map<Integer, Double> actual_switching_cost = new HashMap<>();
+
     if (agent.isDynamic(DynamicType.ONLINE)) {
+      actual_solution_quality.putAll(agent.computeActualQualityWithoutTime());
+      actual_switching_cost.putAll(agent.computeActualSwitchingCost());
+      
       for (int i = -1; i <= agent.getHorizon(); i++) {
         actual_solution_quality.merge(i,
             actual_solution_quality.getOrDefault(i, 0D) + actual_quality_from_children.getOrDefault(i, 0D), Double::sum);
@@ -99,6 +104,8 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
       }
       
       // Write final results 
+      agent.setSolutionQuality(pddcop_solution_quality);
+      agent.setFinalRuntime(agent.getSimulatedTime());
       Utilities.writeFinalResult(agent);
     }
   }

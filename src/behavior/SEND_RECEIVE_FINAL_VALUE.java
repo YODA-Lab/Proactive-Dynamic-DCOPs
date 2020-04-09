@@ -60,7 +60,7 @@ public class SEND_RECEIVE_FINAL_VALUE extends OneShotBehaviour implements MESSAG
         String valueFromNeighbor = valuesFromNeighbor.get(ts);
         String sender = msg.getSender().getLocalName();
         
-        agent.getAgentViewEachTimeStepMap().get(sender).put(ts, valueFromNeighbor);
+        agent.getAgentViewEachTimeStepMap().computeIfAbsent(sender, k -> new HashMap<>()).put(ts, valueFromNeighbor);
       }
     }
     
