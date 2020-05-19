@@ -67,7 +67,6 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
 		}
 		else if (agent.isRoot()) {
 		  Utilities.writeLocalSearchResult(agent);
-      Utilities.writeFinalResult(agent);
 		}
 	}
 
