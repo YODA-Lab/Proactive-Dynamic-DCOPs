@@ -28,10 +28,13 @@ public class Utilities {
 	private static String effectiveRewardHeaders = initializeEffectiveHeader();
 		 
 	public static void writeFinalResult(AgentPDDCOP agent) {
-	  StandardOpenOption writeMode = isFirstInstance(agent) ? TRUNCATE_EXISTING : APPEND;
+	  StandardOpenOption writeMode = agent.isFirstInstance() ? TRUNCATE_EXISTING : APPEND;
 
 	  String result = getResult(agent);
-	  writeToFile(header + result, agent.getOutputFileName(), writeMode);
+	  if (agent.isFirstInstance()) {
+	    result = header + result;
+	  }
+	  writeToFile(result, agent.getOutputFileName(), writeMode);
 	}
 
   public static String initializeHeader() {
@@ -127,10 +130,13 @@ public class Utilities {
   }
   
   public static void writeEffectiveReward(AgentPDDCOP agent) {
-    StandardOpenOption writeMode = isFirstInstance(agent) ? TRUNCATE_EXISTING : APPEND;
+    StandardOpenOption writeMode = agent.isFirstInstance() ? TRUNCATE_EXISTING : APPEND;
 
     String result = getEffectiveResult(agent);
-    writeToFile(effectiveRewardHeaders + result, AgentPDDCOP.OUTPUT_FOLDER + agent.getOutputFileName(), writeMode);    
+    if (agent.isFirstInstance()) {
+      result = effectiveRewardHeaders + result;
+    }
+    writeToFile(result, AgentPDDCOP.OUTPUT_FOLDER + agent.getOutputFileName(), writeMode);    
   }
   
   private static String initializeEffectiveHeader() {
@@ -190,9 +196,5 @@ public class Utilities {
     } catch (IOException x) {
       System.err.println(x);
     }
-	}
-	
-	public static boolean isFirstInstance(AgentPDDCOP agent) {
-	  return agent.getInstanceID() == 0;
 	}
 }

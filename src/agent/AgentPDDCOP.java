@@ -2160,6 +2160,10 @@ public class AgentPDDCOP extends Agent {
     return instanceID;
   }
   
+  public boolean isFirstInstance() {
+    return instanceID == 0;
+  }
+  
   public double getHeuristicWeight() {
     return heuristicWeight;
   }
