@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 
 import agent.AgentPDDCOP;
-import agent.AgentPDDCOP.DcopAlgorithm;
+import agent.AgentPDDCOP.PDDcopAlgorithm;
 import table.Row;
 
 /**
@@ -51,7 +51,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 	  agent.getValuesToSendInVALUEPhase().clear();
 	  
 		if (agent.isRoot()) {
-		  if (agent.isRunningAlgorithm(DcopAlgorithm.C_DPOP)) {
+		  if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DPOP)) {
         agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getCDPOP_value());
 		  }
 		  else {
@@ -124,7 +124,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 			
 	    agent.storeDpopSolution(chosenValue, currentTimeStep);
 	    // Set random solution for REACT algorithm
-	    if (agent.isRunningAlgorithm(DcopAlgorithm.REACT) && currentTimeStep == 0) {
+	    if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT) && currentTimeStep == 0) {
 	      int randomIndex = agent.getRandom().nextInt(agent.getSelfDomain().size());
 	      agent.getChosenValueAtEachTSMap().put(-1, agent.getSelfDomain().get(randomIndex));
 	    }
@@ -134,7 +134,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 			agent.stopStimulatedTiming();
 			
 			if (!agent.isLeaf()) {
-				if (agent.isRunningAlgorithm(DcopAlgorithm.C_DPOP)) {
+				if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DPOP)) {
 					agent.print("Chosen value is " + chosenValue);
 				}
 				

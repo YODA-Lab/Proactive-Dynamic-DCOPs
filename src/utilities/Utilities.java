@@ -71,7 +71,7 @@ public class Utilities {
       sb.append(agent.getFinalRuntime()/1000000 + "\t");      
     }
     
-    sb.append(agent.getAlgorithm() + "\t");
+    sb.append(agent.getPDDCOP_Algorithm() + "\t");
     sb.append(agent.getDynamicType() + "\t");
     sb.append(agent.getAgentCount() + "\t");
     sb.append(agent.getSwitchingCost() + "\t");
@@ -119,7 +119,7 @@ public class Utilities {
       sb.append(runtime/1000000 + "\t");
       sb.append(agent.getInstanceID() + "\t");
       sb.append(agent.getDynamicType() + "\t");
-      sb.append(agent.getAlgorithm() + "\t");
+      sb.append(agent.getPDDCOP_Algorithm() + "\t");
       sb.append(agent.getAgentCount() + "\t");
       sb.append(agent.getSwitchingCost() + "\t");
       sb.append(df.format(agent.getDiscountFactor()) + "\t");
@@ -173,7 +173,7 @@ public class Utilities {
       sb.append(df.format(switchCost) + "\t");
       sb.append(runtime/1000000 + "\t");
       sb.append(agent.getInstanceID() + "\t");
-      sb.append(agent.getAlgorithm() + "\t");
+      sb.append(agent.getPDDCOP_Algorithm() + "\t");
       sb.append(agent.getDynamicType() + "\t");
       sb.append(agent.getAgentCount() + "\t");
       sb.append(agent.getHorizon() + "\n");

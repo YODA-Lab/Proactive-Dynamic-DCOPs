@@ -14,7 +14,7 @@ public class INIT_PROPAGATE_DPOP_VALUE extends OneShotBehaviour implements MESSA
 
 	private static final long serialVersionUID = -9137969826179481705L;
 	
-	private static final long sleepTime = 100; // in milliseconds
+//	private static final long sleepTime = 100; // in milliseconds
 
 	AgentPDDCOP agent;
 	
@@ -25,13 +25,13 @@ public class INIT_PROPAGATE_DPOP_VALUE extends OneShotBehaviour implements MESSA
 	
 	@Override
 	public void action() {
-		try {
-			Thread.sleep(sleepTime);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		
-		agent.addupSimulatedTime(sleepTime);
+//		try {
+//			Thread.sleep(sleepTime);
+//		} catch (InterruptedException e) {
+//			e.printStackTrace();
+//		}
+//		
+//		agent.addupSimulatedTime(sleepTime);
 		
 		for (AID neighborAgentAID : agent.getNeighborAIDSet()) {
 			agent.sendObjectMessageWithTime(neighborAgentAID, agent.getChosenValueAtEachTSMap(),

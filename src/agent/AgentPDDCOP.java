@@ -36,8 +36,11 @@ import behavior.INIT_RECEIVE_DPOP_VALUE;
 import behavior.INIT_RECEIVE_SEND_LS_UTIL;
 import behavior.LS_RECEIVE_SEND_LS_UTIL;
 import behavior.MESSAGE_TYPE;
+import behavior.MGM_RAND_PICK_VALUE;
+import behavior.MGM_SEND_RECEIVE_IMPROVE;
+import behavior.MGM_SEND_RECEIVE_VALUE;
 import behavior.PSEUDOTREE_GENERATION;
-import behavior.RAND_PICK_VALUE;
+import behavior.LS_RAND_PICK_VALUE;
 import behavior.LS_RECEIVE_IMPROVE;
 import behavior.SEND_RECEIVE_FINAL_VALUE;
 import behavior.LS_RECEIVE_VALUE;
@@ -91,7 +94,7 @@ public class AgentPDDCOP extends Agent {
 
 	private static final long serialVersionUID = 2919994686894853596L;
 	
-  public static enum DcopAlgorithm {
+  public static enum PDDcopAlgorithm {
     C_DPOP, 
     LS_SDPOP, 
     LS_RAND, 
@@ -100,6 +103,11 @@ public class AgentPDDCOP extends Agent {
     SDPOP,
     REACT, 
     HYBRID
+  }
+  
+  public static enum DcopAlgorithm {
+    DPOP,
+    MGM
   }
   
   public static enum SwitchingType {
@@ -129,7 +137,8 @@ public class AgentPDDCOP extends Agent {
    * To be read from arguments
    */
   private String agentID;
-	private DcopAlgorithm algorithm;
+	private PDDcopAlgorithm pddcop_algorithm;
+	private DcopAlgorithm dcop_algorithm;
 	private int horizon;
 	private double switchingCost;
 	private DynamicType dynamicType;
@@ -266,12 +275,12 @@ public class AgentPDDCOP extends Agent {
     sb.append("_h=" + horizon);
     sb.append("_discountFactor=" + discountFactor);
     sb.append("_heuristicWeight=" + heuristicWeight);
-    sb.append("_" + algorithm + "_" + dynamicType);
+    sb.append("_" + pddcop_algorithm + "_" + dcop_algorithm + "_" + dynamicType);
     sb.append(".txt");
         
     outputFileName = OUTPUT_FOLDER + sb.toString();    
     if (isRunningLocalSearch()) {
-      String localSearchFolder = OUTPUT_FOLDER + "/" + algorithm + "/";
+      String localSearchFolder = OUTPUT_FOLDER + "/" + pddcop_algorithm + "_" + dcop_algorithm + "/";
       try {
         Files.createDirectories(Paths.get(localSearchFolder));
       } catch (IOException e) {
@@ -290,13 +299,14 @@ public class AgentPDDCOP extends Agent {
     out.println(Arrays.deepToString(args));
     
 		// parameters for running experiments
-		algorithm = DcopAlgorithm.valueOf((String) args[0]);
-		inputFileName = (String) args[1]; // random_x14_y123/instance_10_x14_y123.dzn
-		horizon = Integer.valueOf((String) args[2]);
-		switchingCost = Integer.valueOf((String) args[3]);
-		discountFactor = Double.valueOf((String) args[4]);
-		dynamicType = DynamicType.valueOf((String) args[5]);
-		heuristicWeight = Double.valueOf((String) args[6]);
+		pddcop_algorithm = PDDcopAlgorithm.valueOf((String) args[0]);
+		dcop_algorithm = DcopAlgorithm.valueOf((String) args[1]);
+		inputFileName = (String) args[2]; // random_x14_y123/instance_10_x14_y123.dzn
+		horizon = Integer.valueOf((String) args[3]);
+		switchingCost = Integer.valueOf((String) args[4]);
+		discountFactor = Double.valueOf((String) args[5]);
+		dynamicType = DynamicType.valueOf((String) args[6]);
+		heuristicWeight = Double.valueOf((String) args[7]);
 		
 		String a[] = inputFileName.substring(inputFileName.indexOf("/") + 1).replaceAll("instance_", "").replaceAll(".dzn", "").split("_");
 		
@@ -325,7 +335,8 @@ public class AgentPDDCOP extends Agent {
 	  
     if (isRoot) {
       print("AgentID = " + agentID);
-      print("Algorithm = " + algorithm);
+      print("PDDCOP Algorithm = " + pddcop_algorithm);
+      print("DCOP Algorithm = " + dcop_algorithm);
       print("Input file name = " + inputFileName);
       print("InstanceID = " + instanceID);
       print("Switching cost = " + switchingCost);
@@ -348,30 +359,52 @@ public class AgentPDDCOP extends Agent {
 		
 		// Solve for the last time step for INFINITE
 		if (dynamicType == DynamicType.INFINITE_HORIZON) {
-		  mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, horizon));
-      mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, horizon));
+		  if (dcop_algorithm == DcopAlgorithm.DPOP) {
+		    mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, horizon));
+		    mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, horizon));
+		  }
+		  else if (dcop_algorithm == DcopAlgorithm.MGM) {
+		    //TODO: add other MGM behaviors here
+		    mainSequentialBehaviourList.addSubBehaviour(new MGM_RAND_PICK_VALUE(this, horizon));
+        for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
+          mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_VALUE(this, horizon));
+          mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_IMPROVE(this, horizon));
+        }
+		  }
     }
     
     // Combine DCOPs from 0 -> theLastTimeStep
 		// Take into account the switching cost to the solution at horizon h if there is any
-		if (algorithm == DcopAlgorithm.C_DPOP) {
+		if (pddcop_algorithm == PDDcopAlgorithm.C_DPOP) {
       mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, theLastTimeStep));
       mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, theLastTimeStep));
     }
-    else if (isAlgorithmIn(new DcopAlgorithm[]{DcopAlgorithm.LS_SDPOP, DcopAlgorithm.FORWARD, DcopAlgorithm.HYBRID, DcopAlgorithm.REACT})) {
+    else if (isAlgorithmIn(new PDDcopAlgorithm[]{PDDcopAlgorithm.LS_SDPOP, PDDcopAlgorithm.FORWARD, PDDcopAlgorithm.HYBRID, PDDcopAlgorithm.REACT})) {
       for (int i = 0; i <= theLastTimeStep; i++) {
-        mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
-        mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
+        if (dcop_algorithm == DcopAlgorithm.DPOP) {
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
+        }
+        else if (dcop_algorithm == DcopAlgorithm.MGM) {
+          //TODO: add other MGM behaviors here
+          mainSequentialBehaviourList.addSubBehaviour(new MGM_RAND_PICK_VALUE(this, i));
+        }
       }
     }
-    else if (algorithm == DcopAlgorithm.BACKWARD) {
+    else if (pddcop_algorithm == PDDcopAlgorithm.BACKWARD) {
       for (int i = theLastTimeStep; i >= 0; i--) {
-        mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
-        mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
+        if (dcop_algorithm == DcopAlgorithm.DPOP) {
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
+        }
+        else if (dcop_algorithm == DcopAlgorithm.MGM) {
+          //TODO: add other MGM behaviors here
+          mainSequentialBehaviourList.addSubBehaviour(new MGM_RAND_PICK_VALUE(this, i));
+        }
       }
     }
-    else if (algorithm == DcopAlgorithm.LS_RAND) {
-      mainSequentialBehaviourList.addSubBehaviour(new RAND_PICK_VALUE(this));
+    else if (pddcop_algorithm == PDDcopAlgorithm.LS_RAND) {
+      mainSequentialBehaviourList.addSubBehaviour(new LS_RAND_PICK_VALUE(this));
     }
 		
     // Add the discounted tables to time steps 0 -> lastTimeStep for all algorithms
@@ -382,10 +415,10 @@ public class AgentPDDCOP extends Agent {
     }
          		
 		// Behaviors for local search algorithms
-		if (isAlgorithmIn(new DcopAlgorithm[]{DcopAlgorithm.LS_RAND, DcopAlgorithm.LS_SDPOP})) {
+		if (isAlgorithmIn(new PDDcopAlgorithm[]{PDDcopAlgorithm.LS_RAND, PDDcopAlgorithm.LS_SDPOP})) {
 		  mainSequentialBehaviourList.addSubBehaviour(new INIT_PROPAGATE_DPOP_VALUE(this));
 			mainSequentialBehaviourList.addSubBehaviour(new INIT_RECEIVE_DPOP_VALUE(this));
-			mainSequentialBehaviourList.addSubBehaviour(new INIT_RECEIVE_SEND_LS_UTIL(this, theLastTimeStep));
+			mainSequentialBehaviourList.addSubBehaviour(new INIT_RECEIVE_SEND_LS_UTIL(this));
 
 			mainSequentialBehaviourList.addSubBehaviour(new LS_SEND_IMPROVE(this, theLastTimeStep));
       ParallelBehaviour localSearch = new ParallelBehaviour();
@@ -2122,9 +2155,9 @@ public class AgentPDDCOP extends Agent {
     this.outputFileName = outputFileName;
   }
   
-  public boolean isAlgorithmIn(DcopAlgorithm[] dcopAlgorithmArray) {
-    for (DcopAlgorithm algorithmInArray : dcopAlgorithmArray) { 
-      if (algorithm == algorithmInArray) {
+  public boolean isAlgorithmIn(PDDcopAlgorithm[] dcopAlgorithmArray) {
+    for (PDDcopAlgorithm algorithmInArray : dcopAlgorithmArray) { 
+      if (pddcop_algorithm == algorithmInArray) {
         return true;
       }
     }
@@ -2148,8 +2181,8 @@ public class AgentPDDCOP extends Agent {
     return horizon;
   }
 
-  public DcopAlgorithm getAlgorithm() {
-    return algorithm;
+  public PDDcopAlgorithm getPDDCOP_Algorithm() {
+    return pddcop_algorithm;
   }
 
   public double getSwitchingCost() {
@@ -2172,8 +2205,8 @@ public class AgentPDDCOP extends Agent {
     return agentHeuristicStringMap;
   }
   
-  public boolean isRunningAlgorithm(DcopAlgorithm algorithm) {
-    return this.algorithm == algorithm;
+  public boolean isRunningPddcopAlgorithm(PDDcopAlgorithm algorithm) {
+    return this.pddcop_algorithm == algorithm;
   }
 
   public String getInputFileName() {
@@ -2231,7 +2264,7 @@ public class AgentPDDCOP extends Agent {
    */
   public void storeDpopSolution(String value, int timeStep) {
     // Store solution at each time step
-    if (algorithm == DcopAlgorithm.C_DPOP) {
+    if (pddcop_algorithm == PDDcopAlgorithm.C_DPOP) {
       // Set single value at horizon h 
       if (dynamicType == DynamicType.INFINITE_HORIZON && timeStep == horizon) {
         chosenValueAtEachTSMap.put(horizon, value);
@@ -2258,7 +2291,7 @@ public class AgentPDDCOP extends Agent {
   public Map<Integer, Double> computeActualQualityWithoutTime() {
     Map<Integer, Double> solutionQualityMap = new HashMap<>();
     
-    int initTimeStep = algorithm == DcopAlgorithm.REACT ? -1 : 0;
+    int initTimeStep = pddcop_algorithm == PDDcopAlgorithm.REACT ? -1 : 0;
     
     for (int ts = initTimeStep; ts <= horizon; ts++) {
       List<Table> tableList = ts <= 0 ? actualDpopTableAcrossTimeStep.get(0) : actualDpopTableAcrossTimeStep.get(ts);
@@ -2293,7 +2326,7 @@ public class AgentPDDCOP extends Agent {
   public Map<Integer, Double> computeActualSwitchingCost() {
     Map<Integer, Double> switchingCostMap = new HashMap<>();
     
-    if (algorithm == DcopAlgorithm.REACT) {
+    if (pddcop_algorithm == PDDcopAlgorithm.REACT) {
       switchingCostMap.put(0, switchingCostFunction(chosenValueAtEachTSMap.get(-1), chosenValueAtEachTSMap.get(0)));
     }
     else {switchingCostMap.put(0, 0D);}
@@ -2340,7 +2373,7 @@ public class AgentPDDCOP extends Agent {
   }
 
   public boolean isRunningLocalSearch() {
-    return algorithm == DcopAlgorithm.LS_RAND || algorithm == DcopAlgorithm.LS_SDPOP;
+    return pddcop_algorithm == PDDcopAlgorithm.LS_RAND || pddcop_algorithm == PDDcopAlgorithm.LS_SDPOP;
   }
 
   /**
@@ -2444,5 +2477,31 @@ public class AgentPDDCOP extends Agent {
    */
   public void setRandomSeed(long randomSeed) {
     this.randomSeed = randomSeed;
+  }
+
+  public double computeMGMLocalUtility(String regionValue, int timeStep) {
+    List<Table> tableList = discountedExpectedTableEachTSMap.get(timeStep);
+    
+    double utility = 0;
+    
+    //TODO: review the tableList; need to modify tableList based on the PD_DCOP algorithm
+    for (Table constraintTable : tableList) {
+      List<String> decVariableList = constraintTable.getDecVarLabel();
+      List<String> decValueList = new ArrayList<>();
+      // get value from agentView
+      // add value to decValue -> getUtility
+      for (String neighbor : decVariableList) {
+        if (neighbor.equals(agentID)) {
+          decValueList.add(regionValue);
+        }
+        else {
+          decValueList.add(agentViewEachTimeStepMap.get(neighbor).get(timeStep));
+        }
+      }
+      
+      utility += constraintTable.getUtilityGivenDecValueList(decValueList);
+    }
+    
+    return utility;
   }
 }

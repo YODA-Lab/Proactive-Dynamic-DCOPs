@@ -11,13 +11,13 @@ import agent.AgentPDDCOP;
  * @author khoihd
  *
  */
-public class RAND_PICK_VALUE extends OneShotBehaviour {
+public class LS_RAND_PICK_VALUE extends OneShotBehaviour {
 
 	private static final long serialVersionUID = -6711542619242113965L;
 
 	AgentPDDCOP agent;
 	
-	public RAND_PICK_VALUE(AgentPDDCOP agent) {
+	public LS_RAND_PICK_VALUE(AgentPDDCOP agent) {
 		super(agent);
 		this.agent = agent;
 	}

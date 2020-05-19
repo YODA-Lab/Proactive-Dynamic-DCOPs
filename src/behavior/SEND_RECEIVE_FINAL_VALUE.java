@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import agent.AgentPDDCOP;
-import agent.AgentPDDCOP.DcopAlgorithm;
+import agent.AgentPDDCOP.PDDcopAlgorithm;
 import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
@@ -53,7 +53,7 @@ public class SEND_RECEIVE_FINAL_VALUE extends OneShotBehaviour implements MESSAG
         e.printStackTrace();
       }
       
-      int initTimeStep = agent.isRunningAlgorithm(DcopAlgorithm.REACT) ? -1 : 0;
+      int initTimeStep = agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT) ? -1 : 0;
       
       // Update agent view only value from neighbor is not null
       for (int ts = initTimeStep; ts <= agent.getHorizon(); ts++) {

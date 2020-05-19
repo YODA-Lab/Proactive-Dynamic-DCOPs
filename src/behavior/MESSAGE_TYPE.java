@@ -21,6 +21,8 @@ public interface MESSAGE_TYPE {
 	public static final int INIT_LS_UTIL = 11;
 	public static final int FINAL_UTIL = 12;
 	public static final int FINAL_VALUE = 13;
+	public static final int MGM_VALUE = 14;
+	public static final int MGM_IMPROVE = 14;
 	
 	public static final Map<Integer, String> msgTypes = createMap();
 	
@@ -40,6 +42,8 @@ public interface MESSAGE_TYPE {
       myMap.put(INIT_LS_UTIL, "INIT_LS_UTIL");
       myMap.put(FINAL_UTIL, "FINAL_UTIL");
       myMap.put(FINAL_VALUE, "FINAL_VALUE");
+      myMap.put(MGM_VALUE, "MGM_VALUE");
+      myMap.put(MGM_IMPROVE, "MGM_IMPROVE");
       
 	    return myMap;
 	}
