@@ -366,7 +366,6 @@ public class AgentPDDCOP extends Agent {
 		    mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, horizon));
 		  }
 		  else if (dcop_algorithm == DcopAlgorithm.MGM) {
-		    //TODO: add other MGM behaviors here
 		    mainSequentialBehaviourList.addSubBehaviour(new MGM_RAND_PICK_VALUE(this, horizon));
         for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
           mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_VALUE(this, horizon));
@@ -388,8 +387,11 @@ public class AgentPDDCOP extends Agent {
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
         }
         else if (dcop_algorithm == DcopAlgorithm.MGM) {
-          //TODO: add other MGM behaviors here
           mainSequentialBehaviourList.addSubBehaviour(new MGM_RAND_PICK_VALUE(this, i));
+          for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
+            mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_VALUE(this, i));
+            mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_IMPROVE(this, i));
+          }       
         }
       }
     }
@@ -400,8 +402,11 @@ public class AgentPDDCOP extends Agent {
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
         }
         else if (dcop_algorithm == DcopAlgorithm.MGM) {
-          //TODO: add other MGM behaviors here
           mainSequentialBehaviourList.addSubBehaviour(new MGM_RAND_PICK_VALUE(this, i));
+          for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
+            mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_VALUE(this, i));
+            mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_IMPROVE(this, i));
+          }
         }
       }
     }
