@@ -170,6 +170,8 @@ public class AgentPDDCOP extends Agent {
 	
 	private List<Table> dpopDecisionTableList = new ArrayList<>();
 	private List<Table> dpopRandomTableList = new ArrayList<>();
+	
+	private List<Table> mgmTableList = new ArrayList<>();
 
 	private List<Table> rawDecisionTableList = new ArrayList<>();
 	private List<Table> rawRandomTableList = new ArrayList<>();
@@ -2480,11 +2482,9 @@ public class AgentPDDCOP extends Agent {
   }
 
   public double computeMGMLocalUtility(String regionValue, int timeStep) {
-    List<Table> tableList = discountedExpectedTableEachTSMap.get(timeStep);
+    List<Table> tableList = new ArrayList<>(mgmTableList);
     
-    double utility = 0;
-    
-    //TODO: review the tableList; need to modify tableList based on the PD_DCOP algorithm
+    double utility = 0;    
     for (Table constraintTable : tableList) {
       List<String> decVariableList = constraintTable.getDecVarLabel();
       List<String> decValueList = new ArrayList<>();
@@ -2503,5 +2503,13 @@ public class AgentPDDCOP extends Agent {
     }
     
     return utility;
+  }
+
+  public List<Table> getMgmTableList() {
+    return mgmTableList;
+  }
+
+  public void setMgmTableList(List<Table> mgmTableList) {
+    this.mgmTableList = mgmTableList;
   }
 }

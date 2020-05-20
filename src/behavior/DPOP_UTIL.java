@@ -76,17 +76,9 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	
 	@Override
 	public void action() {	  
-	  // For reuse
-	  // Combine all local constraints and store in non-discounted forms
-//	  if (agent.isPrinting()) {
-//	    agent.print(agent.getDpopRandomTableList() + "");
-//	  }
-	  
 	  if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.LS_SDPOP) && isFirstTimeUTIL()) {
       Table joinedDecisionTable = joinTableList(agent.getDpopDecisionTableList());
-//      for (Table decisionLocalConstraints : agent.getDpopDecisionTableList()) {
-//        joinedDecisionTable = joinTable(joinedDecisionTable, decisionLocalConstraints);
-//      }
+
       agent.setStoredReuseTable(joinedDecisionTable);
 	  } 
 	  else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.LS_SDPOP) && !isFirstTimeUTIL()) {

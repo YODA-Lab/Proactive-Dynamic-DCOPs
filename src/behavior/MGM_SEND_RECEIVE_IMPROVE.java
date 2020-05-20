@@ -7,12 +7,12 @@ import java.util.Map;
 
 import agent.AgentPDDCOP;
 import jade.core.AID;
-import jade.core.behaviours.Behaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 
-public class MGM_SEND_RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
+public class MGM_SEND_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAGE_TYPE {
 
   /**
    * 
@@ -23,24 +23,16 @@ public class MGM_SEND_RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE 
   
   private int timeStep;
   
-  private static final long sleepTime = 100; // in milliseconds
-
   public MGM_SEND_RECEIVE_IMPROVE(AgentPDDCOP agent, int timeStep) {
     super(agent);
     this.agent = agent;
     this.timeStep = timeStep;
   }
+  
 
   @Override
   public void action() {
-    // TODO Auto-generated method stub
-    sendMGMImprove();
-  }
-
-  @Override
-  public boolean done() {
-    // TODO Auto-generated method stub
-    return false;
+    sendMGMImprove();    
   }
 
   /**

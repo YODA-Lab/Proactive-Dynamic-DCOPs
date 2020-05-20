@@ -188,7 +188,7 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 			agent.getParentAndPseudoStrList().add(agent.getParentAID().getLocalName());
 		}
 		
-		// Add tables for DPOP here (containes only parent and pseudo-parents)
+		// Add tables for DPOP here (those contain only parent and pseudo-parents)
     agent.getDpopDecisionTableList().addAll(agent.getTableWithoutChildrenAndPseudochilren(agent.getRawDecisionTableList()));
     agent.getDpopRandomTableList().addAll(agent.getTableWithoutChildrenAndPseudochilren(agent.getRawRandomTableList()));
 	}
