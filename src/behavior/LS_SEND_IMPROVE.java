@@ -13,15 +13,18 @@ public class LS_SEND_IMPROVE extends OneShotBehaviour {
 
 	private AgentPDDCOP agent;
 	private int lastTimeStep;
+	private int localTimeStep;
 	
-	public LS_SEND_IMPROVE(AgentPDDCOP agent, int lastTimeStep) {
+	public LS_SEND_IMPROVE(AgentPDDCOP agent, int lastTimeStep, int localTimeStep) {
 		super(agent);
 		this.agent = agent;
 		this.lastTimeStep = lastTimeStep;
+		this.localTimeStep = localTimeStep;
 	}
 	
 	@Override
 	public void action() {
 		agent.sendImprove(lastTimeStep);
+    agent.print("is done SEND_IMPROVE at iteration: " + localTimeStep);
 	}
 }

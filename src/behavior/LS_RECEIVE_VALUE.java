@@ -1,6 +1,7 @@
 package behavior;
 
-import jade.core.behaviours.Behaviour;
+import jade.core.AID;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
@@ -17,25 +18,27 @@ import agent.AgentPDDCOP;
  * @author khoihd
  *
  */
-public class LS_RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
+public class LS_RECEIVE_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 
 	private static final long serialVersionUID = 3951196053602788669L;
 
 	AgentPDDCOP agent;
-	
 	private int lastTimeStep;
+	private int localTimeStep;
 	
-	public LS_RECEIVE_VALUE(AgentPDDCOP agent, int lastTimeStep) {
+	public LS_RECEIVE_VALUE(AgentPDDCOP agent, int lastTimeStep, int localTimeStep) {
 		super(agent);
 		this.agent = agent;
 		this.lastTimeStep = lastTimeStep;
+		this.localTimeStep = localTimeStep;
 	}
 	
 	@SuppressWarnings("unchecked")
 	@Override
-	public void action() {
-    if (agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION) {
-      return;
+	public void action() {    
+    for (AID neighbor:agent.getNeighborAIDSet()) { 
+      agent.sendObjectMessageWithTime(neighbor, agent.getBestImproveValueMap(), 
+            LS_VALUE, agent.getSimulatedTime());  
     }
 		
 		List<ACLMessage> messageList = waitingForMessageFromNeighborWithTime(LS_VALUE);
@@ -64,6 +67,8 @@ public class LS_RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 		}
 		
 		agent.stopStimulatedTiming();
+		
+    agent.print("is done SEND_RECEIVE_VALUE at iteration: " + localTimeStep);
 	}
 	
   private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {
@@ -93,10 +98,4 @@ public class LS_RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
     agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
     return messageList;
   }
-
-	@Override
-	public boolean done() {
-	  agent.print("is done RECEIVE_VALUE at iteration: " + agent.getLocalSearchIteration());
-		return agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION;
-	}		
 }

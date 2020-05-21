@@ -5,7 +5,7 @@ import java.util.List;
 
 import agent.AgentPDDCOP;
 import utilities.*;
-import jade.core.behaviours.Behaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
@@ -15,24 +15,24 @@ import jade.lang.acl.UnreadableException;
  * @author khoihd
  *
  */
-public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
+public class LS_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 	private static final long serialVersionUID = 4766760189659187968L;
 
 	AgentPDDCOP agent;
+	@SuppressWarnings("unused")
+  private int lastTimeStep;
+	private int localTimeStep;
 	
-	private int lastTimeStep;
-	
-	public LS_RECEIVE_SEND_LS_UTIL(AgentPDDCOP agent, int lastTimeStep) {
+	public LS_RECEIVE_SEND_LS_UTIL(AgentPDDCOP agent, int lastTimeStep, int localTimeStep) {
 		super(agent);
 		this.agent = agent;
 		this.lastTimeStep = lastTimeStep;
+		this.localTimeStep = localTimeStep;
 	}
 	
 	@Override
-	public void action() {
-	  agent.print("iteration " + agent.getLocalSearchIteration());
-	  
+	public void action() {	  
     double utilFromChildren = 0;
     List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(LS_UTIL);
     
@@ -55,25 +55,16 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
 			agent.sendObjectMessageWithTime(agent.getParentAID(), localSearchQuality, LS_UTIL, agent.getSimulatedTime());
 		}
 		else {
-      agent.setLocalSearchQuality(agent.getLocalSearchIteration(),
-          Math.max(localSearchQuality, agent.getLocalSearchQualityAt(agent.getLocalSearchIteration() - 1)));
-      agent.setLocalSearchRuntime(agent.getLocalSearchIteration(), agent.getSimulatedTime());
+      agent.setLocalSearchQuality(localTimeStep,
+          Math.max(localSearchQuality, agent.getLocalSearchQualityAt(localTimeStep - 1)));
+      agent.setLocalSearchRuntime(localTimeStep, agent.getSimulatedTime());
 		}
+				
+    agent.print("is done LS_RECEIVE_SEND_LS_UTIL at iteration: " + localTimeStep);
 		
-		agent.incrementLocalSearchIteration();
-		
-		if (agent.getLocalSearchIteration() < AgentPDDCOP.MAX_ITERATION) {
-		  agent.sendImprove(lastTimeStep);
-		}
-		else if (agent.isRoot()) {
+		if (localTimeStep == AgentPDDCOP.MAX_ITERATION && agent.isRoot()) {
 		  Utilities.writeLocalSearchResult(agent);
 		}
-	}
-
-	@Override
-	public boolean done() {
-	  agent.print("is done LS_RECEIVE_SEND_LS_UTIL at iteration: " + agent.getLocalSearchIteration());
-		return agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION;
 	}
 	
   private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode) {

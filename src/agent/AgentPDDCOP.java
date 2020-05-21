@@ -51,7 +51,6 @@ import table.Table;
 import transition.TransitionFunction;
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.behaviours.ParallelBehaviour;
 import jade.core.behaviours.SequentialBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
@@ -127,7 +126,7 @@ public class AgentPDDCOP extends Agent {
   public static final String INPUT_FOLDER = "input_files";
 
   public static final SwitchingType SWITCHING_TYPE = SwitchingType.CONSTANT;
-  public static final int MAX_ITERATION = 30;
+  public static final int MAX_ITERATION = 20;
   public static final int MARKOV_CONVERGENCE_TIME_STEP = 40;
   public static final boolean RANDOM_TABLE = true;
   public static final boolean DECISION_TABLE = false;
@@ -215,7 +214,7 @@ public class AgentPDDCOP extends Agent {
 	private Map<Integer, String> pickedRandomMap = new HashMap<>();
 	
 	private long currentUTILstartTime;
-	private int localSearchIteration;
+//	private int localSearchIteration;
 
 	// simulated time
 	private ThreadMXBean bean;
@@ -428,12 +427,21 @@ public class AgentPDDCOP extends Agent {
 			mainSequentialBehaviourList.addSubBehaviour(new INIT_RECEIVE_DPOP_VALUE(this));
 			mainSequentialBehaviourList.addSubBehaviour(new INIT_RECEIVE_SEND_LS_UTIL(this));
 
-			mainSequentialBehaviourList.addSubBehaviour(new LS_SEND_IMPROVE(this, theLastTimeStep));
-      ParallelBehaviour localSearch = new ParallelBehaviour();
-      localSearch.addSubBehaviour(new LS_RECEIVE_IMPROVE(this, theLastTimeStep));
-      localSearch.addSubBehaviour(new LS_RECEIVE_VALUE(this, theLastTimeStep));
-      localSearch.addSubBehaviour(new LS_RECEIVE_SEND_LS_UTIL(this, theLastTimeStep));
-      mainSequentialBehaviourList.addSubBehaviour(localSearch);
+			for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
+	      mainSequentialBehaviourList.addSubBehaviour(new LS_SEND_IMPROVE(this, theLastTimeStep, localTS));
+	      mainSequentialBehaviourList.addSubBehaviour(new LS_RECEIVE_IMPROVE(this, theLastTimeStep, localTS));
+	      mainSequentialBehaviourList.addSubBehaviour(new LS_RECEIVE_VALUE(this, theLastTimeStep, localTS));
+	      mainSequentialBehaviourList.addSubBehaviour(new LS_RECEIVE_SEND_LS_UTIL(this, theLastTimeStep, localTS));
+			}
+						
+//			
+//			mainSequentialBehaviourList.addSubBehaviour(new LS_SEND_IMPROVE(this, theLastTimeStep));
+//      ParallelBehaviour localSearch = new ParallelBehaviour();
+//      localSearch.addSubBehaviour(new LS_RECEIVE_IMPROVE(this, theLastTimeStep));
+//      localSearch.addSubBehaviour(new LS_RECEIVE_VALUE(this, theLastTimeStep));
+//      localSearch.addSubBehaviour(new LS_RECEIVE_SEND_LS_UTIL(this, theLastTimeStep));
+      
+//      mainSequentialBehaviourList.addSubBehaviour(localSearch);
 		}
 
 		mainSequentialBehaviourList.addSubBehaviour(new SEND_RECEIVE_FINAL_VALUE(this));
@@ -2006,17 +2014,17 @@ public class AgentPDDCOP extends Agent {
 		this.agentViewEachTimeStepMap = agentViewEachTimeStepMap;
 	}
 
-	public int getLocalSearchIteration() {
-		return localSearchIteration;
-	}
-
-	public void setLsIteration(int lsIteration) {
-		this.localSearchIteration = lsIteration;
-	}
-
-	public void incrementLocalSearchIteration() {
-		this.localSearchIteration++;
-	}
+//	public int getLocalSearchIteration() {
+//		return localSearchIteration;
+//	}
+//
+//	public void setLsIteration(int lsIteration) {
+//		this.localSearchIteration = lsIteration;
+//	}
+//
+//	public void incrementLocalSearchIteration() {
+//		this.localSearchIteration++;
+//	}
 
 	public Map<Integer, String> getBestImproveValueMap() {
 		return bestImproveValueMap;

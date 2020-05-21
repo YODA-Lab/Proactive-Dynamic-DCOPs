@@ -1,7 +1,6 @@
 package behavior;
 
-import jade.core.AID;
-import jade.core.behaviours.Behaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
@@ -18,26 +17,24 @@ import agent.AgentPDDCOP;;
  * @author khoihd
  *
  */
-public class LS_RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
+public class LS_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAGE_TYPE {
 
 	private static final long serialVersionUID = -5530908625966260157L;
 
 	private AgentPDDCOP agent;
 	private int lastTimeStep;
+	private int localTimeStep;
 	
-	public LS_RECEIVE_IMPROVE(AgentPDDCOP agent, int lastTimeStep) {
+	public LS_RECEIVE_IMPROVE(AgentPDDCOP agent, int lastTimeStep, int localTimeStep) {
 		super(agent);
 		this.agent = agent;
 		this.lastTimeStep = lastTimeStep;
+		this.localTimeStep = localTimeStep;
 	}
 	
 	@SuppressWarnings("unchecked")
   @Override
 	public void action() {
-    if (agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION) {
-      return;
-    }
-		
 		List<ACLMessage> messageList = waitingForMessageFromNeighborWithTime(LS_IMPROVE);
 		
 		agent.startSimulatedTiming();
@@ -76,13 +73,8 @@ public class LS_RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 		}
 		
     agent.stopStimulatedTiming();
-    
-		for (AID neighbor:agent.getNeighborAIDSet()) { 
-			agent.sendObjectMessageWithTime(neighbor, agent.getBestImproveValueMap(), 
-						LS_VALUE, agent.getSimulatedTime());	
-		}
 		
-    agent.print("is done RECEIVE_IMPROVE at iteration = " + agent.getLocalSearchIteration());
+    agent.print("is done RECEIVE_IMPROVE at iteration = " + localTimeStep);
 	}
 	
   private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {
@@ -111,9 +103,4 @@ public class LS_RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
     agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
     return messageList;
   }
-
-	@Override
-	public boolean done() {
-		return agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION;
-	}
 }
