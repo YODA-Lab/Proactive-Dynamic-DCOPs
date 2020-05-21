@@ -42,7 +42,8 @@ public class Utilities {
     sb.append("InstanceID" + "\t");
     sb.append("Utility" + "\t");
     sb.append("Time (ms)" + "\t");
-    sb.append("Algorithm" + "\t");
+    sb.append("PD_DCOP_Algorithm" + "\t");
+    sb.append("DCOP_Algorithm" + "\t");
     sb.append("Dynamic" + "\t");
     sb.append("Agents" + "\t");
     sb.append("Switching cost" + "\t");
@@ -72,6 +73,7 @@ public class Utilities {
     }
     
     sb.append(agent.getPDDCOP_Algorithm() + "\t");
+    sb.append(agent.getDcop_algorithm() + "\t");
     sb.append(agent.getDynamicType() + "\t");
     sb.append(agent.getAgentCount() + "\t");
     sb.append(agent.getSwitchingCost() + "\t");
@@ -93,7 +95,8 @@ public class Utilities {
     sb.append("Utility" + "\t");
     sb.append("Time (ms)" + "\t");
     sb.append("InstanceID" + "\t");
-    sb.append("Algorithm" + "\t");
+    sb.append("PD_DCOP_Algorithm" + "\t");
+    sb.append("DCOP_Algorithm" + "\t");
     sb.append("Dynamic" + "\t");
     sb.append("Agents" + "\t");
     sb.append("Switching cost" + "\t");
@@ -120,6 +123,7 @@ public class Utilities {
       sb.append(agent.getInstanceID() + "\t");
       sb.append(agent.getDynamicType() + "\t");
       sb.append(agent.getPDDCOP_Algorithm() + "\t");
+      sb.append(agent.getDcop_algorithm() + "\t");
       sb.append(agent.getAgentCount() + "\t");
       sb.append(agent.getSwitchingCost() + "\t");
       sb.append(df.format(agent.getDiscountFactor()) + "\t");
@@ -146,7 +150,8 @@ public class Utilities {
     sb.append("EffectiveSwitchingCost" + "\t");
     sb.append("EffectiveSolvingTime" + "\t");
     sb.append("InstanceID" + "\t");
-    sb.append("Algorithm" + "\t");
+    sb.append("PD_DCOP_Algorithm" + "\t");
+    sb.append("DCOP_Algorithm" + "\t");
     sb.append("Dynamic" + "\t");
     sb.append("Agents" + "\t");
     sb.append("SwitchingCost" + "\t");
@@ -174,6 +179,7 @@ public class Utilities {
       sb.append(runtime/1000000 + "\t");
       sb.append(agent.getInstanceID() + "\t");
       sb.append(agent.getPDDCOP_Algorithm() + "\t");
+      sb.append(agent.getDcop_algorithm() + "\t");
       sb.append(agent.getDynamicType() + "\t");
       sb.append(agent.getAgentCount() + "\t");
       sb.append(agent.getHorizon() + "\n");

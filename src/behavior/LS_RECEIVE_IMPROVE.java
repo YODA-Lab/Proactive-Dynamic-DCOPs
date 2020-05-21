@@ -81,6 +81,8 @@ public class LS_RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 			agent.sendObjectMessageWithTime(neighbor, agent.getBestImproveValueMap(), 
 						LS_VALUE, agent.getSimulatedTime());	
 		}
+		
+    agent.print("is done RECEIVE_IMPROVE at iteration = " + agent.getLocalSearchIteration());
 	}
 	
   private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {
@@ -112,7 +114,6 @@ public class LS_RECEIVE_IMPROVE extends Behaviour implements MESSAGE_TYPE {
 
 	@Override
 	public boolean done() {
-	  agent.print("is done RECEIVE_IMPROVE at iteration = " + agent.getLocalSearchIteration());
 		return agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION;
 	}
 }

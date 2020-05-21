@@ -60,7 +60,7 @@ public class MGM_SEND_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAG
       agent.sendObjectMessageWithTime(neighbor, maxGain, MESSAGE_TYPE.MGM_IMPROVE, agent.getSimulatedTime());
     }
 
-    List<ACLMessage> receivedMessageFromNeighborList = waitingForMessageFromChildrenWithTime(MGM_IMPROVE);
+    List<ACLMessage> receivedMessageFromNeighborList = waitingForMessageFromNeighborWithTime(MGM_IMPROVE);
     
     agent.startSimulatedTiming();
     
@@ -85,10 +85,10 @@ public class MGM_SEND_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAG
     agent.stopStimulatedTiming();
   }
   
-  private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode) {
+  private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
-    while (messageList.size() < agent.getChildrenAIDSet().size()) {
+    while (messageList.size() < agent.getNeighborAIDSet().size()) {
       agent.startSimulatedTiming();
       
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);

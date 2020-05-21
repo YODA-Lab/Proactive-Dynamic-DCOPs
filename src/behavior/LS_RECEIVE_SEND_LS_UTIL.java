@@ -72,7 +72,7 @@ public class LS_RECEIVE_SEND_LS_UTIL extends Behaviour implements MESSAGE_TYPE {
 
 	@Override
 	public boolean done() {
-	  agent.print("is done LS_RECEIVE_SEND_LS_UTIL: " + agent.getLocalSearchIteration());
+	  agent.print("is done LS_RECEIVE_SEND_LS_UTIL at iteration: " + agent.getLocalSearchIteration());
 		return agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION;
 	}
 	

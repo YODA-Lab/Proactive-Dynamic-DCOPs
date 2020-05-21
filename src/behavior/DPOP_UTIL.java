@@ -300,7 +300,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     agent.print("has chosen utility " + maxUtility);
     
     agent.storeDpopSolution(chosenValue, currentTimeStep);
-    if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DPOP)) {
+    if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DCOP)) {
       agent.setCDPOP_value(chosenValue);
     }
 
@@ -336,7 +336,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       else {
         // Compute the switching cost constraint
         // Collapse DCOPs from t = 0 to t = horizon - 1
-        if (algorithm == PDDcopAlgorithm.C_DPOP) {
+        if (algorithm == PDDcopAlgorithm.C_DCOP) {
           dpopTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon() - 1, 1D));
           dpopTableList.addAll(agent.computeCollapsedRandomTableList(agent.getDpopRandomTableList(), agent.getHorizon() - 1, 1D));
           dpopTableList.add(agent.computeCollapsedSwitchingCostTable(agent.getSelfDomain(), agent.getHorizon() - 1, 1D));
@@ -368,7 +368,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     else if (dynamicType == DynamicType.FINITE_HORIZON) {
       double df = agent.getDiscountFactor();
       
-      if (algorithm == PDDcopAlgorithm.C_DPOP) {
+      if (algorithm == PDDcopAlgorithm.C_DCOP) {
           dpopTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(), agent.getHorizon(), df));
           dpopTableList.addAll(agent.computeCollapsedRandomTableList(agent.getDpopRandomTableList(), agent.getHorizon(), df));
           dpopTableList.add(agent.computeCollapsedSwitchingCostTable(agent.getSelfDomain(), agent.getHorizon(), df));

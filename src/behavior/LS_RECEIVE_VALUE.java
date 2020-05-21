@@ -96,7 +96,7 @@ public class LS_RECEIVE_VALUE extends Behaviour implements MESSAGE_TYPE {
 
 	@Override
 	public boolean done() {
-	  agent.print("is done RECEIVE_VALUE: " + agent.getLocalSearchIteration());
+	  agent.print("is done RECEIVE_VALUE at iteration: " + agent.getLocalSearchIteration());
 		return agent.getLocalSearchIteration() == AgentPDDCOP.MAX_ITERATION;
 	}		
 }

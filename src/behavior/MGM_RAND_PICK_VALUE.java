@@ -34,12 +34,14 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
   public void action() {
     agent.startSimulatedTiming();
     
-    List<String> domain = agent.getDecisionVariableDomainMap().get(agent.getAgentID());
+    List<String> domain = agent.getSelfDomain();
     
     agent.getChosenValueAtEachTSMap().put(timeStep, domain.get(agent.getRandom().nextInt(domain.size())));
     
     agent.print("choose random value at time step " + timeStep + ": " + agent.getChosenValueAtEachTSMap().get(timeStep));
     
+    // Compute expected table for the DCOP at this time step
+    agent.getMgmTableList().clear();
     agent.getMgmTableList().addAll(computeDiscountedMGMAndSwitchingCostTables(agent.getDynamicType(), agent.getPDDCOP_Algorithm(), timeStep));
     
     agent.stopStimulatedTiming();
@@ -57,9 +59,6 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
   private List<Table> computeDiscountedMGMAndSwitchingCostTables(DynamicType dynamicType, PDDcopAlgorithm algorithm, int timeStep) {
     List<Table> mgmTableList = new ArrayList<>();
     
-    agent.getRawDecisionTableList();
-    agent.getRawRandomTableList();
-    
     if (dynamicType == DynamicType.INFINITE_HORIZON) {
       // When currentTimeStep == agent.getHorizon(), solve for the last time step
       if (timeStep == agent.getHorizon()) {
@@ -69,7 +68,7 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
       else {
         // Compute the switching cost constraint
         // Collapse DCOPs from t = 0 to t = horizon - 1
-        if (algorithm == PDDcopAlgorithm.C_DPOP) {
+        if (algorithm == PDDcopAlgorithm.C_DCOP) {
           mgmTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getRawDecisionTableList(), agent.getHorizon() - 1, 1D));
           mgmTableList.addAll(agent.computeCollapsedRandomTableList(agent.getRawRandomTableList(), agent.getHorizon() - 1, 1D));
           mgmTableList.add(agent.computeCollapsedSwitchingCostTable(agent.getSelfDomain(), agent.getHorizon() - 1, 1D));
@@ -101,7 +100,7 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
     else if (dynamicType == DynamicType.FINITE_HORIZON) {
       double df = agent.getDiscountFactor();
       
-      if (algorithm == PDDcopAlgorithm.C_DPOP) {
+      if (algorithm == PDDcopAlgorithm.C_DCOP) {
         mgmTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getRawDecisionTableList(), agent.getHorizon(), df));
         mgmTableList.addAll(agent.computeCollapsedRandomTableList(agent.getRawRandomTableList(), agent.getHorizon(), df));
         mgmTableList.add(agent.computeCollapsedSwitchingCostTable(agent.getSelfDomain(), agent.getHorizon(), df));

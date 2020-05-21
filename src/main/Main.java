@@ -13,7 +13,7 @@ public class Main {
 
   public static void main(String[] args) {    
     // parameters for running experiments
-    String inputFileName = args[1]; 
+    String inputFileName = args[2]; 
     System.out.println(Arrays.toString(args));
     System.out.println(inputFileName);
     System.out.println(inputFileName.substring(inputFileName.indexOf("/")));

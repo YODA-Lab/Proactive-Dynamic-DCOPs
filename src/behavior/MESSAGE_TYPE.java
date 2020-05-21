@@ -22,7 +22,7 @@ public interface MESSAGE_TYPE {
 	public static final int FINAL_UTIL = 12;
 	public static final int FINAL_VALUE = 13;
 	public static final int MGM_VALUE = 14;
-	public static final int MGM_IMPROVE = 14;
+	public static final int MGM_IMPROVE = 15;
 	
 	public static final Map<Integer, String> msgTypes = createMap();
 	
