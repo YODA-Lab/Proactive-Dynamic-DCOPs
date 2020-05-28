@@ -61,10 +61,10 @@ public class MGM_SEND_RECEIVE_VALUE extends OneShotBehaviour implements MESSAGE_
       agent.startSimulatedTiming();
       
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
-      ACLMessage receivedMessage = myAgent.receive(template);
+      ACLMessage receivedMessage = myAgent.blockingReceive(template);
         
       agent.stopStimulatedTiming();
-      if (receivedMessage != null) {
+//      if (receivedMessage != null) {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
           
         if (timeFromReceiveMessage > agent.getSimulatedTime()) {
@@ -72,11 +72,11 @@ public class MGM_SEND_RECEIVE_VALUE extends OneShotBehaviour implements MESSAGE_
         }
         
         messageList.add(receivedMessage); 
-      }
-      else {
-          if (agent.isPrinting()) {agent.print("Waiting in MGM VALUE");}
-          block();
-      }
+//      }
+//      else {
+//          if (agent.isPrinting()) {agent.print("Waiting in MGM VALUE");}
+//          block();
+//      }
     }
     
     agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());

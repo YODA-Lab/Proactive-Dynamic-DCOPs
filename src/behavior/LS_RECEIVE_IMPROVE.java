@@ -84,10 +84,10 @@ public class LS_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAGE_TYPE
       agent.startSimulatedTiming();
       
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
-      ACLMessage receivedMessage = myAgent.receive(template);
+      ACLMessage receivedMessage = myAgent.blockingReceive(template);
         
       agent.stopStimulatedTiming();
-      if (receivedMessage != null) {
+//      if (receivedMessage != null) {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
           
         if (timeFromReceiveMessage > agent.getSimulatedTime()) {
@@ -95,10 +95,10 @@ public class LS_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAGE_TYPE
         }
         
         messageList.add(receivedMessage); 
-      }
-      else {
-          block();
-      }
+//      }
+//      else {
+//          block();
+//      }
     }
     agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
     return messageList;

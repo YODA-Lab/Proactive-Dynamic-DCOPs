@@ -167,20 +167,20 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
       agent.startSimulatedTiming();
 
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
-      receivedMessage = myAgent.receive(template);
+      receivedMessage = myAgent.blockingReceive(template);
 
       agent.stopStimulatedTiming();
-      if (receivedMessage != null) {
+//      if (receivedMessage != null) {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
         if (timeFromReceiveMessage > agent.getSimulatedTime()) {
           agent.setSimulatedTime(timeFromReceiveMessage);
         }
         
         break;
-      } 
-      else {
-        block();
-      }
+//      } 
+//      else {
+//        block();
+//      }
     }
 
     agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());

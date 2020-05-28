@@ -63,10 +63,10 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
       agent.startSimulatedTiming();
       
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
-      ACLMessage receivedMessage = myAgent.receive(template);
+      ACLMessage receivedMessage = myAgent.blockingReceive(template);
         
       agent.stopStimulatedTiming();
-      if (receivedMessage != null) {
+//      if (receivedMessage != null) {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
           
         if (timeFromReceiveMessage > agent.getSimulatedTime()) {
@@ -74,10 +74,10 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
         }
         
         messageList.add(receivedMessage); 
-      }
-      else {
-          block();
-      }
+//      }
+//      else {
+//          block();
+//      }
     }
     
     agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
