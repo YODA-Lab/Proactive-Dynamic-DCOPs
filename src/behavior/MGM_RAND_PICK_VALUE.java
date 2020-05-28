@@ -22,12 +22,12 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
 
   private AgentPDDCOP agent;
   
-  private int timeStep;
+  private int pd_dcop_time_step;
   
-  public MGM_RAND_PICK_VALUE(AgentPDDCOP agent, int timeStep) {
+  public MGM_RAND_PICK_VALUE(AgentPDDCOP agent, int pd_dcop_time_step) {
     super(agent);
     this.agent = agent;
-    this.timeStep = timeStep;
+    this.pd_dcop_time_step = pd_dcop_time_step;
   }
   
   @Override
@@ -36,13 +36,13 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
     
     List<String> domain = agent.getSelfDomain();
     
-    agent.getChosenValueAtEachTSMap().put(timeStep, domain.get(agent.getRandom().nextInt(domain.size())));
+    agent.getChosenValueAtEachTSMap().put(pd_dcop_time_step, domain.get(agent.getRandom().nextInt(domain.size())));
     
-    agent.print("choose random value at time step " + timeStep + ": " + agent.getChosenValueAtEachTSMap().get(timeStep));
+    agent.print("choose random value at time step " + pd_dcop_time_step + ": " + agent.getChosenValueAtEachTSMap().get(pd_dcop_time_step));
     
     // Compute expected table for the DCOP at this time step
     agent.getMgmTableList().clear();
-    agent.getMgmTableList().addAll(computeDiscountedMGMAndSwitchingCostTables(agent.getDynamicType(), agent.getPDDCOP_Algorithm(), timeStep));
+    agent.getMgmTableList().addAll(computeDiscountedMGMAndSwitchingCostTables(agent.getDynamicType(), agent.getPDDCOP_Algorithm(), pd_dcop_time_step));
     
     agent.stopStimulatedTiming();
   }

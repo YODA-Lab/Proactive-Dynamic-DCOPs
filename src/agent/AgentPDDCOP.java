@@ -38,6 +38,7 @@ import behavior.LS_RECEIVE_SEND_LS_UTIL;
 import behavior.MESSAGE_TYPE;
 import behavior.MGM_RAND_PICK_VALUE;
 import behavior.MGM_SEND_RECEIVE_IMPROVE;
+import behavior.MGM_SEND_RECEIVE_UTIL;
 import behavior.MGM_SEND_RECEIVE_VALUE;
 import behavior.PSEUDOTREE_GENERATION;
 import behavior.LS_RAND_PICK_VALUE;
@@ -126,7 +127,7 @@ public class AgentPDDCOP extends Agent {
   public static final String INPUT_FOLDER = "input_files";
 
   public static final SwitchingType SWITCHING_TYPE = SwitchingType.CONSTANT;
-  public static final int MAX_ITERATION = 20;
+  public static final int MAX_ITERATION = 40;
   public static final int MARKOV_CONVERGENCE_TIME_STEP = 40;
   public static final boolean RANDOM_TABLE = true;
   public static final boolean DECISION_TABLE = false;
@@ -228,9 +229,18 @@ public class AgentPDDCOP extends Agent {
 
 	// List<String> neighborWithRandList;
 
-	// Store the quality of the best LS solution
+	// Mapping from iteration to quality/runtime. Store the quality of the best LS solution.
 	private Map<Integer, Double> localSearchQualityMap = new HashMap<>();
 	private Map<Integer, Long> localSearchRuntimeMap = new HashMap<>();
+	
+	private Map<Integer, Double> MGMQualityMap = new HashMap<>();
+	private Map<Integer, Long> MGMRuntimeMap = new HashMap<>();
+	
+//	private double lastMGMQuality = 0D;
+//	private long lastMGMRuntime = 0L;
+	
+	// Mapping from horizon to the difference in runtime of when the solution converges to the last time step
+	private Map<Integer, Long> MGMdifferenceRuntimeMap = new HashMap<>();
 	
 	private boolean stop = false;
 	private String lastLine = "";
@@ -280,7 +290,7 @@ public class AgentPDDCOP extends Agent {
     sb.append(".txt");
         
     outputFileName = OUTPUT_FOLDER + sb.toString();    
-    if (isRunningLocalSearch()) {
+    if (isRunningPDDCOPLocalSearch()) {
       String localSearchFolder = OUTPUT_FOLDER + "/" + pddcop_algorithm + "_" + dcop_algorithm + "/";
       try {
         Files.createDirectories(Paths.get(localSearchFolder));
@@ -369,6 +379,7 @@ public class AgentPDDCOP extends Agent {
         for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
           mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_VALUE(this, horizon));
           mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_IMPROVE(this, horizon));
+          mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_UTIL(this, horizon, localTS));
         }
 		  }
     }
@@ -376,8 +387,10 @@ public class AgentPDDCOP extends Agent {
     // Combine DCOPs from 0 -> theLastTimeStep
 		// Take into account the switching cost to the solution at horizon h if there is any
 		if (pddcop_algorithm == PDDcopAlgorithm.C_DCOP) {
-      mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, theLastTimeStep));
-      mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, theLastTimeStep));
+		  if (dcop_algorithm == DcopAlgorithm.DPOP) {
+		    mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, theLastTimeStep));
+		    mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, theLastTimeStep));
+		  }
     }
     else if (isAlgorithmIn(new PDDcopAlgorithm[]{PDDcopAlgorithm.LS_SDPOP, PDDcopAlgorithm.FORWARD, PDDcopAlgorithm.HYBRID, PDDcopAlgorithm.REACT})) {
       for (int i = 0; i <= theLastTimeStep; i++) {
@@ -390,6 +403,7 @@ public class AgentPDDCOP extends Agent {
           for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
             mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_VALUE(this, i));
             mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_IMPROVE(this, i));
+            mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_UTIL(this, i, localTS));
           }       
         }
       }
@@ -405,6 +419,7 @@ public class AgentPDDCOP extends Agent {
           for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
             mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_VALUE(this, i));
             mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_IMPROVE(this, i));
+            mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_UTIL(this, i, localTS));
           }
         }
       }
@@ -433,15 +448,6 @@ public class AgentPDDCOP extends Agent {
 	      mainSequentialBehaviourList.addSubBehaviour(new LS_RECEIVE_VALUE(this, theLastTimeStep, localTS));
 	      mainSequentialBehaviourList.addSubBehaviour(new LS_RECEIVE_SEND_LS_UTIL(this, theLastTimeStep, localTS));
 			}
-						
-//			
-//			mainSequentialBehaviourList.addSubBehaviour(new LS_SEND_IMPROVE(this, theLastTimeStep));
-//      ParallelBehaviour localSearch = new ParallelBehaviour();
-//      localSearch.addSubBehaviour(new LS_RECEIVE_IMPROVE(this, theLastTimeStep));
-//      localSearch.addSubBehaviour(new LS_RECEIVE_VALUE(this, theLastTimeStep));
-//      localSearch.addSubBehaviour(new LS_RECEIVE_SEND_LS_UTIL(this, theLastTimeStep));
-      
-//      mainSequentialBehaviourList.addSubBehaviour(localSearch);
 		}
 
 		mainSequentialBehaviourList.addSubBehaviour(new SEND_RECEIVE_FINAL_VALUE(this));
@@ -2388,7 +2394,7 @@ public class AgentPDDCOP extends Agent {
     System.out.println("Agent " + agentID + " " + s);
   }
 
-  public boolean isRunningLocalSearch() {
+  public boolean isRunningPDDCOPLocalSearch() {
     return pddcop_algorithm == PDDcopAlgorithm.LS_RAND || pddcop_algorithm == PDDcopAlgorithm.LS_SDPOP;
   }
 
@@ -2538,5 +2544,61 @@ public class AgentPDDCOP extends Agent {
    */
   public void setDcop_algorithm(DcopAlgorithm dcop_algorithm) {
     this.dcop_algorithm = dcop_algorithm;
+  }
+
+  public Map<Integer, Double> getMGMQualityMap() {
+    return MGMQualityMap;
+  }
+
+  public Map<Integer, Long> getMGMRuntimeMap() {
+    return MGMRuntimeMap;
+  }
+
+  public Map<Integer, Long> getMGMdifferenceRuntimeMap() {
+    return MGMdifferenceRuntimeMap;
+  }
+
+  public void setMGMdifferenceRuntimeMap(Map<Integer, Long> mGMdifferenceRuntimeMap) {
+    MGMdifferenceRuntimeMap = mGMdifferenceRuntimeMap;
+  }
+
+  public void setMGMQuality(int localTimeStep, double quality) {
+    MGMQualityMap.put(localTimeStep, quality);
+  }
+
+  public void setMGMRuntime(int localTimeStep, long runtime) {
+    MGMRuntimeMap.put(localTimeStep, runtime);    
+  }
+
+  /**
+   * @return the total utilities of constraints between self agent and parents/pseudo-parents
+   */
+  public double getLocalUtilitiesForUTIL(String regionValue, int timeStep) {
+    List<Table> tableList = new ArrayList<>(mgmTableList);
+    
+    double utility = 0;    
+    for (Table constraintTable : tableList) {
+      // Ignore the table if contains child/pseudochild
+      List<String> tempLabel = new ArrayList<>(constraintTable.getDecVarLabel());
+      tempLabel.remove(agentID);
+      tempLabel.removeAll(parentAndPseudoStrList);
+      if (!tempLabel.isEmpty()) {continue;}
+      
+      List<String> decValueList = new ArrayList<>();
+      // get value from agentView
+      // add value to decValue -> getUtility
+      for (String regionInScope : constraintTable.getDecVarLabel()) {
+        if (regionInScope.equals(agentID)) {
+          decValueList.add(regionValue);
+        }
+        else {
+          decValueList.add(agentViewEachTimeStepMap.get(regionInScope).get(timeStep));
+        }
+      }
+      
+      utility += constraintTable.getUtilityGivenDecValueList(decValueList);
+    }
+    
+    return utility;
   }
 }

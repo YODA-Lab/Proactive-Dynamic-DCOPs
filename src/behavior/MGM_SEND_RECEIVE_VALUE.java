@@ -20,18 +20,18 @@ public class MGM_SEND_RECEIVE_VALUE extends OneShotBehaviour implements MESSAGE_
   
   private AgentPDDCOP agent;
   
-  private int timeStep;
+  private int pd_dcop_time_step;
   
-  public MGM_SEND_RECEIVE_VALUE(AgentPDDCOP agent, int timeStep) {
+  public MGM_SEND_RECEIVE_VALUE(AgentPDDCOP agent, int pd_dcop_time_step) {
     super(agent);
     this.agent = agent;
-    this.timeStep = timeStep;
+    this.pd_dcop_time_step = pd_dcop_time_step;
   }
   
   @Override
   public void action() {
     for (AID neighborAgentAID : agent.getNeighborAIDSet()) {
-      agent.sendObjectMessageWithTime(neighborAgentAID, agent.getChosenValueAtEachTSMap().get(timeStep),
+      agent.sendObjectMessageWithTime(neighborAgentAID, agent.getChosenValueAtEachTSMap().get(pd_dcop_time_step),
           MGM_VALUE, agent.getSimulatedTime());
     }
     
@@ -48,7 +48,7 @@ public class MGM_SEND_RECEIVE_VALUE extends OneShotBehaviour implements MESSAGE_
         e.printStackTrace();
       }
 
-      agent.getAgentViewEachTimeStepMap().computeIfAbsent(sender, k-> new HashMap<>()).put(timeStep, valueFromThisNeighbor);
+      agent.getAgentViewEachTimeStepMap().computeIfAbsent(sender, k-> new HashMap<>()).put(pd_dcop_time_step, valueFromThisNeighbor);
     }
     
     agent.stopStimulatedTiming();
@@ -74,6 +74,7 @@ public class MGM_SEND_RECEIVE_VALUE extends OneShotBehaviour implements MESSAGE_
         messageList.add(receivedMessage); 
       }
       else {
+          if (agent.isPrinting()) {agent.print("Waiting in MGM VALUE");}
           block();
       }
     }

@@ -23,6 +23,7 @@ public interface MESSAGE_TYPE {
 	public static final int FINAL_VALUE = 13;
 	public static final int MGM_VALUE = 14;
 	public static final int MGM_IMPROVE = 15;
+	public static final int MGM_UTIL = 16;
 	
 	public static final Map<Integer, String> msgTypes = createMap();
 	
@@ -36,7 +37,6 @@ public interface MESSAGE_TYPE {
       myMap.put(LS_VALUE, "LS_VALUE");
       myMap.put(LS_UTIL, "LS_UTIL");
       myMap.put(RAND_VALUE, "RAND_VALUE");
-//      myMap.put(LS_ITERATION_DONE, "LS_ITERATION_DONE");
       myMap.put(PSEUDOTREE, "PSEUDOTREE");
       myMap.put(INFO, "INFO");
       myMap.put(INIT_LS_UTIL, "INIT_LS_UTIL");
@@ -44,6 +44,7 @@ public interface MESSAGE_TYPE {
       myMap.put(FINAL_VALUE, "FINAL_VALUE");
       myMap.put(MGM_VALUE, "MGM_VALUE");
       myMap.put(MGM_IMPROVE, "MGM_IMPROVE");
+      myMap.put(MGM_UTIL, "MGM_UTIL");
       
 	    return myMap;
 	}

@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import agent.AgentPDDCOP;
+import agent.AgentPDDCOP.DcopAlgorithm;
 
 public class Utilities {	
 	/**
@@ -57,19 +58,35 @@ public class Utilities {
     
     StringBuffer sb = new StringBuffer();
     sb.append(agent.getInstanceID() + "\t");    
-    if (agent.isRunningLocalSearch()) {
+    if (agent.isRunningPDDCOPLocalSearch()) {
       // Get the runtime where the solution quality converges
       for (int i = -1; i < agent.getLocalSearchQualityMap().size() - 2; i++) {
         if (Double.compare(agent.getLocalSearchQualityMap().get(i), agent.getLocalSearchQualityMap().get(i + 1)) == 0) {
           sb.append(df.format(agent.getLocalSearchQualityMap().get(i)) + "\t");
-          sb.append(agent.getLocalSearchRuntimeMap().get(i)/1000000 + "\t");
+          if (agent.getDcop_algorithm() == DcopAlgorithm.MGM) {
+            long runtime = agent.getLocalSearchRuntimeMap().get(i);
+            long totalWastedRuntime = agent.getMGMdifferenceRuntimeMap().values().stream().mapToLong(Long::longValue).sum();           
+            sb.append((runtime - totalWastedRuntime)/1000000 + "\t");
+            agent.print("getMGMdifferenceRuntimeMap=" + agent.getMGMdifferenceRuntimeMap());
+          } 
+          else {
+            sb.append(agent.getLocalSearchRuntimeMap().get(i)/1000000 + "\t");
+          }
           break;
         }
       }
     }
     else {
       sb.append(df.format(agent.getSolutionQuality()) + "\t");
-      sb.append(agent.getFinalRuntime()/1000000 + "\t");      
+      if (agent.getDcop_algorithm() == DcopAlgorithm.MGM) {
+        long runtime = agent.getFinalRuntime();
+        long totalWastedRuntime = agent.getMGMdifferenceRuntimeMap().values().stream().mapToLong(Long::longValue).sum();           
+        sb.append((runtime - totalWastedRuntime)/1000000 + "\t");
+        agent.print("getMGMdifferenceRuntimeMap=" + agent.getMGMdifferenceRuntimeMap());
+      } 
+      else {
+        sb.append(agent.getFinalRuntime()/1000000 + "\t");
+      }
     }
     
     sb.append(agent.getPDDCOP_Algorithm() + "\t");

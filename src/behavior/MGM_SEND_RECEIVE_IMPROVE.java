@@ -105,6 +105,7 @@ public class MGM_SEND_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAG
         messageList.add(receivedMessage); 
       }
       else {
+        if (agent.isPrinting()) {agent.print("Waiting in MGM IMPROVE");}
           block();
       }
     }
