@@ -86,7 +86,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	    // Do nothing
 	  }
 	  // Add React tables
-	  else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT)) {
+	  else if (agent.isDynamic(DynamicType.ONLINE)) {
+//	  else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT)) {
       agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
           .addAll(retrieveReacTableFromRandom(currentTimeStep));
       agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
@@ -139,10 +140,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       }
       
       combinedTable = agent.computeDiscountedDecisionTable(agent.getStoredReuseTable(), currentTimeStep, agent.getDiscountFactor());
-//      for (Table localRandomConstraints : agent.getDpopRandomTableList()) {
-//        Table expectedTable = agent.computeDiscountedExpectedTable(localRandomConstraints, currentTimeStep, agent.getDiscountFactor());
-//        combinedTable = joinTable(combinedTable, expectedTable);
-//      }
       
       combinedTable = joinTable(combinedTable, joinTableList(agent
           .computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, agent.getDiscountFactor())));
@@ -153,10 +150,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       }
     }
     else {
-      //joining all tables together
-//      for (Table pseudoParentTable : dpopTableList) {
-//        combinedTable = joinTable(combinedTable, pseudoParentTable);
-//      }
       combinedTable = joinTable(combinedTable, joinTableList(dpopTableList));
     }
 		agent.setAgentViewTable(combinedTable);
@@ -389,7 +382,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       }
     }
     // Just pure FORWARD where the distribution at each time step was computed differently
-    else if (algorithm == PDDcopAlgorithm.HYBRID) {
+    else if (dynamicType == DynamicType.ONLINE && algorithm != PDDcopAlgorithm.REACT) {
       double df = agent.getDiscountFactor();
       dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep, df));
       dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, df));
@@ -545,7 +538,10 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	//		compare to the minimum , and update
 	//	add to new Table
 	public Table projectOperator(Table table, String variableToProject) {
-		int indexEliminated = getIndexOfContainedVariable(table.getDecVarLabel(), variableToProject);
+    agent.print("table=" + table);
+	  agent.print("table.getDecVarLabel()=" + table.getDecVarLabel());
+		agent.print("variableToProject=" + variableToProject);
+	  int indexEliminated = getIndexOfContainedVariable(table.getDecVarLabel(), variableToProject);
 		
 		if (indexEliminated == -1) {
 			return null;

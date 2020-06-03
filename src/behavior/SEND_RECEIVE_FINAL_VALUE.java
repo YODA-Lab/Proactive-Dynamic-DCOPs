@@ -76,16 +76,13 @@ public class SEND_RECEIVE_FINAL_VALUE extends OneShotBehaviour implements MESSAG
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
       
       agent.stopStimulatedTiming();
-//      if (receivedMessage != null) {
-        long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
-        
-        if (timeFromReceiveMessage > agent.getSimulatedTime()) {
-          agent.setSimulatedTime(timeFromReceiveMessage);
-        }
-        messageList.add(receivedMessage);
-//      }
-//      else
-//        block();
+      
+      long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
+      
+      if (timeFromReceiveMessage > agent.getSimulatedTime()) {
+        agent.setSimulatedTime(timeFromReceiveMessage);
+      }
+      messageList.add(receivedMessage);
     }
     
     agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());

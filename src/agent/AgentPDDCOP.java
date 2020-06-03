@@ -735,14 +735,16 @@ public class AgentPDDCOP extends Agent {
 	 * @param timeStep
 	 */
 	public void createProbabilityWithObservation(int timeStep) {
-		if (timeStep == 0 && timeStep > horizon) {
+		if (timeStep == 0 || timeStep > horizon) {
 			return;
 		}
 		
 		String randVariable = agentID;
 		
     double distribution[] = toArray(transitionFunctionMap.get(randVariable).getTransitionOf(pickedRandomMap.get(timeStep - 1)));
-		probabilityAtEachTimeStepMap.get(randVariable)[timeStep] = distribution;	
+    print("probabilityAtEachTimeStepMap=" + Arrays.deepToString(probabilityAtEachTimeStepMap.get(agentID)));
+    print("timeStep=" + timeStep);
+    probabilityAtEachTimeStepMap.get(randVariable)[timeStep] = distribution;	
 	}
 
 	/**
