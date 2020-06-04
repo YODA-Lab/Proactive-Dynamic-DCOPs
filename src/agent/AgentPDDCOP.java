@@ -290,7 +290,7 @@ public class AgentPDDCOP extends Agent {
     sb.append(".txt");
         
     outputFileName = OUTPUT_FOLDER + sb.toString();    
-    if (isRunningPDDCOPLocalSearch()) {
+    if (isRunningPDDCOPLocalSearch() || dynamicType == DynamicType.ONLINE) {
       String localSearchFolder = OUTPUT_FOLDER + "/" + pddcop_algorithm + "_" + dcop_algorithm + "/";
       try {
         Files.createDirectories(Paths.get(localSearchFolder));

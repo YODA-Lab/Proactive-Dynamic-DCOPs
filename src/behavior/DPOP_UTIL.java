@@ -302,10 +302,9 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       int randomIndex = agent.getRandom().nextInt(agent.getSelfDomain().size());
       agent.getChosenValueAtEachTSMap().put(-1, agent.getSelfDomain().get(randomIndex));
     }
-
-    agent.setDpopSolvingTime(currentTimeStep, agent.getSimulatedTime());
-    		
+    
     agent.stopStimulatedTiming();
+    agent.setDpopSolvingTime(currentTimeStep, agent.getSimulatedTime());
 	}
 	
 	/**
@@ -538,9 +537,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	//		compare to the minimum , and update
 	//	add to new Table
 	public Table projectOperator(Table table, String variableToProject) {
-    agent.print("table=" + table);
-	  agent.print("table.getDecVarLabel()=" + table.getDecVarLabel());
-		agent.print("variableToProject=" + variableToProject);
 	  int indexEliminated = getIndexOfContainedVariable(table.getDecVarLabel(), variableToProject);
 		
 		if (indexEliminated == -1) {

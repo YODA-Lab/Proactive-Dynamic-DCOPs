@@ -153,20 +153,17 @@ public class Utilities {
   public static void writeEffectiveReward(AgentPDDCOP agent) {
     StandardOpenOption writeMode = agent.isFirstInstance() ? TRUNCATE_EXISTING : APPEND;
 
-    String result = getEffectiveResult(agent);
-    if (agent.isFirstInstance()) {
-      result = effectiveRewardHeaders + result;
-    }
-    writeToFile(result, AgentPDDCOP.OUTPUT_FOLDER + agent.getOutputFileName(), writeMode);    
+    String result = effectiveRewardHeaders + getEffectiveResult(agent);
+
+    writeToFile(result, agent.getLocalSearchOutputFileName(), writeMode);    
   }
   
   private static String initializeEffectiveHeader() {
     StringBuffer sb = new StringBuffer();
-    sb.append("Iteration" + "\t");
-    sb.append("EffectiveQuality" + "\t");
-    sb.append("EffectiveSwitchingCost" + "\t");
-    sb.append("EffectiveSolvingTime" + "\t");
-    sb.append("InstanceID" + "\t");
+    sb.append("Horizon" + "\t");
+    sb.append("Eff_Quality" + "\t");
+    sb.append("Eff_SwitchingCost" + "\t");
+    sb.append("Eff_SolvingTime" + "\t");
     sb.append("PD_DCOP_Algorithm" + "\t");
     sb.append("DCOP_Algorithm" + "\t");
     sb.append("Dynamic" + "\t");
@@ -185,22 +182,21 @@ public class Utilities {
     Map<Integer, Double> effectiveSwitcCost = agent.getEffectiveSwitchingCostMap();
     Map<Integer, Long> effectiveSolvingTime = agent.getEffectiveSolvingTimeMap();
     
-    for (int iteration = -1; iteration <= agent.getHorizon(); iteration++) {
-      double quality = effectiveReward.getOrDefault(iteration, 0D);
-      double switchCost = effectiveSwitcCost.getOrDefault(iteration, 0D);
-      long runtime = effectiveSolvingTime.getOrDefault(iteration, 0L);
+    for (int horizon = -1; horizon <= agent.getHorizon(); horizon++) {
+      double quality = effectiveReward.getOrDefault(horizon, 0D);
+      double switchCost = effectiveSwitcCost.getOrDefault(horizon, 0D);
+      long solveTime = effectiveSolvingTime.getOrDefault(horizon, 0L);
       
-      sb.append(iteration + "\t");
+      sb.append(horizon + "\t");
       sb.append(df.format(quality) + "\t");
       sb.append(df.format(switchCost) + "\t");
-      sb.append(runtime/1000000 + "\t");
-      sb.append(agent.getInstanceID() + "\t");
+      sb.append(solveTime/1000000 + "\t");
       sb.append(agent.getPDDCOP_Algorithm() + "\t");
       sb.append(agent.getDcop_algorithm() + "\t");
       sb.append(agent.getDynamicType() + "\t");
       sb.append(agent.getAgentCount() + "\t");
-      sb.append(agent.getHorizon() + "\n");
       sb.append(agent.getSwitchingCost() + "\t");
+      sb.append(agent.getHorizon() + "\n");
     }
 
     return sb.toString();

@@ -106,6 +106,7 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
       // Write final results 
       agent.setSolutionQuality(pddcop_solution_quality);
       agent.setFinalRuntime(agent.getSimulatedTime());
+      agent.print("agent.getEffectiveSolvingTimeMap()=" + agent.getEffectiveSolvingTimeMap());
       Utilities.writeFinalResult(agent);
     }
   }
