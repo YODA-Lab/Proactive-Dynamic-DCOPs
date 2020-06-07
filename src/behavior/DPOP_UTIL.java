@@ -82,17 +82,29 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       agent.setStoredReuseTable(joinedDecisionTable);
 	  } 
 	  else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.LS_SDPOP) && !isFirstTimeUTIL()) {
-	    // Do not need to join local decision constraints again
-	    // Do nothing
 	  }
-	  // Add React tables
+	  // Add actual tables to compute actual quality
+	  // Add tables to DPOP table list for solving
 	  else if (agent.isDynamic(DynamicType.ONLINE)) {
-//	  else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT)) {
       agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
-          .addAll(retrieveReacTableFromRandom(currentTimeStep));
+          .addAll(computeActualDpopTableGivenRandomValues(currentTimeStep));
       agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
-      
-	    dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
+
+      // Add actual tables for REACT
+      if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT)) {
+        dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
+      }
+      // Add discounted expected tables for FORWARD and HYBRID
+      else {
+        double df = agent.getDiscountFactor();
+        dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep, df));
+        dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, df));
+
+        if (currentTimeStep > 0) {
+          Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(currentTimeStep - 1)); 
+          dpopTableList.add(switchingCostToPreviousSolution);
+        }
+      }
 	  }
 	  else {
 	    // For all other algorithms
@@ -378,17 +390,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
             dpopTableList.add(switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(currentTimeStep + 1))); 
           }
         }
-      }
-    }
-    // Just pure FORWARD where the distribution at each time step was computed differently
-    else if (dynamicType == DynamicType.ONLINE && algorithm != PDDcopAlgorithm.REACT) {
-      double df = agent.getDiscountFactor();
-      dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(), currentTimeStep, df));
-      dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(), currentTimeStep, df));
-
-      if (currentTimeStep > 0) {
-        Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(currentTimeStep - 1)); 
-        dpopTableList.add(switchingCostToPreviousSolution);
       }
     }
     
@@ -724,7 +725,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
    * From DPOP random table list, return new tables with the corresponding picked random variables
    * @param timeStep
    */
-  private List<Table> retrieveReacTableFromRandom(int timeStep) {
+  private List<Table> computeActualDpopTableGivenRandomValues(int timeStep) {
     List<Table> tableList = new ArrayList<>();
     
     // traverse to each random table

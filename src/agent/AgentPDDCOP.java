@@ -215,7 +215,6 @@ public class AgentPDDCOP extends Agent {
 	private Map<Integer, String> pickedRandomMap = new HashMap<>();
 	
 	private long currentUTILstartTime;
-//	private int localSearchIteration;
 
 	// simulated time
 	private ThreadMXBean bean;
