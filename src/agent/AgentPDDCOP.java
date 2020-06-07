@@ -475,18 +475,23 @@ public class AgentPDDCOP extends Agent {
     
     if (!selfRandomVariableDomainMap.containsKey(agentID)) {return lastTimeStep;}
     
+    int randomDomainSize = selfRandomVariableDomainMap.get(agentID).size();
     // Simulate for ONLINE dynamic type only
     if (dynamicType == DynamicType.ONLINE) {
       for (int indexTime = 0; indexTime <= horizon; indexTime++) {
-        pickedRandomMap.put(indexTime, simulateHybridValue(indexTime));
-        createProbabilityWithObservation(indexTime + 1);
+        pickedRandomMap.put(indexTime, simulateOnlineValue(indexTime));
+        if (pddcop_algorithm == PDDcopAlgorithm.HYBRID) {
+          createProbabilityWithObservation(indexTime + 1);
+        }
+        else if (pddcop_algorithm == PDDcopAlgorithm.FORWARD && indexTime > 0) {
+          probabilityAtEachTimeStepMap.get(agentID)[indexTime] = new double[randomDomainSize];
+          computeExpectedProbabilityAtTimeStep(indexTime);
+        }
       }
     }
     // Compute distributions for other dynamics
     // Compute up to horizon - 1 for INFINITE and horizon for FINITE
     else {
-      int randomDomainSize = selfRandomVariableDomainMap.get(agentID).size();
-
       // timeIndex = 0 is the initial probability distribution
       for (int timeIndex = 1; timeIndex <= lastTimeStep; timeIndex++) {
         probabilityAtEachTimeStepMap.get(agentID)[timeIndex] = new double[randomDomainSize];
@@ -741,8 +746,6 @@ public class AgentPDDCOP extends Agent {
 		String randVariable = agentID;
 		
     double distribution[] = toArray(transitionFunctionMap.get(randVariable).getTransitionOf(pickedRandomMap.get(timeStep - 1)));
-    print("probabilityAtEachTimeStepMap=" + Arrays.deepToString(probabilityAtEachTimeStepMap.get(agentID)));
-    print("timeStep=" + timeStep);
     probabilityAtEachTimeStepMap.get(randVariable)[timeStep] = distribution;	
 	}
 
@@ -2123,11 +2126,12 @@ public class AgentPDDCOP extends Agent {
 	}
 
 	/**
-	 * Randomly pick a value from the hybrid distribution at this time step
+	 * Sample a value from the value at the previous time step and transition distribution. <br>
+	 * If first time step, sample a value for the probability distribution
 	 * @param currentTimeStep
 	 * @return
 	 */
-	public String simulateHybridValue(int currentTimeStep) {
+	public String simulateOnlineValue(int currentTimeStep) {
 		// randomVar is the same as decisionVar string
 		String randomVar = agentID;
 		double distribution[] = null;
