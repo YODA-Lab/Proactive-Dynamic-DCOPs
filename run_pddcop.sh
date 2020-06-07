@@ -10,27 +10,36 @@ dy=3
 
 clear
 killall -9 java
-for algorithm in LS_SDPOP
+# for pddcop_algorithm in BACKWARD FORWARD LS_SDPOP
+for pddcop_algorithm in REACT FORWARD HYBRID
 do
-  for decision in 12
+  for dcop_algorithm in DPOP
   do
-    for random in 3
+    # for decision in `seq 50 5 50`
+    for decision in 12
     do
-      for horizon in 5
+      for random in "$(($decision/4))"
       do
-        for switching_cost in 50
+        for horizon in 4
         do
-          for discount_factor in 0.9
+          for switching_cost in 50
           do
-            for dynamic_type in FINITE_HORIZON
+            for discount_factor in 0.9
             do
-              for heuristic_weight in $(seq 0.0 0.1 1.0)
+              for dynamic_type in ONLINE
+              # for dynamic_type in FINITE_HORIZON
               do
-                for instance in {0..14}
+                if [ $pddcop_algorithm = "LS_SDPOP" ] && [ "$dcop_algorithm" = "DPOP" ]; then
+                  heuristic_weight=0.6
+                else
+                  heuristic_weight=0.0
+                fi
+
+                for instance in {0..0}
                 do
                   folder="random_x"$decision"_y"$random"_dx"$dx"_dy"$dy
                   input_file=$folder"/instance_"$instance"_x"$decision"_y"$random"_dx"$dx"_dy"$dy".dzn"
-                  java -jar $jar_file $algorithm $input_file $horizon $switching_cost $discount_factor $dynamic_type $heuristic_weight
+                  java -jar $jar_file $pddcop_algorithm $dcop_algorithm $input_file $horizon $switching_cost $discount_factor $dynamic_type $heuristic_weight
                   killall -9 java;sleep 1s
                 done
               done

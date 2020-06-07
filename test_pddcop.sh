@@ -30,11 +30,12 @@ do
             do
               for dynamic_type in FINITE_HORIZON
               do
-                for heuristic_weight in 0
+                for heuristic_weight in $(seq 0 0.1 1)
                 do
-                  java -jar $jar_file $algorithm $input_file $horizon $switching_cost $discount_factor $dynamic_type $heuristic_weight
-                  killall -9 java
-                  sleep 1s
+                  # java -jar $jar_file $algorithm $input_file $horizon $switching_cost $discount_factor $dynamic_type $heuristic_weight
+                  # killall -9 java
+                  # sleep 1s
+                  echo $heuristic_weight
                 done
               done
             done
