@@ -362,6 +362,12 @@ public class AgentPDDCOP extends Agent {
     
     int theLastTimeStep = simulateActualValueAndComputeDistribution();
     
+    print("pickedRandomMap=" + pickedRandomMap);
+    print("probabilityAtEachTimeStepMap=" + probabilityAtEachTimeStepMap);
+    for (Entry<String, double[][]> entry : probabilityAtEachTimeStepMap.entrySet()) {
+      print(entry.getKey() + "=" + Arrays.deepToString(entry.getValue()));
+    }
+    
 		SequentialBehaviour mainSequentialBehaviourList = new SequentialBehaviour();
 		// Done reviewing these two behaviors
 		mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
@@ -744,7 +750,7 @@ public class AgentPDDCOP extends Agent {
 		}
 		
 		String randVariable = agentID;
-		
+
     double distribution[] = toArray(transitionFunctionMap.get(randVariable).getTransitionOf(pickedRandomMap.get(timeStep - 1)));
     probabilityAtEachTimeStepMap.get(randVariable)[timeStep] = distribution;	
 	}
@@ -2147,14 +2153,18 @@ public class AgentPDDCOP extends Agent {
 
 		double accumualatedProbability = 0;
 		
+		
 		for (int i = 0; i < distribution.length; i++) {
 			accumualatedProbability += distribution[i];
 			if (Double.compare(rdn.nextDouble(), accumualatedProbability) < 0) {
 				return selfRandomVariableDomainMap.get(randomVar).get(i);
 			}
+			else {
+			   print("accumualatedProbability=" + accumualatedProbability);
+			}
 		}
 		
-		return null;
+		return selfRandomVariableDomainMap.get(randomVar).get(0);
 	}
 
 	private static double[] multiply(double[] vector, TransitionFunction transFunc) {
