@@ -15,6 +15,7 @@ public class MGM_READ_IMPROVE_MESSAGE extends CyclicBehaviour implements MESSAGE
    */
   private static final long serialVersionUID = -8117289126233923082L;
   
+  @SuppressWarnings("unused")
   private AgentPDDCOP agent;
   
   private List<ACLMessage> messageList = new ArrayList<ACLMessage>();

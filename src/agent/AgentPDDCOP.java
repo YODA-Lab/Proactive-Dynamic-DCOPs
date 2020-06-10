@@ -2159,9 +2159,6 @@ public class AgentPDDCOP extends Agent {
 			if (Double.compare(rdn.nextDouble(), accumualatedProbability) < 0) {
 				return selfRandomVariableDomainMap.get(randomVar).get(i);
 			}
-			else {
-			   print("accumualatedProbability=" + accumualatedProbability);
-			}
 		}
 		
 		return selfRandomVariableDomainMap.get(randomVar).get(0);

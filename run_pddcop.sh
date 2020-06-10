@@ -5,26 +5,30 @@ dynamics=(FINITE_HORIZON INFINITE_HORIZON ONLINE)
 # java -jar build/ND-DCOP-1.0-jar-with-dependencies.jar $LS_RAND rep_0_d5.dzn 10 15 0.9 FINITE_HORIZON 0.3
 topology="random"
 jar_file="target/ND-DCOP-1.0-jar-with-dependencies.jar"
-dx=3
-dy=3
+dx=5
+dy=5
 
 clear
 killall -9 java
 # for pddcop_algorithm in BACKWARD FORWARD LS_SDPOP
-for pddcop_algorithm in REACT FORWARD HYBRID
+# for pddcop_algorithm in HYBRID FORWARD REACT
+# for pddcop_algorithm in REACT
+for pddcop_algorithm in HYBRID
 do
   for dcop_algorithm in DPOP
   do
     # for decision in `seq 50 5 50`
-    for decision in 12
+    for decision in 10
     do
-      for random in "$(($decision/4))"
+      for random in 10
+      # for random in "$(($decision/4))"
       do
-        for horizon in 4
+        for horizon in 10
         do
-          for switching_cost in 50
+          # for switching_cost in `seq 0 10 100`
+          for switching_cost in 0
           do
-            for discount_factor in 0.9
+            for discount_factor in 1.0
             do
               for dynamic_type in ONLINE
               # for dynamic_type in FINITE_HORIZON
@@ -34,8 +38,7 @@ do
                 else
                   heuristic_weight=0.0
                 fi
-
-                for instance in {0..0}
+                for instance in {0..9}
                 do
                   folder="random_x"$decision"_y"$random"_dx"$dx"_dy"$dy
                   input_file=$folder"/instance_"$instance"_x"$decision"_y"$random"_dx"$dx"_dy"$dy".dzn"

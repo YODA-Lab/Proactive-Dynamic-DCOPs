@@ -134,15 +134,17 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 			agent.stopStimulatedTiming();
 			
 			if (!agent.isLeaf()) {
-				if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DCOP)) {
-					agent.print("Chosen value is " + chosenValue);
-				}
+//				if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DCOP)) {
+//					agent.print("Chosen value is " + chosenValue);
+//				}
 				
 				for (AID children : agent.getChildrenAIDSet()) {
 					agent.sendObjectMessageWithTime(children, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE, agent.getSimulatedTime());
 				}
 			}
 		}
+		
+    agent.print("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap().values());
 	}
 	
 //	private List<ACLMessage> waitingForMessageFromPseudoParent(int msgCode) {

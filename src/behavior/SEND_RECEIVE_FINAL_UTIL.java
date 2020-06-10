@@ -34,7 +34,7 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
     double pddcop_quality_from_children = 0D;
     Map<Integer, Double> actual_quality_from_children = new HashMap<>();
     Map<Integer, Double> actual_switching_cost_from_children = new HashMap<>();
-    agent.print("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap());
+    agent.print("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap().values());
     
     List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(FINAL_UTIL);
     agent.startSimulatedTiming();

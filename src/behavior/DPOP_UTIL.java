@@ -288,10 +288,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		//since agent 0 is always at the beginning of the row formatted: agent0, agent1,.., agentN -> utility
 		double maxUtility = -Double.MAX_VALUE;
 		
-		agent.print("Timestep " +  currentTimeStep + " combined messages at root:");
-		
-		agent.print("" + combinedTable);
-		
 		String chosenValue = "";
 		
 		for (Row row : combinedTable.getRowList()) {
@@ -301,8 +297,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 			}
 		}
 			
-		agent.print("has chosen value " + chosenValue);
-    agent.print("has chosen utility " + maxUtility);
+		agent.print("Root has chosen value " + chosenValue);
+    agent.print("Root has chosen utility " + maxUtility);
     
     agent.storeDpopSolution(chosenValue, currentTimeStep);
     if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DCOP)) {
