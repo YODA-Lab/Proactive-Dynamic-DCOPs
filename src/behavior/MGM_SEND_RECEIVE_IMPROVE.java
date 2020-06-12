@@ -43,7 +43,7 @@ public class MGM_SEND_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAG
         
     double localUtility = agent.computeMGMLocalUtility(agent.getChosenValueAtEachTSMap().get(timeStep), timeStep);
     
-    double maxGain = Double.NEGATIVE_INFINITY;
+    double maxGain = -Double.MAX_VALUE;
     String chosenMGMValue = null;
     
     for (String value : agent.getSelfDomain()) {
