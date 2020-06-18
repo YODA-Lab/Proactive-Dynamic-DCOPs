@@ -290,6 +290,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		
 		String chosenValue = "";
 		
+		agent.print("Root has combinedTable=" + combinedTable);
+		
 		for (Row row : combinedTable.getRowList()) {
 			if (Double.compare(row.getUtility(), maxUtility) > 0) {
 				maxUtility = row.getUtility();

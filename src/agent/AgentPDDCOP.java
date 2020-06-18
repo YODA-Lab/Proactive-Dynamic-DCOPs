@@ -959,7 +959,8 @@ public class AgentPDDCOP extends Agent {
 		
 		if (msgCode != MESSAGE_TYPE.DPOP_UTIL) {
 		  print("sends message type " + MESSAGE_TYPE.msgTypes.get(msgCode) + " to agent " + receiver.getLocalName() + ": " + content);
-		} else {
+		}
+		else {
       print("sends message type " + MESSAGE_TYPE.msgTypes.get(msgCode) + " to agent " + receiver.getLocalName());
 		}
 	}
@@ -1434,7 +1435,8 @@ public class AgentPDDCOP extends Agent {
 	  * @return
 	  */
 	 public double switchingCostFunction(String oldValue, String newValue) {
-	   if (oldValue == null || newValue == null) {return 0;}
+	   if (oldValue == null || newValue == null) {return -Double.MAX_VALUE;}
+     if (oldValue.isEmpty() || newValue.isEmpty()) {return -Double.MAX_VALUE;}
 	   
 	   boolean equal = oldValue.equals(newValue);
 	   
@@ -2403,7 +2405,9 @@ public class AgentPDDCOP extends Agent {
   }
   
   public void print(String s) {
-    System.out.println("Agent " + agentID + " " + s);
+//    if (agentID.equals("8")) {
+      System.out.println("Agent " + agentID + " " + s);
+//    }
   }
 
   public boolean isRunningPDDCOPLocalSearch() {

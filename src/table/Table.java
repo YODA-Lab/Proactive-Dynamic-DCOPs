@@ -81,7 +81,8 @@ public class Table implements Serializable {
 	    }
 	  }
 	  
-	  return Double.NEGATIVE_INFINITY;
+//	  return Double.NEGATIVE_INFINITY;
+	  return -Double.MAX_VALUE;
 	}
 
 	public int getRowCount() {

@@ -55,6 +55,8 @@ public class Row implements Serializable {
 	}
 	
 	public String getValueAtPosition(int index) {
+		if (index < 0 || index >= valueList.size()) {return "";}
+	  
 		return valueList.get(index);
 	}
 	
