@@ -82,7 +82,6 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
     }
     
     agent.stopStimulatedTiming();
-
     
     if (!agent.isRoot()) {
       agent.sendObjectMessageWithTime(agent.getParentAID(), messageForParent, FINAL_UTIL, agent.getSimulatedTime());

@@ -145,6 +145,7 @@ public class AgentPDDCOP extends Agent {
   private double discountFactor;
   private String inputFileName;
   private double heuristicWeight;
+  private int onlineRun;
 	/*
 	 * Read from input file
 	 */
@@ -154,7 +155,7 @@ public class AgentPDDCOP extends Agent {
 	 */
 	private String outputFileName;
 	private String localSearchOutputFileName;
-
+	private String onlineOutputFileName;
 	private int hybridTS;
 	
 	private boolean isRoot = false;
@@ -300,6 +301,7 @@ public class AgentPDDCOP extends Agent {
       
       sb.insert(0, "instanceID=" + instanceID + "_");
       localSearchOutputFileName = localSearchFolder + sb.toString();
+      onlineOutputFileName = localSearchFolder + "OnlineRun=" + onlineRun + "_" + sb.toString();
     }
 	}
 
@@ -317,6 +319,7 @@ public class AgentPDDCOP extends Agent {
 		discountFactor = Double.valueOf((String) args[5]);
 		dynamicType = DynamicType.valueOf((String) args[6]);
 		heuristicWeight = Double.valueOf((String) args[7]);
+		setOnlineRun(Integer.valueOf((String) args[8]));
 		
 		String a[] = inputFileName.substring(inputFileName.indexOf("/") + 1).replaceAll("instance_", "").replaceAll(".dzn", "").split("_");
 		
@@ -334,7 +337,8 @@ public class AgentPDDCOP extends Agent {
 		}
 		
 		// Different seed values for combination of (instanceID, agentID)
-		randomSeed = instanceID * Integer.valueOf(agentID) * horizon;
+//		randomSeed = instanceID * Integer.valueOf(agentID) * horizon
+		randomSeed = (instanceID + 1) * Integer.valueOf(agentID) * horizon * (onlineRun + 1);
 		rdn.setSeed(randomSeed);
 	}
 
@@ -363,7 +367,7 @@ public class AgentPDDCOP extends Agent {
     int theLastTimeStep = simulateActualValueAndComputeDistribution();
     
     print("pickedRandomMap=" + pickedRandomMap);
-    print("probabilityAtEachTimeStepMap=" + probabilityAtEachTimeStepMap);
+    print("probabilityAtEachTimeStepMap=");
     for (Entry<String, double[][]> entry : probabilityAtEachTimeStepMap.entrySet()) {
       print(entry.getKey() + "=" + Arrays.deepToString(entry.getValue()));
     }
@@ -2616,5 +2620,23 @@ public class AgentPDDCOP extends Agent {
     }
     
     return utility;
+  }
+
+  public int getOnlineRun() {
+    return onlineRun;
+  }
+
+  public void setOnlineRun(int onlineRun) {
+    this.onlineRun = onlineRun;
+  }
+
+  public void setOnlineOutputFileName(String onlineOutputFileName) {
+  }
+
+  /**
+   * @return the onlineOutputFileName
+   */
+  public String getOnlineOutputFileName() {
+    return onlineOutputFileName;
   }
 }

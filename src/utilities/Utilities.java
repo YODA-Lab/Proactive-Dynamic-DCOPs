@@ -151,9 +151,9 @@ public class Utilities {
   }
   
   public static void writeEffectiveReward(AgentPDDCOP agent) {
-//    StandardOpenOption writeMode = agent.isFirstInstance() ? TRUNCATE_EXISTING : APPEND;
     String result = effectiveRewardHeaders + getEffectiveResult(agent);
-    writeToFile(result, agent.getLocalSearchOutputFileName(), TRUNCATE_EXISTING);    
+    writeToFile(result, agent.getOnlineOutputFileName(), TRUNCATE_EXISTING);    
+//    writeToFile(result, agent.getLocalSearchOutputFileName(), TRUNCATE_EXISTING);    
   }
   
   private static String initializeEffectiveHeader() {
