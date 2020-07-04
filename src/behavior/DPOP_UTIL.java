@@ -86,7 +86,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	  // Add actual tables to compute actual quality
 	  // Add tables to DPOP table list for solving
 	  else if (agent.isDynamic(DynamicType.ONLINE)) {
-      agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
+	    // Add actual tables to compute actual quality
+	    agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
           .addAll(computeActualDpopTableGivenRandomValues(currentTimeStep));
       agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
 
@@ -314,7 +315,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     }
     
     agent.stopStimulatedTiming();
-    agent.setDpopSolvingTime(currentTimeStep, agent.getSimulatedTime());
+    agent.setOnlineSolvingTime(currentTimeStep, agent.getSimulatedTime());
 	}
 	
 	/**

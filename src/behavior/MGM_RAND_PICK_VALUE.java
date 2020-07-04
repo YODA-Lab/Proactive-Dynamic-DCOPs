@@ -120,19 +120,65 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
         }
       }
     }
-    // Just pure FORWARD where the distribution at each time step was computed differently
-    else if (algorithm == PDDcopAlgorithm.HYBRID) {
+    else if (dynamicType == DynamicType.ONLINE) {
       double df = agent.getDiscountFactor();
-      mgmTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getRawDecisionTableList(), timeStep, df));
-      mgmTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getRawRandomTableList(), timeStep, df));
-
-      if (timeStep > 0) {
-        Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(timeStep - 1)); 
-        mgmTableList.add(switchingCostToPreviousSolution);
+      
+      // Add actual DPOP tables to compute actual quality
+      agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(pd_dcop_time_step, k -> new ArrayList<>())
+          .addAll(computeActualDpopTableGivenRandomValues(pd_dcop_time_step));
+      agent.getActualDpopTableAcrossTimeStep().get(pd_dcop_time_step).addAll(agent.getDpopDecisionTableList());
+     
+      // Compute discounted expected tables from raw table lists to run MGM
+      if (algorithm == PDDcopAlgorithm.FORWARD || algorithm == PDDcopAlgorithm.HYBRID) {
+        mgmTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getRawDecisionTableList(), timeStep, df));
+        mgmTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getRawRandomTableList(), timeStep, df));
+        if (timeStep > 0) {
+          mgmTableList.add(switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(timeStep - 1))); 
+        }
+      }
+      // Add all actual tables
+      // Add switching cost tables
+      else if (algorithm == PDDcopAlgorithm.REACT) {
+        mgmTableList.addAll(agent.getRawDecisionTableList());        
+        mgmTableList.addAll(computeActualTableGivenRandomValues(pd_dcop_time_step));
+        
+        if (pd_dcop_time_step > 0) {
+          mgmTableList.add(switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(pd_dcop_time_step - 1)));
+        }
       }
     }
     
     return mgmTableList;
+  }
+  
+  /**
+   * REVIEWED <br>
+   * From DPOP random table list, return new tables with the corresponding picked random variables
+   * @param timeStep
+   */
+  private List<Table> computeActualTableGivenRandomValues(int timeStep) {
+    List<Table> tableList = new ArrayList<>();
+    
+    // traverse each random table
+    for (Table randTable : agent.getRawRandomTableList()) {
+      List<String> decLabel = randTable.getDecVarLabel();
+      // at current time step, create a new table 
+      // add the tuple with corresponding random values
+
+      Table newTable = new Table(decLabel, AgentPDDCOP.DECISION_TABLE);
+      
+      String simulatedRandomValues = agent.getPickedRandomAt(timeStep);
+
+      for (Row row : randTable.getRowList()) {
+        if (row.getRandomList().get(0).equals(simulatedRandomValues)) {
+          newTable.addRow(new Row(row.getValueList(), row.getUtility()));
+        }
+      }
+      
+      tableList.add(newTable);
+    }
+    
+    return tableList;
   }
   
   /**
@@ -156,5 +202,35 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
     }
     
     return unarySwitchingCostTable;
+  }
+  
+  /**
+   * REVIEWED <br>
+   * From DPOP random table list, return new tables with the corresponding picked random variables
+   * @param timeStep
+   */
+  private List<Table> computeActualDpopTableGivenRandomValues(int timeStep) {
+    List<Table> tableList = new ArrayList<>();
+    
+    // traverse to each random table
+    for (Table randTable : agent.getDpopRandomTableList()) {
+      List<String> decLabel = randTable.getDecVarLabel();
+      // at current time step, create a new table 
+      // add the tuple with corresponding random values
+
+      Table newTable = new Table(decLabel, AgentPDDCOP.DECISION_TABLE);
+      
+      String simulatedRandomValues = agent.getPickedRandomAt(timeStep);
+
+      for (Row row : randTable.getRowList()) {
+        if (row.getRandomList().get(0).equals(simulatedRandomValues)) {
+          newTable.addRow(new Row(row.getValueList(), row.getUtility()));
+        }
+      }
+      
+      tableList.add(newTable);
+    }
+    
+    return tableList;
   }
 }

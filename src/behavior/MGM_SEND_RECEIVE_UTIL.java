@@ -59,6 +59,7 @@ public class MGM_SEND_RECEIVE_UTIL extends OneShotBehaviour implements MESSAGE_T
         agent.setMGMQuality(mgm_time_step, Math.max(localSearchQuality, agent.getMGMQualityMap().get(mgm_time_step - 1)));
       }
       agent.setMGMRuntime(mgm_time_step, agent.getSimulatedTime());
+      agent.setOnlineSolvingTime(mgm_time_step, agent.getSimulatedTime());
     }
             
     // Last MGM time step

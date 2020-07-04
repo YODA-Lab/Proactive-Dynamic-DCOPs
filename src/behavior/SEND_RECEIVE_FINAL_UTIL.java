@@ -91,7 +91,7 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
         for (int ts = 0; ts <= agent.getHorizon(); ts++) {
           double quality = actual_solution_quality.get(ts);
           double switchingCost = actual_switching_cost.get(ts);
-          long solvingTime = ts == 0 ? agent.getDpopSolvingTime(ts) : agent.getDpopSolvingTime(ts) - agent.getDpopSolvingTime(ts - 1);
+          long solvingTime = ts == 0 ? agent.getOnlineSolvingTime(ts) : agent.getOnlineSolvingTime(ts) - agent.getOnlineSolvingTime(ts - 1);
           
           agent.getEffectiveQualityMap().put(ts, quality);
           agent.getEffectiveSwitchingCostMap().put(ts, switchingCost);

@@ -254,7 +254,9 @@ public class AgentPDDCOP extends Agent {
   private Set<String> reuseChildUTIL = new HashSet<>();
   private Random rdn = new Random();
   private Map<Integer, List<Table>> actualDpopTableAcrossTimeStep = new HashMap<>();
-  private Map<Integer, Long> dpopSolvingTime = new HashMap<>();
+  private Map<Integer, List<Table>> actualTableAcrossTimeStep = new HashMap<>();
+
+  private Map<Integer, Long> onlineSolvingTime = new HashMap<>();
   private long finalRuntime;
 
   private String CDPOP_value;
@@ -379,7 +381,7 @@ public class AgentPDDCOP extends Agent {
 		
 		// Solve for the last time step for INFINITE
 		if (dynamicType == DynamicType.INFINITE_HORIZON) {
-		  if (dcop_algorithm == DcopAlgorithm.DPOP) {
+		  if (dcop_algorithm == DcopAlgorithm.DPOP && pddcop_algorithm != PDDcopAlgorithm.LS_RAND) {
 		    mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, horizon));
 		    mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, horizon));
 		  }
@@ -2461,13 +2463,25 @@ public class AgentPDDCOP extends Agent {
   public void setActualDpopTableAcrossTimeStep(Map<Integer, List<Table>> actualDpopTableAcrossTimeStep) {
     this.actualDpopTableAcrossTimeStep = actualDpopTableAcrossTimeStep;
   }
-
-  public long getDpopSolvingTime(int timeStep) {
-    return dpopSolvingTime.get(timeStep);
+  
+  public Map<Integer, List<Table>> getActualTableAcrossTimeStep() {
+    return actualTableAcrossTimeStep;
+  }
+  
+  public List<Table> getActualTableAcrossTimeStep(int timeStep) {
+    return actualTableAcrossTimeStep.get(timeStep);
   }
 
-  public void setDpopSolvingTime(int timeStep, long dpopSolvingTimes) {
-    dpopSolvingTime.put(timeStep, dpopSolvingTimes);
+  public void setActualTableAcrossTimeStep(Map<Integer, List<Table>> actualTableAcrossTimeStep) {
+    this.actualTableAcrossTimeStep = actualTableAcrossTimeStep;
+  }
+
+  public long getOnlineSolvingTime(int timeStep) {
+    return onlineSolvingTime.get(timeStep);
+  }
+
+  public void setOnlineSolvingTime(int timeStep, long onlineSolvingTimes) {
+    onlineSolvingTime.put(timeStep, onlineSolvingTimes);
   }
 
   public Random getRandom() {
