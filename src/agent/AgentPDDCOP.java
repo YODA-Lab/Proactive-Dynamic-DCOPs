@@ -303,7 +303,8 @@ public class AgentPDDCOP extends Agent {
       
       sb.insert(0, "instanceID=" + instanceID + "_");
       localSearchOutputFileName = localSearchFolder + sb.toString();
-      onlineOutputFileName = localSearchFolder + "OnlineRun=" + onlineRun + "_" + sb.toString();
+//      onlineOutputFileName = localSearchFolder + "OnlineRun=" + onlineRun + "_" + sb.toString();
+      onlineOutputFileName = localSearchOutputFileName; 
     }
 	}
 
@@ -2358,6 +2359,36 @@ public class AgentPDDCOP extends Agent {
     }
     
     return solutionQualityMap;
+  }
+  
+  /**
+  * REVIEWED <br>
+  * From DPOP random table list, return new tables with the corresponding picked random variables
+  * @param timeStep
+  */
+  public List<Table> computeActualDpopTableGivenRandomValues(int timeStep) {
+   List<Table> tableList = new ArrayList<>();
+   
+   // traverse to each random table
+   for (Table randTable : getDpopRandomTableList()) {
+     List<String> decLabel = randTable.getDecVarLabel();
+     // at current time step, create a new table 
+     // add the tuple with corresponding random values
+  
+     Table newTable = new Table(decLabel, AgentPDDCOP.DECISION_TABLE);
+     
+     String simulatedRandomValues = getPickedRandomAt(timeStep);
+  
+     for (Row row : randTable.getRowList()) {
+       if (row.getRandomList().get(0).equals(simulatedRandomValues)) {
+         newTable.addRow(new Row(row.getValueList(), row.getUtility()));
+       }
+     }
+     
+     tableList.add(newTable);
+   }
+   
+   return tableList;
   }
   
   /**

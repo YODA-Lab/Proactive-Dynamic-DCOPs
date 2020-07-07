@@ -125,7 +125,7 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
       
       // Add actual DPOP tables to compute actual quality
       agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(pd_dcop_time_step, k -> new ArrayList<>())
-          .addAll(computeActualDpopTableGivenRandomValues(pd_dcop_time_step));
+          .addAll(agent.computeActualDpopTableGivenRandomValues(pd_dcop_time_step));
       agent.getActualDpopTableAcrossTimeStep().get(pd_dcop_time_step).addAll(agent.getDpopDecisionTableList());
      
       // Compute discounted expected tables from raw table lists to run MGM
@@ -204,33 +204,4 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
     return unarySwitchingCostTable;
   }
   
-  /**
-   * REVIEWED <br>
-   * From DPOP random table list, return new tables with the corresponding picked random variables
-   * @param timeStep
-   */
-  private List<Table> computeActualDpopTableGivenRandomValues(int timeStep) {
-    List<Table> tableList = new ArrayList<>();
-    
-    // traverse to each random table
-    for (Table randTable : agent.getDpopRandomTableList()) {
-      List<String> decLabel = randTable.getDecVarLabel();
-      // at current time step, create a new table 
-      // add the tuple with corresponding random values
-
-      Table newTable = new Table(decLabel, AgentPDDCOP.DECISION_TABLE);
-      
-      String simulatedRandomValues = agent.getPickedRandomAt(timeStep);
-
-      for (Row row : randTable.getRowList()) {
-        if (row.getRandomList().get(0).equals(simulatedRandomValues)) {
-          newTable.addRow(new Row(row.getValueList(), row.getUtility()));
-        }
-      }
-      
-      tableList.add(newTable);
-    }
-    
-    return tableList;
-  }
 }

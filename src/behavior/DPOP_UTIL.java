@@ -88,7 +88,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	  else if (agent.isDynamic(DynamicType.ONLINE)) {
 	    // Add actual tables to compute actual quality
 	    agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
-          .addAll(computeActualDpopTableGivenRandomValues(currentTimeStep));
+          .addAll(agent.computeActualDpopTableGivenRandomValues(currentTimeStep));
       agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
 
       // Add actual tables for REACT
@@ -719,35 +719,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
         || (agent.isDynamic(DynamicType.FINITE_HORIZON) && currentTimeStep == 0);
   }
   
-  /**
-   * REVIEWED <br>
-   * From DPOP random table list, return new tables with the corresponding picked random variables
-   * @param timeStep
-   */
-  private List<Table> computeActualDpopTableGivenRandomValues(int timeStep) {
-    List<Table> tableList = new ArrayList<>();
-    
-    // traverse to each random table
-    for (Table randTable : agent.getDpopRandomTableList()) {
-      List<String> decLabel = randTable.getDecVarLabel();
-      // at current time step, create a new table 
-      // add the tuple with corresponding random values
-
-      Table newTable = new Table(decLabel, AgentPDDCOP.DECISION_TABLE);
-      
-      String simulatedRandomValues = agent.getPickedRandomAt(timeStep);
-
-      for (Row row : randTable.getRowList()) {
-        if (row.getRandomList().get(0).equals(simulatedRandomValues)) {
-          newTable.addRow(new Row(row.getValueList(), row.getUtility()));
-        }
-      }
-      
-      tableList.add(newTable);
-    }
-    
-    return tableList;
-  }
   
   /**
    * Improving speed and reducing memory when joining tables
