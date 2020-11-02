@@ -67,6 +67,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	private int currentTimeStep;
 	
 	private List<Table> dpopTableList = new ArrayList<>();
+	
+	private boolean isMaximize = true; // set to true by default
 		
 	public DPOP_UTIL(AgentPDDCOP agent, int currentTimeStep) {
 		super(agent);
@@ -76,7 +78,11 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	
 	@Override
 	public void action() {	  
-	  if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.LS_SDPOP) && isFirstTimeUTIL()) {
+	  if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.BOUND_DPOP)) {
+	    dpopTableList.addAll(agent.getDpopDecisionTableList());
+	    dpopTableList.addAll(agent.getDpopBoundRandomTableList());
+	  }
+	  else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.LS_SDPOP) && isFirstTimeUTIL()) {
       Table joinedDecisionTable = joinTableList(agent.getDpopDecisionTableList());
 
       agent.setStoredReuseTable(joinedDecisionTable);

@@ -13,6 +13,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,10 +22,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 
+import com.google.common.collect.BoundType;
 import com.google.common.collect.Sets;
 
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 import behavior.SEND_RECEIVE_FINAL_UTIL;
@@ -102,7 +106,11 @@ public class AgentPDDCOP extends Agent {
     BACKWARD,  
     SDPOP,
     REACT, 
-    HYBRID
+    HYBRID,
+    /**
+     *  Used to solve for the maximal-utility of DCOPs by realizing values of random variables
+     */
+    BOUND_DPOP
   }
   
   public static enum DcopAlgorithm {
@@ -171,6 +179,8 @@ public class AgentPDDCOP extends Agent {
 	
 	private List<Table> dpopDecisionTableList = new ArrayList<>();
 	private List<Table> dpopRandomTableList = new ArrayList<>();
+	private List<Table> dpopBoundRandomTableList = new ArrayList<>();
+	private SortedMap<String, List<String>> boundDpopRandomDomains = new TreeMap<>();
 	
 	private List<Table> mgmTableList = new ArrayList<>();
 
@@ -276,7 +286,6 @@ public class AgentPDDCOP extends Agent {
     try {
       Files.createDirectories(Paths.get(OUTPUT_FOLDER));
     } catch (IOException e) {
-      // TODO Auto-generated catch block
       e.printStackTrace();
     }
     
@@ -297,7 +306,6 @@ public class AgentPDDCOP extends Agent {
       try {
         Files.createDirectories(Paths.get(localSearchFolder));
       } catch (IOException e) {
-        // TODO Auto-generated catch block
         e.printStackTrace();
       }
       
@@ -379,6 +387,31 @@ public class AgentPDDCOP extends Agent {
 		// Done reviewing these two behaviors
 		mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
 		mainSequentialBehaviourList.addSubBehaviour(new PSEUDOTREE_GENERATION(this));
+		
+		//TODO:
+		if (pddcop_algorithm == PDDcopAlgorithm.BOUND_DPOP) {		  
+		  SortedSet<SortedMap<String, String>> boundDpopRandomCombinations = computeRandomCombinations(boundDpopRandomDomains);
+		  
+		  for (SortedMap<String, String> randomValueMapping : boundDpopRandomCombinations) {
+		    // Modify the constraint tables with random variables
+//		    dpopRandomTableList
+		    
+		    dpopBoundRandomTableList = computeDpopBoundRandomTable(dpopRandomTableList, randomValueMapping);
+		    
+		    // TODO: solve with max
+        mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, horizon));
+        mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, horizon));
+        
+        // TODO: solve with min
+		    
+		    // Store the max/min utility value
+		    
+		    // Root agent will write down the maximum difference in (max - min) value to the output file
+		    
+		    // Naming the output file and writing down the value
+		  }
+		  
+		}
 		
 		// Solve for the last time step for INFINITE
 		if (dynamicType == DynamicType.INFINITE_HORIZON) {
@@ -468,6 +501,61 @@ public class AgentPDDCOP extends Agent {
 		mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
 		addBehaviour(mainSequentialBehaviourList);
 	}
+
+	private List<Table> computeDpopBoundRandomTable(List<Table> randTableList, SortedMap<String, String> mapping) {
+	  List<Table> resultingList = new ArrayList<>();
+	  
+	  for (Table randTable : randTableList) {
+	    String randVariable = randTable.getRandVarLabel().get(0);
+	    String randValue = mapping.get(randVariable);
+	    
+	    Table table = new Table(randTable.getDecVarLabel(), false);
+	    for (Row row : table.getRowList()) {
+	      if (row.getRandomList().contains(randValue)) {
+	        table.addRow(new Row(row.getValueList(), row.getUtility()));
+	      }
+	    }
+	    
+	    resultingList.add(table);
+	  }
+	  
+    return resultingList;
+  }
+
+  // Given a mapping: random variable -> List of values (domain)
+	// Compute a set that contains mapping: random variable -> value
+  private SortedSet<SortedMap<String, String>> computeRandomCombinations(SortedMap<String, List<String>> randomVariableDomains) {
+    SortedSet<SortedMap<String, String>> realizationCombinations = new TreeSet<>();
+    
+    SortedSet<String> randomVariableSortedSet = new TreeSet<>();
+    randomVariableSortedSet.addAll(randomVariableDomains.keySet());
+    
+    // Convert randomVariableDomains into the array list that contains the sorted set of values
+    // In order to call Set.cartesianProduct
+    List<SortedSet<String>> domainForCatesianProduct = new ArrayList<>();
+    for (Entry<String, List<String>> entry : randomVariableDomains.entrySet()) {
+      SortedSet<String> set = new TreeSet<>();
+      set.addAll(entry.getValue());
+      domainForCatesianProduct.add(set);
+    }
+    
+    Set<List<String>> realizationSet = Sets.cartesianProduct(domainForCatesianProduct); 
+    
+    for (List<String> entry : realizationSet) {
+      int index = 0;
+      
+      SortedMap<String, String> realization = new TreeMap<>();
+      for (String random : randomVariableSortedSet) {
+        realization.put(random, entry.get(index));
+        index++;
+      }
+      
+      realizationCombinations.add(realization);
+    }
+    
+    
+    return realizationCombinations;
+  }
 
   /**
    * REVIEWED <br>
@@ -1084,6 +1172,8 @@ public class AgentPDDCOP extends Agent {
           }
           
           allRandomVariableSet.add(randomVariable);
+          
+          boundDpopRandomDomains.put(randomVariable, randomDomain);
           
           // Only add self random variable if any
           if (randomVariable.equals(agentID)) {
@@ -2683,5 +2773,10 @@ public class AgentPDDCOP extends Agent {
    */
   public String getOnlineOutputFileName() {
     return onlineOutputFileName;
+  }
+
+  public List<Table> getDpopBoundRandomTableList() {
+    // TODO Auto-generated method stub
+    return null;
   }
 }
