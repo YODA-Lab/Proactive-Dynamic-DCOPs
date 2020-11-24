@@ -1,0 +1,2 @@
+InstanceID	Utility	Time (ms)	PD_DCOP_Algorithm	DCOP_Algorithm	Dynamic	Agents	Switching cost	Discount	Horizon
+0	808.34	5471	HYBRID	DPOP	ONLINE	12	5.0	0.7	4

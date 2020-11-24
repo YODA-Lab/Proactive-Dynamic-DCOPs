@@ -1,0 +1,2 @@
+InstanceID	Utility	Time (ms)	PD_DCOP_Algorithm	DCOP_Algorithm	Dynamic	Agents	Switching cost	Discount	Horizon
+0	-∞	21	BACKWARD	MGM	INFINITE_HORIZON	15	50.0	0.9	10
