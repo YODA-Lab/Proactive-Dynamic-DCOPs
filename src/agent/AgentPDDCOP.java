@@ -117,7 +117,7 @@ public class AgentPDDCOP extends Agent {
 	}
 
 	public static enum DynamicType {
-		FINITE_HORIZON, INFINITE_HORIZON, ONLINE,
+		FINITE_HORIZON, INFINITE_HORIZON, ONLINE, STATIONARY
 	}
 
 	public static final String INPUT_FOLDER = "input_files";
@@ -290,7 +290,7 @@ public class AgentPDDCOP extends Agent {
 		sb.append(".txt");
 
 		outputFileName = OUTPUT_FOLDER + sb.toString();
-		if (isRunningPDDCOPLocalSearch() || dynamicType == DynamicType.ONLINE) {
+		if (isRunningPDDCOPLocalSearch() || dynamicType == DynamicType.ONLINE || dynamicType == DynamicType.STATIONARY) {
 			String localSearchFolder = OUTPUT_FOLDER + "/" + pddcop_algorithm + "_" + dcop_algorithm + "/";
 			try {
 				Files.createDirectories(Paths.get(localSearchFolder));
@@ -305,7 +305,6 @@ public class AgentPDDCOP extends Agent {
 		}
 	}
 
-	// done with LS-RAND
 	public void readArguments() {
 		Object[] args = getArguments();
 		out.println(Arrays.deepToString(args));
@@ -421,8 +420,7 @@ public class AgentPDDCOP extends Agent {
 		}
 
 		// Combine DCOPs from 0 -> theLastTimeStep
-		// Take into account the switching cost to the solution at horizon h if there is
-		// any
+		// Take into account the switching cost to the solution at horizon h if there is any
 		if (pddcop_algorithm == PDDcopAlgorithm.C_DCOP) {
 			if (dcop_algorithm == DcopAlgorithm.DPOP) {
 				mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, theLastTimeStep));
@@ -562,7 +560,7 @@ public class AgentPDDCOP extends Agent {
 	private int simulateActualValueAndComputeDistribution() {
 		int lastTimeStep = 0;
 
-		if (dynamicType == DynamicType.FINITE_HORIZON || dynamicType == DynamicType.ONLINE) {
+		if (dynamicType == DynamicType.FINITE_HORIZON || dynamicType == DynamicType.ONLINE || dynamicType == DynamicType.STATIONARY) {
 			lastTimeStep = horizon;
 		} else if (dynamicType == DynamicType.INFINITE_HORIZON) {
 			lastTimeStep = horizon - 1;
@@ -573,15 +571,32 @@ public class AgentPDDCOP extends Agent {
 		}
 
 		int randomDomainSize = selfRandomVariableDomainMap.get(agentID).size();
-		// Simulate for ONLINE dynamic type only
+		
+		// Simulate for ONLINE
 		if (dynamicType == DynamicType.ONLINE) {
 			for (int indexTime = 0; indexTime <= horizon; indexTime++) {
 				pickedRandomMap.put(indexTime, simulateOnlineValue(indexTime));
+				
 				if (pddcop_algorithm == PDDcopAlgorithm.HYBRID) {
 					createProbabilityWithObservation(indexTime + 1);
 				} else if (pddcop_algorithm == PDDcopAlgorithm.FORWARD && indexTime > 0) {
 					probabilityAtEachTimeStepMap.get(agentID)[indexTime] = new double[randomDomainSize];
 					computeExpectedProbabilityAtTimeStep(indexTime);
+				}
+			}
+		}
+		// Simulate for STATIONARY
+		else if (dynamicType == DynamicType.STATIONARY) {
+			// Initial distribution = Converged distribution
+			computeStationaryDistributionAsInitial();
+			
+			// Simulate actual value of random variables
+			for (int indexTime = 0; indexTime <= horizon; indexTime++) {
+				pickedRandomMap.put(indexTime, simulateOnlineValue(indexTime));
+				
+				// Set the probability distribution of FORWARD STATIONARY to the INITIAL PROBABILITY DISTRIBUTION
+				if (pddcop_algorithm == PDDcopAlgorithm.FORWARD) {
+					probabilityAtEachTimeStepMap.get(agentID)[indexTime] = probabilityAtEachTimeStepMap.get(agentID)[0];
 				}
 			}
 		}
@@ -874,6 +889,27 @@ public class AgentPDDCOP extends Agent {
 				probabilityAtEachTimeStepMap.get(randVariable)[timeStep] = currDistribution;
 			}
 		}
+	}
+	
+	/**
+	 * Compute the stationary probability distribution and set it at the first time step
+	 */
+	public void computeStationaryDistributionAsInitial() {
+		for (String randVariable : selfRandomVariableDomainMap.keySet()) {
+			double[] probability = probabilityAtEachTimeStepMap.get(randVariable)[0];
+			for (int h = 0; h <= MARKOV_CONVERGENCE_TIME_STEP; h++) {
+				probability = multiply(probability, transitionFunctionMap.get(randVariable));
+			}
+			probabilityAtEachTimeStepMap.get(randVariable)[0] = probability;
+		}
+		
+//		for (String randVariable : selfRandomVariableDomainMap.keySet()) {
+//			for (int ts = 1; ts <= finalHorizon; ts++) {			
+//				double[] prevDistribution = probabilityAtEachTimeStepMap.get(randVariable)[ts-1];
+//				double[] currDistribution = multiply(prevDistribution, transitionFunctionMap.get(randVariable));
+//				probabilityAtEachTimeStepMap.get(randVariable)[ts] = currDistribution;
+//			}
+//		} 
 	}
 
 	// for each agent, create probability for valueList at each timeStep of each

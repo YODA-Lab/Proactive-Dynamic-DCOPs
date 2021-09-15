@@ -42,7 +42,7 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
     for (ACLMessage msg : receiveMessages) {
       try {
         pddcop_quality_from_children += (Double) ((List) msg.getContentObject()).get(0);
-        if (agent.isDynamic(DynamicType.ONLINE)) {
+        if (agent.isDynamic(DynamicType.ONLINE) || agent.isDynamic(DynamicType.STATIONARY)) {
           Map<Integer, Double> quality_children = (Map<Integer, Double>) ((List) msg.getContentObject()).get(1);
           Map<Integer, Double> switching_cost_children = (Map<Integer, Double>) ((List) msg.getContentObject()).get(2);
           for (int i = -1; i <= agent.getHorizon(); i++) {
@@ -66,7 +66,7 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
     Map<Integer, Double> actual_solution_quality = new HashMap<>();
     Map<Integer, Double> actual_switching_cost = new HashMap<>();
 
-    if (agent.isDynamic(DynamicType.ONLINE)) {
+    if (agent.isDynamic(DynamicType.ONLINE) || agent.isDynamic(DynamicType.STATIONARY)) {
       actual_solution_quality.putAll(agent.computeActualQualityWithoutTime());
       actual_switching_cost.putAll(agent.computeActualSwitchingCost());
       
@@ -87,7 +87,7 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
       agent.sendObjectMessageWithTime(agent.getParentAID(), messageForParent, FINAL_UTIL, agent.getSimulatedTime());
     }
     else {
-      if (agent.isDynamic(DynamicType.ONLINE)) {
+      if (agent.isDynamic(DynamicType.ONLINE) || agent.isDynamic(DynamicType.STATIONARY)) {
         for (int ts = 0; ts <= agent.getHorizon(); ts++) {
           double quality = actual_solution_quality.get(ts);
           double switchingCost = actual_switching_cost.get(ts);
