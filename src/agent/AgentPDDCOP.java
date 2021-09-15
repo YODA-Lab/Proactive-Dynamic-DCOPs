@@ -248,7 +248,7 @@ public class AgentPDDCOP extends Agent {
 	private Map<Integer, Long> MGMdifferenceRuntimeMap = new HashMap<>();
 	
 	// R_Learning
-	private Map<Integer, String> randomRealizationForLearning = new HashMap<>();
+//	private Map<Integer, String> randomRealizationForLearning = new HashMap<>();
 
 	private Map<AugmentedState, Double> RFunction = new HashMap<>();
 
@@ -610,8 +610,10 @@ public class AgentPDDCOP extends Agent {
 		// From there, simulate the value of random variables
 		// The initial distribution has been assigned using the stationary distribution
 		for (int indexTime = 0; indexTime <= R_LEARNING_ITERATION; indexTime++) {
-			// Since R_LEARNING is STATIONARY, the initial distribution is also the stationary distribution
-			randomRealizationForLearning.put(indexTime, simulateOnlineValue(indexTime));
+			if (!pickedRandomMap.containsKey(indexTime)) {
+				// Since R_LEARNING is STATIONARY, the initial distribution is also the stationary distribution
+				pickedRandomMap.put(indexTime, simulateOnlineValue(indexTime));	
+			}
 		}
 	}
 
@@ -2968,10 +2970,6 @@ public class AgentPDDCOP extends Agent {
 
 	public void setBeta_r(double beta_r) {
 		this.beta_r = beta_r;
-	}
-	
-	public Map<Integer, String> getRandomRealizationForLearning() {
-		return randomRealizationForLearning;
 	}
 	
 	public Map<AugmentedState, Double> getRFunction() {

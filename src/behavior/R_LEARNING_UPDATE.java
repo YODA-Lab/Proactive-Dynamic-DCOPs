@@ -28,8 +28,8 @@ public class R_LEARNING_UPDATE extends OneShotBehaviour {
 	
 	@Override
 	public void action() {
-		String currrentRandomState = agent.getRandomRealizationForLearning().get(currentLearningTimeStep);
-		String nextRandomState = agent.getRandomRealizationForLearning().get(currentLearningTimeStep + 1);
+		String currrentRandomState = agent.getPickedRandomAt(currentLearningTimeStep);
+		String nextRandomState = agent.getPickedRandomAt(currentLearningTimeStep + 1);
 		
 		String solutionNextState =  agent.getChosenValueAtEachTimeStep(currentLearningTimeStep);
 		String solutionCurrentState = agent.getChosenValueAtEachTimeStep(currentLearningTimeStep + 1);
