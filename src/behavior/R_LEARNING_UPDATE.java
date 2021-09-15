@@ -49,7 +49,9 @@ public class R_LEARNING_UPDATE extends OneShotBehaviour {
 			AugmentedState argmaxCurrentState = AugmentedState.of(currrentRandomState, solutionCurrentState);
 			
 			// Update R value
-			double updatedR = r_function.get(updateState) * (1 - beta) + beta * (immediateReward - agent.getAverageRewardR() + r_function.get(argmaxNextState));
+			double updatedR = r_function.get(updateState) * (1 - beta) +
+									beta * (immediateReward - agent.getAverageRewardR() +
+											r_function.get(argmaxNextState));
 			r_function.put(updateState, updatedR);
 			
 			// Update average reward

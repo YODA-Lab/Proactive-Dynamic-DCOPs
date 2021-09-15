@@ -1,5 +1,7 @@
 package table;
 
+import java.util.Objects;
+
 public class AugmentedState {
 	private String random = null;
 	private String previous = null;
@@ -47,6 +49,25 @@ public class AugmentedState {
 	public void setCurrent(String current) {
 		this.current = current;
 	}
-	
-	
+
+	@Override
+	public String toString() {
+		return "AugmentedState [random=" + random + ", previous=" + previous + ", current=" + current + "]";
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(current, previous, random);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!(obj instanceof AugmentedState))
+			return false;
+		AugmentedState other = (AugmentedState) obj;
+		return Objects.equals(current, other.current) && Objects.equals(previous, other.previous)
+				&& Objects.equals(random, other.random);
+	}
 }
