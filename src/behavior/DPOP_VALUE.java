@@ -14,60 +14,53 @@ import agent.AgentPDDCOP.PDDcopAlgorithm;
 import table.Row;
 
 /**
- * @author khoihd
- * REVIEWED <br>
- *  1. IF X is a root
- *    Send the value of root to all the children
- *    PRINT OUT the value picked
- *    STOP
+ * @author khoihd REVIEWED <br>
+ *         1. IF X is a root Send the value of root to all the children PRINT
+ *         OUT the value picked STOP
  * 
- *  2. ELSE (not a root)
- *    Waiting from message from the parent
- *    From the received parent_value, pick X_value from the store (parent_value, X_value)
- *    //which is the corresponding X_value to parent_value with the minimum utility
- *    2.1 IF (X is not a leaf)
- *      Send the value to all the children
- *    PRINT_OUT the picked value
- *    STOP 
+ *         2. ELSE (not a root) Waiting from message from the parent From the
+ *         received parent_value, pick X_value from the store (parent_value,
+ *         X_value) //which is the corresponding X_value to parent_value with
+ *         the minimum utility 2.1 IF (X is not a leaf) Send the value to all
+ *         the children PRINT_OUT the picked value STOP
  */
 public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 
 	private static final long serialVersionUID = 4288241761322913640L;
-	
+
 	AgentPDDCOP agent;
-	
+
 	private int currentTimeStep;
-	
+
 	public DPOP_VALUE(AgentPDDCOP agent, int currentTimeStep) {
 		super(agent);
 		this.agent = agent;
 		this.currentTimeStep = currentTimeStep;
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	@Override
-	public void action() {		
-	  // VALUE might be called multiple times
-	  agent.getValuesToSendInVALUEPhase().clear();
-	  
+	public void action() {
+		// VALUE might be called multiple times
+		agent.getValuesToSendInVALUEPhase().clear();
+
 		if (agent.isRoot()) {
-		  if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DCOP)) {
-        agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getCDPOP_value());
-		  }
-		  else {
-		    agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getChosenValueAtEachTimeStep(currentTimeStep));
-		  }
-			
-			for (AID childrenAgentAID : agent.getChildrenAIDSet()) {
-				agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(),
-								DPOP_VALUE, agent.getSimulatedTime());
+			if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DCOP)) {
+				agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getCDPOP_value());
+			} else {
+				agent.addValuesToSendInValuePhase(agent.getAgentID(),
+						agent.getChosenValueAtEachTimeStep(currentTimeStep));
 			}
-		}
-		else {
-		  //leaf or internal nodes
+
+			for (AID childrenAgentAID : agent.getChildrenAIDSet()) {
+				agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE,
+						agent.getSimulatedTime());
+			}
+		} else {
+			// leaf or internal nodes
 			ACLMessage receivedMessage = waitingForMessageFromParent(DPOP_VALUE);
 			agent.startSimulatedTiming();
-			
+
 			HashMap<Integer, String> variableAgentViewIndexValueMap = new HashMap<Integer, String>();
 			HashMap<String, String> valuesFromParent = new HashMap<String, String>();
 			try {
@@ -77,76 +70,77 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 			}
 
 			for (Entry<String, String> valuesEntry : valuesFromParent.entrySet()) {
-			  String agentKey = valuesEntry.getKey();
-			  String agentValue = valuesEntry.getValue();
-			  
-        int positionInAgentView = agent.getAgentViewTable().getDecVarLabel().indexOf(agentKey);
+				String agentKey = valuesEntry.getKey();
+				String agentValue = valuesEntry.getValue();
 
-        // not in agentView
-        if (positionInAgentView == -1) {
-          continue;
-        }
-        // if exist this agent in agent view, add to values to send
-        agent.addValuesToSendInValuePhase(agentKey, agentValue);
+				int positionInAgentView = agent.getAgentViewTable().getDecVarLabel().indexOf(agentKey);
 
-        variableAgentViewIndexValueMap.put(positionInAgentView, agentValue);
+				// not in agentView
+				if (positionInAgentView == -1) {
+					continue;
+				}
+				// if exist this agent in agent view, add to values to send
+				agent.addValuesToSendInValuePhase(agentKey, agentValue);
+
+				variableAgentViewIndexValueMap.put(positionInAgentView, agentValue);
 			}
-			
+
 			int selfAgentIndex = agent.getAgentViewTable().getDecVarLabel().indexOf(agent.getAgentID());
 
 			Row chosenRow = new Row();
 			double maxUtility = -Double.MAX_VALUE;
-			
-			for (Row agentViewRow : agent.getAgentViewTable().getRowList()) {
-				boolean isMatch = true;	
 
-				//check for each of index, get values and compared to the agentViewRow's values
-				//if one of the values is not match, set flag to false and skip to the next row
+			for (Row agentViewRow : agent.getAgentViewTable().getRowList()) {
+				boolean isMatch = true;
+
+				// check for each of index, get values and compared to the agentViewRow's values
+				// if one of the values is not match, set flag to false and skip to the next row
 				for (Entry<Integer, String> valuePositionEntry : variableAgentViewIndexValueMap.entrySet()) {
-				  int position = valuePositionEntry.getKey();
-				  String value = valuePositionEntry.getValue();
-          
-				  // this row does not match the values
-				  if (!agentViewRow.getValueAtPosition(position).equals(value)) {
-            isMatch = false;
-            break;
-          }
+					int position = valuePositionEntry.getKey();
+					String value = valuePositionEntry.getValue();
+
+					// this row does not match the values
+					if (!agentViewRow.getValueAtPosition(position).equals(value)) {
+						isMatch = false;
+						break;
+					}
 				}
-				
+
 				// Only compare if this row matches the value
 				if (isMatch && Double.compare(agentViewRow.getUtility(), maxUtility) > 0) {
-          maxUtility = agentViewRow.getUtility();
-          chosenRow = agentViewRow;
-        }
+					maxUtility = agentViewRow.getUtility();
+					chosenRow = agentViewRow;
+				}
 			}
-			
+
 			String chosenValue = chosenRow.getValueAtPosition(selfAgentIndex);
-			
-	    agent.storeDpopSolution(chosenValue, currentTimeStep);
-	    // Set random solution for REACT algorithm
-	    if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT) && currentTimeStep == 0) {
-	      int randomIndex = agent.getRandom().nextInt(agent.getSelfDomain().size());
-	      agent.getChosenValueAtEachTSMap().put(-1, agent.getSelfDomain().get(randomIndex));
-	    }
+
+			agent.storeDpopSolution(chosenValue, currentTimeStep);
+			// Set random solution for REACT algorithm
+			if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT) && currentTimeStep == 0) {
+				int randomIndex = agent.getRandom().nextInt(agent.getSelfDomain().size());
+				agent.getChosenValueAtEachTSMap().put(-1, agent.getSelfDomain().get(randomIndex));
+			}
 
 			agent.addValuesToSendInValuePhase(agent.getAgentID(), chosenValue);
-			
+
 			agent.stopStimulatedTiming();
-			
+
 			if (!agent.isLeaf()) {
 //				if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DCOP)) {
 //					agent.print("Chosen value is " + chosenValue);
 //				}
-				
+
 				for (AID children : agent.getChildrenAIDSet()) {
-					agent.sendObjectMessageWithTime(children, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE, agent.getSimulatedTime());
+					agent.sendObjectMessageWithTime(children, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE,
+							agent.getSimulatedTime());
 				}
 			}
 		}
-		
-    agent.print("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap().values());
+
+		agent.print("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap().values());
 	}
-	
+
 //	private List<ACLMessage> waitingForMessageFromPseudoParent(int msgCode) {
 //		List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 //		//no of messages are no of pseudoParent + 1 (parent)
@@ -161,34 +155,34 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 //		}
 //		return messageList;
 //	}
-	
-  private ACLMessage waitingForMessageFromParent(int msgCode) {
-    ACLMessage receivedMessage = null;
 
-    while (true) {
-      agent.startSimulatedTiming();
+	private ACLMessage waitingForMessageFromParent(int msgCode) {
+		ACLMessage receivedMessage = null;
 
-      MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
-      receivedMessage = myAgent.blockingReceive(template);
+		while (true) {
+			agent.startSimulatedTiming();
 
-      agent.stopStimulatedTiming();
+			MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
+			receivedMessage = myAgent.blockingReceive(template);
+
+			agent.stopStimulatedTiming();
 //      if (receivedMessage != null) {
-        long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
-        if (timeFromReceiveMessage > agent.getSimulatedTime()) {
-          agent.setSimulatedTime(timeFromReceiveMessage);
-        }
-        
-        break;
+			long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
+			if (timeFromReceiveMessage > agent.getSimulatedTime()) {
+				agent.setSimulatedTime(timeFromReceiveMessage);
+			}
+
+			break;
 //      } 
 //      else {
 //        block();
 //      }
-    }
+		}
 
-    agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
-    return receivedMessage;
-  }
-	
+		agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());
+		return receivedMessage;
+	}
+
 //	private void writeChosenValueToFile_Not_FW() {
 //		String algName = null;
 //		if (agent.isRunningAlgorithm(DcopAlgorithm.REACT))
@@ -236,7 +230,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 //			System.err.println(x);
 //		}
 //	}
-	
+
 //	public void writeChosenValueToFileFW() {
 ////		String algName = "forward";
 //		

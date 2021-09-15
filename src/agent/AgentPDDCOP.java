@@ -45,12 +45,15 @@ import behavior.MGM_SEND_RECEIVE_IMPROVE;
 import behavior.MGM_SEND_RECEIVE_UTIL;
 import behavior.MGM_SEND_RECEIVE_VALUE;
 import behavior.PSEUDOTREE_GENERATION;
+import behavior.R_LEARNING_APPLY;
 import behavior.LS_RAND_PICK_VALUE;
 import behavior.LS_RECEIVE_IMPROVE;
 import behavior.SEND_RECEIVE_FINAL_VALUE;
+import behavior.R_LEARNING_UPDATE;
 import behavior.LS_RECEIVE_VALUE;
 import behavior.SEARCH_NEIGHBORS;
 import behavior.LS_SEND_IMPROVE;
+import table.AugmentedState;
 import table.Row;
 import table.Table;
 import transition.TransitionFunction;
@@ -101,6 +104,8 @@ public class AgentPDDCOP extends Agent {
 
 	public static enum PDDcopAlgorithm {
 		C_DCOP, LS_SDPOP, LS_RAND, FORWARD, BACKWARD, SDPOP, REACT, HYBRID,
+		// Decomposed Distributed R Learning (see MD-DCOPs paper)
+		R_LEARNING,
 		/**
 		 * Used to solve for the maximal-utility of DCOPs by realizing values of random
 		 * variables
@@ -127,6 +132,7 @@ public class AgentPDDCOP extends Agent {
 	public static final int MARKOV_CONVERGENCE_TIME_STEP = 40;
 	public static final boolean RANDOM_TABLE = true;
 	public static final boolean DECISION_TABLE = false;
+	public static final int R_LEARNING_ITERATION = 20;
 
 	/*
 	 * DCOP parameters To be read from arguments
@@ -240,6 +246,19 @@ public class AgentPDDCOP extends Agent {
 	// Mapping from horizon to the difference in runtime of when the solution
 	// converges to the last time step
 	private Map<Integer, Long> MGMdifferenceRuntimeMap = new HashMap<>();
+	
+	// R_Learning
+	private Map<Integer, String> randomRealizationForLearning = new HashMap<>();
+
+	private Map<AugmentedState, Double> RFunction = new HashMap<>();
+
+	private double averageRewardR = 0;
+	private boolean isSolvingForCurrentState = true;
+	private String solutionForCurrentState = null;
+	private String solutionForNextState = null;
+	private double alpha_r = 0.9;
+	private double beta_r = 0.9;
+	
 
 	private boolean stop = false;
 	private String lastLine = "";
@@ -365,6 +384,25 @@ public class AgentPDDCOP extends Agent {
 		bean.setThreadContentionMonitoringEnabled(true);
 
 		int theLastTimeStep = simulateActualValueAndComputeDistribution();
+		
+		// Simulate random variables for R_LEARNING
+		if (pddcop_algorithm == PDDcopAlgorithm.R_LEARNING) {
+			simulateActualValueForRLearning();
+			
+			// Initialize R functions
+			for (String previous : decisionVariableDomainMap.get(agentID)) {
+				for (String current : decisionVariableDomainMap.get(agentID)) {
+					for (String random : selfRandomVariableDomainMap.get(agentID)) {
+						AugmentedState state = AugmentedState.of(random, previous, current);
+						RFunction.put(state, 0D);
+						
+						// Previous = null for the case of horizon = 0
+						AugmentedState state_null_prev = AugmentedState.of(random, current);
+						RFunction.put(state_null_prev, 0D);
+					}
+				}	
+			}
+		}
 
 		print("pickedRandomMap=" + pickedRandomMap);
 		print("probabilityAtEachTimeStepMap=");
@@ -457,6 +495,27 @@ public class AgentPDDCOP extends Agent {
 			}
 		} else if (pddcop_algorithm == PDDcopAlgorithm.LS_RAND) {
 			mainSequentialBehaviourList.addSubBehaviour(new LS_RAND_PICK_VALUE(this));
+		} else if (pddcop_algorithm == PDDcopAlgorithm.R_LEARNING) {
+			// Behaviors for learning the R function
+			// Solving DCOP with current state ~ similar to REACT
+			// Solving DCOP with the next state ~ similar to REACT
+			// Behaviors for running the online version
+			for (int i = 0; i <= R_LEARNING_ITERATION - 1; i++) {
+				// Solving for current state
+				isSolvingForCurrentState = true;
+				mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
+				mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));				
+				// Update R and average reward only when having the solution of the previous state and the current state
+				if (i > 0) {
+					mainSequentialBehaviourList.addSubBehaviour(new R_LEARNING_UPDATE(this, i-1));
+				}
+			}
+			
+			// Update R and average reward
+			for (int i = 0; i <= theLastTimeStep; i++) {
+				// Apply the action based on the R Learning function
+				mainSequentialBehaviourList.addSubBehaviour(new R_LEARNING_APPLY(this, i));
+			}
 		}
 
 		// Add the discounted tables to time steps 0 -> lastTimeStep for all algorithms
@@ -545,6 +604,15 @@ public class AgentPDDCOP extends Agent {
 		}
 
 		return realizationCombinations;
+	}
+	
+	private void simulateActualValueForRLearning() {		
+		// From there, simulate the value of random variables
+		// The initial distribution has been assigned using the stationary distribution
+		for (int indexTime = 0; indexTime <= R_LEARNING_ITERATION; indexTime++) {
+			// Since R_LEARNING is STATIONARY, the initial distribution is also the stationary distribution
+			randomRealizationForLearning.put(indexTime, simulateOnlineValue(indexTime));
+		}
 	}
 
 	/**
@@ -902,14 +970,6 @@ public class AgentPDDCOP extends Agent {
 			}
 			probabilityAtEachTimeStepMap.get(randVariable)[0] = probability;
 		}
-		
-//		for (String randVariable : selfRandomVariableDomainMap.keySet()) {
-//			for (int ts = 1; ts <= finalHorizon; ts++) {			
-//				double[] prevDistribution = probabilityAtEachTimeStepMap.get(randVariable)[ts-1];
-//				double[] currDistribution = multiply(prevDistribution, transitionFunctionMap.get(randVariable));
-//				probabilityAtEachTimeStepMap.get(randVariable)[ts] = currDistribution;
-//			}
-//		} 
 	}
 
 	// for each agent, create probability for valueList at each timeStep of each
@@ -2316,7 +2376,7 @@ public class AgentPDDCOP extends Agent {
 		double distribution[] = null;
 
 		if (currentTimeStep == 0) {
-			distribution = probabilityAtEachTimeStepMap.get(randomVar)[0];
+			distribution = probabilityAtEachTimeStepMap.get(randomVar)[0];	
 		}
 		// get distribution from transition function, from the previous random values
 		else {
@@ -2860,5 +2920,65 @@ public class AgentPDDCOP extends Agent {
 	public List<Table> getDpopBoundRandomTableList() {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	public double getAverageRewardR() {
+		return averageRewardR;
+	}
+
+	public void setAverageRewardR(double averageRewardR) {
+		this.averageRewardR = averageRewardR;
+	}
+
+	public boolean isSolvingForCurrentState() {
+		return isSolvingForCurrentState;
+	}
+
+	public void setSolvingForCurrentState(boolean isSolvingForCurrentState) {
+		this.isSolvingForCurrentState = isSolvingForCurrentState;
+	}
+
+	public String getSolutionForCurrentState() {
+		return solutionForCurrentState;
+	}
+
+	public void setSolutionForCurrentState(String solutionForCurrentState) {
+		this.solutionForCurrentState = solutionForCurrentState;
+	}
+
+	public String getSolutionForNextState() {
+		return solutionForNextState;
+	}
+
+	public void setSolutionForNextState(String solutionForNextState) {
+		this.solutionForNextState = solutionForNextState;
+	}
+
+	public double getAlpha_r() {
+		return alpha_r;
+	}
+
+	public void setAlpha_r(double alpha_r) {
+		this.alpha_r = alpha_r;
+	}
+
+	public double getBeta_r() {
+		return beta_r;
+	}
+
+	public void setBeta_r(double beta_r) {
+		this.beta_r = beta_r;
+	}
+	
+	public Map<Integer, String> getRandomRealizationForLearning() {
+		return randomRealizationForLearning;
+	}
+	
+	public Map<AugmentedState, Double> getRFunction() {
+		return RFunction;
+	}
+
+	public void setRFunction(Map<AugmentedState, Double> rFunction) {
+		RFunction = rFunction;
 	}
 }
