@@ -98,8 +98,18 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 			agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
 
 			// Add actual tables for REACT
-			if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT) || agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.R_LEARNING)) {
+			if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT)) {
 				dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
+			}
+			else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.R_LEARNING)) {
+				dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
+				// Add unary constraint table with the switching cost to the dpopTableList
+				if (currentTimeStep > 0) {
+					Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(),
+							agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
+							agent.getChosenValueAtEachTimeStep(currentTimeStep - 1));
+					dpopTableList.add(switchingCostToPreviousSolution);
+				}
 			}
 			// Add discounted expected tables for FORWARD and HYBRID
 			else {

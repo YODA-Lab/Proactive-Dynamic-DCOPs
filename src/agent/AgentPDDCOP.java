@@ -2188,7 +2188,7 @@ public class AgentPDDCOP extends Agent {
 	}
 
 	public String getChosenValueAtEachTimeStep(int timeStep) {
-		return chosenValueAtEachTSMap.get(timeStep);
+		return chosenValueAtEachTSMap.getOrDefault(timeStep, null);
 	}
 
 	public void setChosenValueAtEachTimeStep(int timeStep, String chosenValue) {

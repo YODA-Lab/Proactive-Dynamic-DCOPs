@@ -31,6 +31,7 @@ public class R_LEARNING_UPDATE extends OneShotBehaviour {
 		String currrentRandomState = agent.getPickedRandomAt(currentLearningTimeStep);
 		String nextRandomState = agent.getPickedRandomAt(currentLearningTimeStep + 1);
 		
+		String solutionPrev = agent.getChosenValueAtEachTimeStep(currentLearningTimeStep-1);
 		String solutionNextState =  agent.getChosenValueAtEachTimeStep(currentLearningTimeStep);
 		String solutionCurrentState = agent.getChosenValueAtEachTimeStep(currentLearningTimeStep + 1);
 		
@@ -43,10 +44,14 @@ public class R_LEARNING_UPDATE extends OneShotBehaviour {
 		for (String decisionValue : agent.getDecisionVariableDomainMap().get(agent.getAgentID())) {
 			double immediateReward = computeUtilityGivenCurrentState(decisionValue, agent.getActualDpopTableAcrossTimeStep(currentLearningTimeStep));
 			
-			AugmentedState updateState = AugmentedState.of(currrentRandomState, decisionValue);
+			AugmentedState updateState = currentLearningTimeStep == 0 ? 
+											AugmentedState.of(currrentRandomState, decisionValue) :
+											AugmentedState.of(currrentRandomState, solutionPrev, decisionValue);
 			
-			AugmentedState argmaxNextState = AugmentedState.of(nextRandomState, solutionNextState);
-			AugmentedState argmaxCurrentState = AugmentedState.of(currrentRandomState, solutionCurrentState);
+			AugmentedState argmaxNextState = AugmentedState.of(nextRandomState, solutionCurrentState, solutionNextState);
+			AugmentedState argmaxCurrentState = currentLearningTimeStep == 0 ?
+											AugmentedState.of(currrentRandomState, solutionCurrentState) :
+											AugmentedState.of(currrentRandomState, solutionPrev, solutionCurrentState);
 			
 			// Update R value
 			double updatedR = r_function.get(updateState) * (1 - beta) +
@@ -61,13 +66,18 @@ public class R_LEARNING_UPDATE extends OneShotBehaviour {
 	}
 	
 	private double computeUtilityGivenCurrentState(String decisionValue, List<Table> tableList) {		
+		String solutionPrev = agent.getChosenValueAtEachTimeStep(currentLearningTimeStep-1);
+		String solutionNextState =  agent.getChosenValueAtEachTimeStep(currentLearningTimeStep);
+		
+		double switchCost = solutionPrev == null ? 0D : agent.switchingCostFunction(solutionPrev, solutionNextState); 
+		
 		List<String> valueList = new ArrayList<>();
 		valueList.add(decisionValue);
 		
 		for (Table table : agent.getActualDpopTableAcrossTimeStep().get(currentLearningTimeStep)) {
 			// Unary constraint after removing random state
 			if (table.getDecVarLabel().size() == 1) {
-				return table.getUtilityGivenDecValueList(valueList);
+				return table.getUtilityGivenDecValueList(valueList) - switchCost;
 			}
 		}
 		
