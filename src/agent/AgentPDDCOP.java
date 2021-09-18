@@ -320,7 +320,7 @@ public class AgentPDDCOP extends Agent {
 			sb.insert(0, "instanceID=" + instanceID + "_");
 			localSearchOutputFileName = localSearchFolder + sb.toString();
 //			onlineOutputFileName = localSearchFolder + "OnlineRun=" + onlineRun + "_" + sb.toString();
-//      onlineOutputFileName = localSearchOutputFileName; 
+			onlineOutputFileName = localSearchOutputFileName; 
 		}
 	}
 
