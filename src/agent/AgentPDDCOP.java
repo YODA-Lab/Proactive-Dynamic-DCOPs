@@ -132,7 +132,6 @@ public class AgentPDDCOP extends Agent {
 	public static final int MARKOV_CONVERGENCE_TIME_STEP = 40;
 	public static final boolean RANDOM_TABLE = true;
 	public static final boolean DECISION_TABLE = false;
-	public static final int R_LEARNING_ITERATION = 40;
 
 	/*
 	 * DCOP parameters To be read from arguments
@@ -258,6 +257,7 @@ public class AgentPDDCOP extends Agent {
 	private String solutionForNextState = null;
 	private double alpha_r = 0.9;
 	private double beta_r = 0.9;
+	private int rLearningIteration;
 	
 
 	private boolean stop = false;
@@ -306,6 +306,9 @@ public class AgentPDDCOP extends Agent {
 		sb.append("_discountFactor=" + discountFactor);
 		sb.append("_heuristicWeight=" + heuristicWeight);
 		sb.append("_" + pddcop_algorithm + "_" + dcop_algorithm + "_" + dynamicType);
+		if (pddcop_algorithm == PDDcopAlgorithm.R_LEARNING) {
+			sb.append("_rLearningIteration=" + rLearningIteration);
+		}
 		sb.append(".txt");
 
 		outputFileName = OUTPUT_FOLDER + sb.toString();
@@ -337,6 +340,7 @@ public class AgentPDDCOP extends Agent {
 		discountFactor = Double.valueOf((String) args[5]);
 		dynamicType = DynamicType.valueOf((String) args[6]);
 		heuristicWeight = Double.valueOf((String) args[7]);
+		rLearningIteration = Integer.valueOf((String) args[8]);
 //		setOnlineRun(Integer.valueOf((String) args[8]));
 
 		String a[] = inputFileName.substring(inputFileName.indexOf("/") + 1).replaceAll("instance_", "")
@@ -359,6 +363,14 @@ public class AgentPDDCOP extends Agent {
 		randomSeed = (instanceID + 1) * Integer.valueOf(agentID) * horizon;
 //		randomSeed = (instanceID + 1) * Integer.valueOf(agentID) * horizon * (onlineRun + 1);
 		rdn.setSeed(randomSeed);
+	}
+
+	public int getrLearningIteration() {
+		return rLearningIteration;
+	}
+
+	public void setrLearningIteration(int rLearningIteration) {
+		this.rLearningIteration = rLearningIteration;
 	}
 
 	protected void setup() {
@@ -500,7 +512,7 @@ public class AgentPDDCOP extends Agent {
 			// Solving DCOP with current state ~ similar to REACT
 			// Solving DCOP with the next state ~ similar to REACT
 			// Behaviors for running the online version
-			for (int i = 0; i <= R_LEARNING_ITERATION - 1; i++) {
+			for (int i = 0; i <= rLearningIteration - 1; i++) {
 				// Solving for current state
 				isSolvingForCurrentState = true;
 				mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
@@ -609,7 +621,7 @@ public class AgentPDDCOP extends Agent {
 	private void simulateActualValueForRLearning() {		
 		// From there, simulate the value of random variables
 		// The initial distribution has been assigned using the stationary distribution
-		for (int indexTime = 0; indexTime <= R_LEARNING_ITERATION; indexTime++) {
+		for (int indexTime = 0; indexTime <= rLearningIteration; indexTime++) {
 			if (!pickedRandomMap.containsKey(indexTime)) {
 				// Since R_LEARNING is STATIONARY, the initial distribution is also the stationary distribution
 				pickedRandomMap.put(indexTime, simulateOnlineValue(indexTime));	

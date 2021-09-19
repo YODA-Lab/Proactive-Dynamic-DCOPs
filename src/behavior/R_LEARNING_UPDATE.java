@@ -31,16 +31,15 @@ public class R_LEARNING_UPDATE extends OneShotBehaviour {
 		String currrentRandomState = agent.getPickedRandomAt(currentLearningTimeStep);
 		String nextRandomState = agent.getPickedRandomAt(currentLearningTimeStep + 1);
 		
-		String solutionPrev = agent.getChosenValueAtEachTimeStep(currentLearningTimeStep-1);
-		String solutionNextState =  agent.getChosenValueAtEachTimeStep(currentLearningTimeStep);
-		String solutionCurrentState = agent.getChosenValueAtEachTimeStep(currentLearningTimeStep + 1);
+		String solutionPrev = agent.getChosenValueAtEachTimeStep(currentLearningTimeStep - 1);
+		String solutionCurrentState = agent.getChosenValueAtEachTimeStep(currentLearningTimeStep);
+		String solutionNextState =  agent.getChosenValueAtEachTimeStep(currentLearningTimeStep + 1);
 		
 		double alpha = agent.getAlpha_r();
 		double beta = agent.getBeta_r();
 		
 		Map<AugmentedState, Double> r_function = agent.getRFunction();
 		
-		//TODO: Take into account the previous solution to consider the switching cost
 		for (String decisionValue : agent.getDecisionVariableDomainMap().get(agent.getAgentID())) {
 			double immediateReward = computeUtilityGivenCurrentState(decisionValue, agent.getActualDpopTableAcrossTimeStep(currentLearningTimeStep));
 			
@@ -65,11 +64,11 @@ public class R_LEARNING_UPDATE extends OneShotBehaviour {
 		}
 	}
 	
+	// Only apply to the unary constraint with the random variable
 	private double computeUtilityGivenCurrentState(String decisionValue, List<Table> tableList) {		
-		String solutionPrev = agent.getChosenValueAtEachTimeStep(currentLearningTimeStep-1);
-		String solutionNextState =  agent.getChosenValueAtEachTimeStep(currentLearningTimeStep);
+		String solutionPrev = agent.getChosenValueAtEachTimeStep(currentLearningTimeStep - 1);
 		
-		double switchCost = solutionPrev == null ? 0D : agent.switchingCostFunction(solutionPrev, solutionNextState); 
+		double switchCost = solutionPrev == null ? 0D : agent.switchingCostFunction(solutionPrev, decisionValue); 
 		
 		List<String> valueList = new ArrayList<>();
 		valueList.add(decisionValue);
