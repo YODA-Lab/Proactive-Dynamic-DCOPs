@@ -13,7 +13,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,7 +21,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
 
-import com.google.common.collect.BoundType;
 import com.google.common.collect.Sets;
 
 import java.util.Set;
@@ -255,8 +253,8 @@ public class AgentPDDCOP extends Agent {
 	private boolean isSolvingForCurrentState = true;
 	private String solutionForCurrentState = null;
 	private String solutionForNextState = null;
-	private double alpha_r = 0.9;
-	private double beta_r = 0.9;
+	private double alpha_r = 0.05;
+	private double beta_r = 0.5;
 	private int rLearningIteration;
 	
 
