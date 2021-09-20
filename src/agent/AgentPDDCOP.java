@@ -306,6 +306,8 @@ public class AgentPDDCOP extends Agent {
 		sb.append("_" + pddcop_algorithm + "_" + dcop_algorithm + "_" + dynamicType);
 		if (pddcop_algorithm == PDDcopAlgorithm.R_LEARNING) {
 			sb.append("_rLearningIteration=" + rLearningIteration);
+			sb.append("_alpha=" + alpha_r);
+			sb.append("_beta=" + beta_r);
 		}
 		sb.append(".txt");
 
