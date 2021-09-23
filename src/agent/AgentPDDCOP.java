@@ -2275,25 +2275,9 @@ public class AgentPDDCOP extends Agent {
 		this.agentViewEachTimeStepMap = agentViewEachTimeStepMap;
 	}
 
-//	public int getLocalSearchIteration() {
-//		return localSearchIteration;
-//	}
-//
-//	public void setLsIteration(int lsIteration) {
-//		this.localSearchIteration = lsIteration;
-//	}
-//
-//	public void incrementLocalSearchIteration() {
-//		this.localSearchIteration++;
-//	}
-
 	public Map<Integer, String> getBestImproveValueMap() {
 		return bestImproveValueMap;
 	}
-
-//	public void setBestImproveValueListJESP(List<String> bestImproveValueList) {
-//		this.bestImproveValueList = bestImproveValueList;
-//	}
 
 	public Map<Integer, Double> getLocalSearchQualityMap() {
 		return localSearchQualityMap;
