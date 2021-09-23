@@ -622,6 +622,7 @@ public class AgentPDDCOP extends Agent {
 		// From there, simulate the value of random variables
 		// The initial distribution has been assigned using the stationary distribution
 		for (int indexTime = 0; indexTime <= rLearningIteration; indexTime++) {
+			// Only simulate states for time step that was not used for simulation before
 			if (!pickedRandomMap.containsKey(indexTime)) {
 				// Since R_LEARNING is STATIONARY, the initial distribution is also the stationary distribution
 				pickedRandomMap.put(indexTime, simulateOnlineValue(indexTime));	
@@ -677,6 +678,7 @@ public class AgentPDDCOP extends Agent {
 				pickedRandomMap.put(indexTime, simulateOnlineValue(indexTime));
 				
 				// Set the probability distribution of FORWARD STATIONARY to the INITIAL PROBABILITY DISTRIBUTION
+				// Used for solving each DCOP with the same stationary distribution
 				if (pddcop_algorithm == PDDcopAlgorithm.FORWARD) {
 					probabilityAtEachTimeStepMap.get(agentID)[indexTime] = probabilityAtEachTimeStepMap.get(agentID)[0];
 				}
@@ -979,6 +981,7 @@ public class AgentPDDCOP extends Agent {
 	public void computeStationaryDistributionAsInitial() {
 		for (String randVariable : selfRandomVariableDomainMap.keySet()) {
 			double[] probability = probabilityAtEachTimeStepMap.get(randVariable)[0];
+			
 			for (int h = 0; h <= MARKOV_CONVERGENCE_TIME_STEP; h++) {
 				probability = multiply(probability, transitionFunctionMap.get(randVariable));
 			}
@@ -2275,25 +2278,9 @@ public class AgentPDDCOP extends Agent {
 		this.agentViewEachTimeStepMap = agentViewEachTimeStepMap;
 	}
 
-//	public int getLocalSearchIteration() {
-//		return localSearchIteration;
-//	}
-//
-//	public void setLsIteration(int lsIteration) {
-//		this.localSearchIteration = lsIteration;
-//	}
-//
-//	public void incrementLocalSearchIteration() {
-//		this.localSearchIteration++;
-//	}
-
 	public Map<Integer, String> getBestImproveValueMap() {
 		return bestImproveValueMap;
 	}
-
-//	public void setBestImproveValueListJESP(List<String> bestImproveValueList) {
-//		this.bestImproveValueList = bestImproveValueList;
-//	}
 
 	public Map<Integer, Double> getLocalSearchQualityMap() {
 		return localSearchQualityMap;
