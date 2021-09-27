@@ -43,7 +43,6 @@ import behavior.MGM_SEND_RECEIVE_IMPROVE;
 import behavior.MGM_SEND_RECEIVE_UTIL;
 import behavior.MGM_SEND_RECEIVE_VALUE;
 import behavior.PSEUDOTREE_GENERATION;
-import behavior.R_LEARNING_APPLY;
 import behavior.LS_RAND_PICK_VALUE;
 import behavior.LS_RECEIVE_IMPROVE;
 import behavior.SEND_RECEIVE_FINAL_VALUE;
@@ -169,6 +168,7 @@ public class AgentPDDCOP extends Agent {
 
 	private List<Table> dpopDecisionTableList = new ArrayList<>();
 	private List<Table> dpopRandomTableList = new ArrayList<>();
+	@SuppressWarnings("unused")
 	private List<Table> dpopBoundRandomTableList = new ArrayList<>();
 	private SortedMap<String, List<String>> boundDpopRandomDomains = new TreeMap<>();
 
@@ -256,6 +256,7 @@ public class AgentPDDCOP extends Agent {
 	private double alpha_r = 0.05;
 	private double beta_r = 0.5;
 	private int rLearningIteration;
+	private boolean isApplyingRLearning = false;
 	
 
 	private boolean stop = false;
@@ -523,10 +524,15 @@ public class AgentPDDCOP extends Agent {
 				}
 			}
 			
-			// Update R and average reward
+			// Switching from learning to applying
+			isApplyingRLearning = true;
+			actualDpopTableAcrossTimeStep.clear();
+			
+			// Mapping R-learning to DCOPs and solve for solution
 			for (int i = 0; i <= theLastTimeStep; i++) {
-				// Apply the action based on the R Learning function
-				mainSequentialBehaviourList.addSubBehaviour(new R_LEARNING_APPLY(this, i));
+				// R-learning values are converted into utility function in DPOP_UTIL
+				mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
+				mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
 			}
 		}
 
@@ -2617,6 +2623,49 @@ public class AgentPDDCOP extends Agent {
 
 		return tableList;
 	}
+	
+	/**
+	 * REVIEWED <br>
+	 * From DPOP random table list, return new tables with the corresponding picked
+	 * random variables
+	 * 
+	 * @param timeStep
+	 */
+	public List<Table> computeRLearningDpopTableGivenRandomValues(int timeStep) {
+		List<Table> tableList = new ArrayList<>();
+
+		// traverse to each random table
+		for (Table randTable : getDpopRandomTableList()) {
+			List<String> decLabel = randTable.getDecVarLabel();
+			// at current time step, create a new table
+			// add the tuple with corresponding random values
+
+			Table newTable = new Table(decLabel, AgentPDDCOP.DECISION_TABLE);
+
+			String simulatedRandomValues = getPickedRandomAt(timeStep);
+
+			for (Row row : randTable.getRowList()) {
+				if (row.getRandomList().get(0).equals(simulatedRandomValues)) {
+					if (timeStep == 0) {
+						// Assume unary constraint
+						AugmentedState state = AugmentedState.of(simulatedRandomValues, row.getValueList().get(0));
+						double utility = RFunction.get(state);
+						newTable.addRow(new Row(row.getValueList(), utility));
+					}
+					else {
+						// Assume unary constraint
+						AugmentedState state = AugmentedState.of(simulatedRandomValues, chosenValueAtEachTSMap.get(timeStep - 1), row.getValueList().get(0));
+						double utility = RFunction.get(state);
+						newTable.addRow(new Row(row.getValueList(), utility));
+					}
+				}
+			}
+
+			tableList.add(newTable);
+		}
+
+		return tableList;
+	}
 
 	/**
 	 * REVIEWED <br>
@@ -2919,7 +2968,6 @@ public class AgentPDDCOP extends Agent {
 	}
 
 	public List<Table> getDpopBoundRandomTableList() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
@@ -2977,5 +3025,13 @@ public class AgentPDDCOP extends Agent {
 
 	public void setRFunction(Map<AugmentedState, Double> rFunction) {
 		RFunction = rFunction;
+	}
+
+	public boolean isApplyingRLearning() {
+		return isApplyingRLearning;
+	}
+
+	public void setApplyingRLearning(boolean isApplyingRLearning) {
+		this.isApplyingRLearning = isApplyingRLearning;
 	}
 }

@@ -70,6 +70,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 	private List<Table> dpopTableList = new ArrayList<>();
 
+	@SuppressWarnings("unused")
 	private boolean isMaximize = true; // set to true by default
 
 	public DPOP_UTIL(AgentPDDCOP agent, int currentTimeStep) {
@@ -92,23 +93,39 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		// Add actual tables to compute actual quality
 		// Add tables to DPOP table list for solving
 		else if (agent.isDynamic(DynamicType.ONLINE) || agent.isDynamic(DynamicType.STATIONARY)) {
-			// Add actual tables to compute actual quality
-			agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
-					.addAll(agent.computeActualDpopTableGivenRandomValues(currentTimeStep));
-			agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
-
 			// Add actual tables for REACT
 			if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT)) {
+				agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
+						.addAll(agent.computeActualDpopTableGivenRandomValues(currentTimeStep));
+				agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
+				
 				dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
 			}
 			else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.R_LEARNING)) {
-				dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
-				// Add unary constraint table with the switching cost to the dpopTableList
-				if (currentTimeStep > 0) {
-					Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(),
-							agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
-							agent.getChosenValueAtEachTimeStep(currentTimeStep - 1));
-					dpopTableList.add(switchingCostToPreviousSolution);
+				// Learning R values
+				if (!agent.isApplyingRLearning()) {
+					agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
+						.addAll(agent.computeActualDpopTableGivenRandomValues(currentTimeStep));
+					agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());	
+					
+					dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
+					// Add unary constraint table with the switching cost to the dpopTableList
+					if (currentTimeStep > 0) {
+						Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(),
+								agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
+								agent.getChosenValueAtEachTimeStep(currentTimeStep - 1));
+						dpopTableList.add(switchingCostToPreviousSolution);
+					}
+				}
+				// Applying R learning
+				else {
+					// Use R-learning values here
+					agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
+						.addAll(agent.computeRLearningDpopTableGivenRandomValues(currentTimeStep));
+					agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
+					
+					dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
+					// No need to add unary constraint since R-learning has taken into account the previous decision variable in its domain
 				}
 			}
 			// Add discounted expected tables for FORWARD and HYBRID
