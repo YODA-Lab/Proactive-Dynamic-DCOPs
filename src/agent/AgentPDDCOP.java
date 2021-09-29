@@ -256,7 +256,7 @@ public class AgentPDDCOP extends Agent {
 	private double alpha_r = 0.05;
 	private double beta_r = 0.5;
 	private int rLearningIteration;
-	private boolean isApplyingRLearning = false;
+	private boolean isApplyingRLearning = true;
 	
 
 	private boolean stop = false;
@@ -523,10 +523,6 @@ public class AgentPDDCOP extends Agent {
 					mainSequentialBehaviourList.addSubBehaviour(new R_LEARNING_UPDATE(this, i-1));
 				}
 			}
-			
-			// Switching from learning to applying
-			isApplyingRLearning = true;
-			actualDpopTableAcrossTimeStep.clear();
 			
 			// Mapping R-learning to DCOPs and solve for solution
 			for (int i = 0; i <= theLastTimeStep; i++) {
@@ -2651,12 +2647,16 @@ public class AgentPDDCOP extends Agent {
 						AugmentedState state = AugmentedState.of(simulatedRandomValues, row.getValueList().get(0));
 						double utility = RFunction.get(state);
 						newTable.addRow(new Row(row.getValueList(), utility));
+//						System.out.println("Agent " + agentID + " for state=" + state + " has R-utility=" + utility);
+//						System.out.println("Agent " + agentID + " for state=" + state + " has utility=" + row.getUtility());
 					}
 					else {
 						// Assume unary constraint
 						AugmentedState state = AugmentedState.of(simulatedRandomValues, chosenValueAtEachTSMap.get(timeStep - 1), row.getValueList().get(0));
 						double utility = RFunction.get(state);
 						newTable.addRow(new Row(row.getValueList(), utility));
+//						System.out.println("Agent " + agentID + " for state=" + state + " has R-utility=" + utility);
+//						System.out.println("Agent " + agentID + " for state=" + state + " has utility=" + row.getUtility());
 					}
 				}
 			}
@@ -3029,6 +3029,10 @@ public class AgentPDDCOP extends Agent {
 
 	public boolean isApplyingRLearning() {
 		return isApplyingRLearning;
+	}
+	
+	public void switchApplyingRLearning() {
+		this.isApplyingRLearning = !isApplyingRLearning;
 	}
 
 	public void setApplyingRLearning(boolean isApplyingRLearning) {

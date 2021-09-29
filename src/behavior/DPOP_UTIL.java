@@ -17,12 +17,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.List;
-
+import java.util.Map.Entry;
 import java.util.ArrayList;
 
 import agent.AgentPDDCOP;
 import agent.AgentPDDCOP.PDDcopAlgorithm;
 import agent.AgentPDDCOP.DynamicType;
+import table.AugmentedState;
 import table.Row;
 import table.Table;
 
@@ -102,6 +103,21 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 				dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
 			}
 			else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.R_LEARNING)) {
+				// DPOP_UTIL will be called twice
+				// First time for learning: true -> false
+				// Second time for applying: false -> true
+				if (currentTimeStep == 0) {
+					// Switching from learning to applying
+					agent.switchApplyingRLearning();
+					agent.getActualDpopTableAcrossTimeStep().clear();
+					
+//					if (agent.isApplyingRLearning()) {
+//						for (Entry<AugmentedState, Double> entry : agent.getRFunction().entrySet()) {
+//							System.out.println("Agent " + agent.getAgentID() + " has " + entry.getKey() + ":" + entry.getValue());
+//						}
+//					}
+				}
+				
 				// Learning R values
 				if (!agent.isApplyingRLearning()) {
 					agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
