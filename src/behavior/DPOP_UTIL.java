@@ -146,6 +146,10 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 			}
 			// Add discounted expected tables for FORWARD and HYBRID
 			else {
+				agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
+					.addAll(agent.computeActualDpopTableGivenRandomValues(currentTimeStep));
+				agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
+
 				double df = agent.getDiscountFactor();
 				dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(),
 						currentTimeStep, df));
