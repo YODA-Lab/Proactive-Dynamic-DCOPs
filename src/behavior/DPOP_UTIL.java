@@ -109,13 +109,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 				if (currentTimeStep == 0) {
 					// Switching from learning to applying
 					agent.switchApplyingRLearning();
-					agent.getActualDpopTableAcrossTimeStep().clear();
-					
-//					if (agent.isApplyingRLearning()) {
-//						for (Entry<AugmentedState, Double> entry : agent.getRFunction().entrySet()) {
-//							System.out.println("Agent " + agent.getAgentID() + " has " + entry.getKey() + ":" + entry.getValue());
-//						}
-//					}
 				}
 				
 				// Learning R values
@@ -135,12 +128,10 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 				}
 				// Applying R learning
 				else {
-					// Use R-learning values here
-					agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
-						.addAll(agent.computeRLearningDpopTableGivenRandomValues(currentTimeStep));
-					agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
-					
-					dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
+					// Apply R learning with R values
+					// The actual DPOP table has been added above
+					dpopTableList.addAll(agent.computeRLearningDpopTableGivenRandomValues(currentTimeStep));
+					dpopTableList.addAll(agent.getDpopDecisionTableList());
 					// No need to add unary constraint since R-learning has taken into account the previous decision variable in its domain
 				}
 			}
