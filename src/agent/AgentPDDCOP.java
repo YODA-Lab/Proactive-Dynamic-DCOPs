@@ -1,5 +1,6 @@
 package agent;
 
+import static java.lang.Double.compare;
 import static java.lang.System.out;
 
 import java.io.BufferedReader;
@@ -46,6 +47,9 @@ import behavior.PSEUDOTREE_GENERATION;
 import behavior.LS_RAND_PICK_VALUE;
 import behavior.LS_RECEIVE_IMPROVE;
 import behavior.SEND_RECEIVE_FINAL_VALUE;
+import function.Interval;
+import function.multivariate.MultivariateQuadFunction;
+import function.multivariate.PiecewiseMultivariateQuadFunction;
 import behavior.R_LEARNING_UPDATE;
 import behavior.LS_RECEIVE_VALUE;
 import behavior.SEARCH_NEIGHBORS;
@@ -98,6 +102,11 @@ import jade.lang.acl.ACLMessage;
 public class AgentPDDCOP extends Agent {
 
 	private static final long serialVersionUID = 2919994686894853596L;
+	
+	public static enum DcopType {
+		DISCRETE,
+		CONTINUOUS
+	}
 
 	public static enum PDDcopAlgorithm {
 		C_DCOP, LS_SDPOP, LS_RAND, FORWARD, BACKWARD, SDPOP, REACT, HYBRID,
@@ -111,7 +120,7 @@ public class AgentPDDCOP extends Agent {
 	}
 
 	public static enum DcopAlgorithm {
-		DPOP, MGM
+		DPOP, MGM, MAXSUM, HYBRID_MAXSUM, CAF_MAXSUM
 	}
 
 	public static enum SwitchingType {
@@ -129,6 +138,8 @@ public class AgentPDDCOP extends Agent {
 	public static final int MARKOV_CONVERGENCE_TIME_STEP = 40;
 	public static final boolean RANDOM_TABLE = true;
 	public static final boolean DECISION_TABLE = false;
+	public static final boolean NOT_TO_OPTIMIZE_INTERVAL = false;
+	public static final boolean TO_OPTIMIZE_INTERVAL = true;
 
 	/*
 	 * DCOP parameters To be read from arguments
@@ -136,12 +147,19 @@ public class AgentPDDCOP extends Agent {
 	private String agentID;
 	private PDDcopAlgorithm pddcop_algorithm;
 	private DcopAlgorithm dcop_algorithm;
+	private DcopType dcopType;
 	private int horizon;
 	private double switchingCost;
 	private DynamicType dynamicType;
 	private double discountFactor;
 	private String inputFileName;
 	private double heuristicWeight;
+	
+	private static Interval globalInterval;
+	// mapping <neighbor, function<>
+	private Map<String, PiecewiseMultivariateQuadFunction> functionMap = new HashMap<>();
+	// for Hybrid Max-Sum
+		private Map<String, PiecewiseMultivariateQuadFunction> MSFunctionMapIOwn = new HashMap<>();
 //	private int onlineRun;
 	/*
 	 * Read from input file
@@ -342,6 +360,7 @@ public class AgentPDDCOP extends Agent {
 		dynamicType = DynamicType.valueOf((String) args[6]);
 		heuristicWeight = Double.valueOf((String) args[7]);
 		rLearningIteration = Integer.valueOf((String) args[8]);
+		dcopType = DcopType.valueOf((String) args[9]);
 //		setOnlineRun(Integer.valueOf((String) args[8]));
 
 		String a[] = inputFileName.substring(inputFileName.indexOf("/") + 1).replaceAll("instance_", "")
@@ -376,7 +395,16 @@ public class AgentPDDCOP extends Agent {
 
 	protected void setup() {
 		readArguments();
-		parseInputFile(INPUT_FOLDER + "/" + inputFileName);
+		
+		if (dcopType == DcopType.DISCRETE) {
+			parseInputFileDiscrete(INPUT_FOLDER + "/" + inputFileName);
+		} else {
+			parseInputFileContinuous(INPUT_FOLDER + "/" + inputFileName);
+		}
+
+		// Set root
+		isRoot = agentID.equals(rootAgent);
+		
 		setOutputFileName();
 
 		if (isRoot) {
@@ -1205,8 +1233,149 @@ public class AgentPDDCOP extends Agent {
 		}
 		print();
 	}
+	
+	private void parseInputFileContinuous(String inputFileName) {
+		int maxNumberOfNeighbors = Integer.MIN_VALUE;
 
-	private void parseInputFile(String inputFileName) {
+		final String DOMAIN = "domain";
+		final String FUNCTION = "function";
+		final String NEIGHBOR_SET = "neighbor set: ";
+
+		try (BufferedReader br = new BufferedReader(
+				new FileReader(System.getProperty("user.dir") + "/" +  inputFileName))) {
+			List<String> lineWithSemiColonList = new ArrayList<String>();
+
+			String line = br.readLine();
+			while (line != null) {
+				if (line.length() == 0 || line.startsWith("%") == true) {
+					line = br.readLine();
+					continue;
+				}
+
+				// concatenate line until meet ';'
+				if (line.endsWith(";") == false) {
+					do {
+						line += br.readLine();
+					} while (line.endsWith(";") == false);
+				}
+
+//				line = line.replace(" ","");
+				line = line.replace(";", "");
+				lineWithSemiColonList.add(line);
+				line = br.readLine();
+			}
+
+			// Process line by line;
+			for (String lineWithSemiColon : lineWithSemiColonList) {
+				/** DOMAIN **/
+				// domain 10
+				if (lineWithSemiColon.startsWith(DOMAIN)) {
+					lineWithSemiColon = lineWithSemiColon.replaceAll("domain ", "");
+					int domainMax = Integer.parseInt(lineWithSemiColon);
+					globalInterval = new Interval(-domainMax, domainMax);
+				}
+
+				/** FUNCTION */
+				// function -281x_2^2 199x_2 -22x_0^2 252x_0 288x_2x_0 358;
+				// BinaryFunction func = new BinaryFunction(-1, 20, -3, 40, -2, 6,
+				// Double.valueOf(idStr), 1.0);
+				if (lineWithSemiColon.startsWith(FUNCTION)) {
+					String selfVar = "x_" + agentID;
+					// x_1^ and x_10^
+					if (!lineWithSemiColon.contains(selfVar + "^"))
+						continue;
+
+					lineWithSemiColon = lineWithSemiColon.replaceAll("function ", "");
+					String[] termStrList = lineWithSemiColon.split(" ");
+					double[] arr = parseFunction(termStrList, selfVar);
+					String neighbor = String.valueOf((int) arr[6]);
+					MultivariateQuadFunction func = new MultivariateQuadFunction(arr, agentID, neighbor);
+
+					// Adding the new neighbor to neighborStrSet
+					neighborStrSet.add(neighbor);
+
+					PiecewiseMultivariateQuadFunction pwFunc = new PiecewiseMultivariateQuadFunction();
+					// creating the interval map
+					Map<String, Interval> intervalMap = new HashMap<>();
+					intervalMap.put(agentID, globalInterval);
+					intervalMap.put(neighbor, globalInterval);
+
+					pwFunc.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
+					functionMap.put(neighbor, pwFunc);
+
+					// Own the function
+					if (isRunningMaxsum() && compare(Double.valueOf(agentID), Double.valueOf(neighbor)) < 0) {
+						// add the function to Maxsum function map
+						// add the neighbor to external-var-agent-set
+						MSFunctionMapIOwn.put(neighbor, pwFunc);
+					}
+				}
+				if (lineWithSemiColon.startsWith(NEIGHBOR_SET)) {
+					lineWithSemiColon = lineWithSemiColon.replace(NEIGHBOR_SET, "");
+					lineWithSemiColon = lineWithSemiColon.replace("x_", "");
+					String[] agentWithNeighbors = lineWithSemiColon.split(" ");
+					// 3: 1 4 5
+					if (agentWithNeighbors.length - 1 > maxNumberOfNeighbors) {
+						maxNumberOfNeighbors = agentWithNeighbors.length - 1;
+//						rootAgent = Integer.parseInt(agentWithNeighbors[0].replaceAll(":", ""));
+						rootAgent = agentWithNeighbors[0].replaceAll(":", "");
+					}
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public boolean isRunningMaxsum() {
+		return dcop_algorithm == DcopAlgorithm.MAXSUM || dcop_algorithm == DcopAlgorithm.HYBRID_MAXSUM || dcop_algorithm == DcopAlgorithm.CAF_MAXSUM;
+	}
+	
+	public double[] parseFunction(String[] termArray, String selfAgent) {
+		double coeffArray[] = new double[7];
+		Arrays.fill(coeffArray, Integer.MIN_VALUE);
+		int neighborID = -1;
+		for (String term : termArray) {
+			// -281x_1^2
+			if (term.contains(selfAgent + "^2")) {
+				coeffArray[0] = Double.parseDouble(term.replace(selfAgent + "^2", ""));
+			}
+			// -22x_10^2
+			else if (term.contains("^2")) {
+				term = term.replace("^2", "");
+				coeffArray[2] = Double.parseDouble(term.split("x_")[0]);
+				// neighbor
+				coeffArray[6] = Double.parseDouble(term.split("x_")[1]);
+				neighborID = (int) coeffArray[6];
+			}
+			// constant 358
+			else if (!term.contains("_")) {
+				coeffArray[5] = Double.parseDouble(term);
+
+			}
+			// 288x_1x_10 OR 252x_10 OR 199x_1
+			// split the "x_"
+			// count for number of element
+			// then comparing number
+			// done
+			else {
+				String[] smallerTerms = term.split("x_");
+				if (smallerTerms.length == 3) {
+					coeffArray[4] = Double.parseDouble(smallerTerms[0]);
+				} else {
+					int variable = Integer.valueOf(smallerTerms[1]);
+					if (variable == neighborID) {
+						coeffArray[3] = Double.parseDouble(smallerTerms[0]);
+					} else {
+						coeffArray[1] = Double.parseDouble(smallerTerms[0]);
+					}
+				}
+			}
+		}
+		return coeffArray;
+	}
+
+	private void parseInputFileDiscrete(String inputFileName) {
 		final String DECISION_VARIABLE = "decision";
 		final String RANDOM_VARIABLE = "random";
 		final String REWARD_TABLE_PREFIX = "constraint";
@@ -1528,9 +1697,6 @@ public class AgentPDDCOP extends Agent {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
-		// Set root
-		isRoot = agentID.equals(rootAgent);
 	}
 
 	public boolean isPrinting() {
