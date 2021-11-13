@@ -20,7 +20,7 @@ import java.util.TreeSet;
 import java.util.Map.Entry;
 
 import agent.AgentPDDCOP;
-import agent.AgentPDDCOP.DcopAlgorithm;
+import agent.DcopConstants.DcopAlgorithm;
 import function.Interval;
 import function.multivariate.MultivariateQuadFunction;
 

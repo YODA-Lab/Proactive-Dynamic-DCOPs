@@ -6,6 +6,36 @@ package agent;
  */
 public interface DcopConstants {
   public static final boolean WAITING_FOR_MSG = true;
+  public static final String RANDOM_PREFIX = "y";
+  public static final int DEFAULT_BETA_SAMPLING_SEED = 1711;
+  
+  public static enum DcopType {
+    DISCRETE,
+    CONTINUOUS
+  }
+
+  public static enum PDDcopAlgorithm {
+    C_DCOP, LS_SDPOP, LS_RAND, FORWARD, BACKWARD, SDPOP, REACT, HYBRID,
+    // Decomposed Distributed R Learning (see MD-DCOPs paper)
+    R_LEARNING,
+    /**
+     * Used to solve for the maximal-utility of DCOPs by realizing values of random
+     * variables
+     */
+    BOUND_DPOP
+  }
+
+  public static enum DcopAlgorithm {
+    DPOP, MGM, MAXSUM, HYBRID_MAXSUM, CAF_MAXSUM
+  }
+
+  public static enum SwitchingType {
+    CONSTANT, LINEAR, QUADRATIC, EXP_2, EXP_3
+  }
+
+  public static enum DynamicType {
+    FINITE_HORIZON, INFINITE_HORIZON, ONLINE, STATIONARY
+  }
 
   public static final int EF_DPOP = 0;
   

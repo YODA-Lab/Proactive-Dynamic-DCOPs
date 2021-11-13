@@ -2,6 +2,8 @@ package agent;
 
 import static java.lang.Double.compare;
 import static java.lang.System.out;
+import static agent.DcopConstants.RANDOM_PREFIX;
+import static agent.DcopConstants.DEFAULT_BETA_SAMPLING_SEED;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -23,6 +25,16 @@ import java.util.Map.Entry;
 import java.util.Random;
 
 import com.google.common.collect.Sets;
+
+import agent.DcopConstants.DcopAlgorithm;
+import agent.DcopConstants.DcopType;
+import agent.DcopConstants.DynamicType;
+import agent.DcopConstants.PDDcopAlgorithm;
+import agent.DcopConstants.SwitchingType;
+
+import org.apache.commons.math3.distribution.BetaDistribution;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.Well19937c;
 
 import java.util.Set;
 import java.util.SortedMap;
@@ -102,34 +114,6 @@ import jade.lang.acl.ACLMessage;
 public class AgentPDDCOP extends Agent {
 
 	private static final long serialVersionUID = 2919994686894853596L;
-	
-	public static enum DcopType {
-		DISCRETE,
-		CONTINUOUS
-	}
-
-	public static enum PDDcopAlgorithm {
-		C_DCOP, LS_SDPOP, LS_RAND, FORWARD, BACKWARD, SDPOP, REACT, HYBRID,
-		// Decomposed Distributed R Learning (see MD-DCOPs paper)
-		R_LEARNING,
-		/**
-		 * Used to solve for the maximal-utility of DCOPs by realizing values of random
-		 * variables
-		 */
-		BOUND_DPOP
-	}
-
-	public static enum DcopAlgorithm {
-		DPOP, MGM, MAXSUM, HYBRID_MAXSUM, CAF_MAXSUM
-	}
-
-	public static enum SwitchingType {
-		CONSTANT, LINEAR, QUADRATIC, EXP_2, EXP_3
-	}
-
-	public static enum DynamicType {
-		FINITE_HORIZON, INFINITE_HORIZON, ONLINE, STATIONARY
-	}
 
 	public static final String INPUT_FOLDER = "input_files";
 
@@ -198,7 +182,9 @@ public class AgentPDDCOP extends Agent {
 	private List<String> decisionVariableList = new ArrayList<>();
 //	private List<String> selfVariableList = new ArrayList<>();
 	private HashMap<String, List<String>> decisionVariableDomainMap = new HashMap<>();
+	private HashMap<String, Interval> decisionVariableIntervalMap = new HashMap<>();
 	private HashMap<String, List<String>> selfRandomVariableDomainMap = new HashMap<>();
+	private HashMap<String, Interval> selfRandomVariableIntervalMap = new HashMap<>();
 	// map TS -> constraint table list (if local_search)
 	// map TS -> 1 collapsed table list (if collapsed dpop)
 	private HashMap<Integer, List<Table>> discountedExpectedTableEachTSMap = new HashMap<>();
@@ -269,8 +255,8 @@ public class AgentPDDCOP extends Agent {
 
 	private double averageRewardR = 0;
 	private boolean isSolvingForCurrentState = true;
-	private String solutionForCurrentState = null;
-	private String solutionForNextState = null;
+	private String solutionForCurrentState;
+	private String solutionForNextState;
 	private double alpha_r = 0.05;
 	private double beta_r = 0.5;
 	private int rLearningIteration;
@@ -281,8 +267,8 @@ public class AgentPDDCOP extends Agent {
 	private String lastLine = "";
 	private int agentCount;
 	private int randomCount;
-	// Used when reading the input file
-	private String rootAgent = null;
+	// Root is the agent with most neighbors
+	private String rootAgent;
 
 	private boolean recomputingDPOP_UTIL = true; // default, all agents have to recompute everything
 	private Table storedReuseTable;
@@ -299,6 +285,8 @@ public class AgentPDDCOP extends Agent {
 
 	public int decisionDomain;
 	public int randomDomain;
+	
+	private BetaDistribution initialDistribution = new BetaDistribution(0, 0);
 
 	public static String OUTPUT_FOLDER;
 
@@ -1237,8 +1225,12 @@ public class AgentPDDCOP extends Agent {
 	private void parseInputFileContinuous(String inputFileName) {
 		int maxNumberOfNeighbors = Integer.MIN_VALUE;
 
-		final String DOMAIN = "domain";
+		final String DECISION_VARIABLE = "decision";
+		final String RANDOM_VARIABLE = "random";
 		final String FUNCTION = "function";
+		
+		final String TRANS_FUNC_PREFIX = "transition";
+		final String INIT_PROB_PREFIX = "initial_distribution";
 		final String NEIGHBOR_SET = "neighbor set: ";
 
 		try (BufferedReader br = new BufferedReader(
@@ -1267,52 +1259,83 @@ public class AgentPDDCOP extends Agent {
 
 			// Process line by line;
 			for (String lineWithSemiColon : lineWithSemiColonList) {
-				/** DOMAIN **/
-				// domain 10
-				if (lineWithSemiColon.startsWith(DOMAIN)) {
-					lineWithSemiColon = lineWithSemiColon.replaceAll("domain ", "");
-					int domainMax = Integer.parseInt(lineWithSemiColon);
-					globalInterval = new Interval(-domainMax, domainMax);
+				String nameMzn = lineWithSemiColon.split("=")[0];
+				String valueMzn = lineWithSemiColon.split("=")[1];
+				
+				/** DECISION_VARIABLE */
+				// read decision variable domain
+				if (nameMzn.contains(DECISION_VARIABLE)) {
+					// process name
+					String decisionVariable = nameMzn.replace(DECISION_VARIABLE + "_x", "");
+
+					// process values
+					valueMzn = valueMzn.replace("[", "");
+					valueMzn = valueMzn.replace("]", "");
+					double lowerBound = Double.valueOf(valueMzn.split(",")[0]);
+					double upperBound = Double.valueOf(valueMzn.split(",")[1]);
+					decisionVariableList.add(decisionVariable);
+					decisionVariableIntervalMap.put(decisionVariable, new Interval(lowerBound, upperBound));
+				}
+				if (nameMzn.contains(RANDOM_VARIABLE)) {
+					// process name
+					String randomVariable = nameMzn.replace(DECISION_VARIABLE + "_y", "");
+					
+					// Only add self random variable if any
+					if (randomVariable.equals(agentID)) {
+						// process values
+						valueMzn = valueMzn.replace("[", "");
+						valueMzn = valueMzn.replace("]", "");
+						double lowerBound = Double.valueOf(valueMzn.split(",")[0]);
+						double upperBound = Double.valueOf(valueMzn.split(",")[1]);
+						
+						selfRandomVariableIntervalMap.put(randomVariable, new Interval(lowerBound, upperBound));
+					}
 				}
 
 				/** FUNCTION */
-				// function -281x_2^2 199x_2 -22x_0^2 252x_0 288x_2x_0 358;
-				// BinaryFunction func = new BinaryFunction(-1, 20, -3, 40, -2, 6,
+				// function(x3,x1)=9.386x3^2 -5.77744x3 -3.91612x1^2 -6.10079x1 -6.70358x3x1 7.41036;
+				// BinaryFunction func = new BinaryFunction(-1, 20, -3, 40, -2, 6)
 				// Double.valueOf(idStr), 1.0);
 				if (lineWithSemiColon.startsWith(FUNCTION)) {
-					String selfVar = "x_" + agentID;
-					// x_1^ and x_10^
-					if (!lineWithSemiColon.contains(selfVar + "^"))
+					// x1^ and x10^
+					if (!lineWithSemiColon.contains("x" + agentID + "^"))
 						continue;
 
-					lineWithSemiColon = lineWithSemiColon.replaceAll("function ", "");
+					lineWithSemiColon = lineWithSemiColon.split("=")[1];
 					String[] termStrList = lineWithSemiColon.split(" ");
-					double[] arr = parseFunction(termStrList, selfVar);
-					String neighbor = String.valueOf((int) arr[6]);
-					MultivariateQuadFunction func = new MultivariateQuadFunction(arr, agentID, neighbor);
+					String[] functionParamters = parseFunction(termStrList, "x" + agentID, lineWithSemiColon.contains("y"));
+					
+					// TODO: This neighbor might be a random variable
+					String neighbor = functionParamters[6];
+					
+					MultivariateQuadFunction func = new MultivariateQuadFunction(functionParamters, agentID, neighbor);
 
 					// Adding the new neighbor to neighborStrSet
-					neighborStrSet.add(neighbor);
+					if (!neighbor.contains(RANDOM_PREFIX)) {
+					  neighborStrSet.add(neighbor);
+					}
 
 					PiecewiseMultivariateQuadFunction pwFunc = new PiecewiseMultivariateQuadFunction();
 					// creating the interval map
 					Map<String, Interval> intervalMap = new HashMap<>();
-					intervalMap.put(agentID, globalInterval);
+					intervalMap.put("x" + agentID, globalInterval);
 					intervalMap.put(neighbor, globalInterval);
 
 					pwFunc.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
 					functionMap.put(neighbor, pwFunc);
 
 					// Own the function
-					if (isRunningMaxsum() && compare(Double.valueOf(agentID), Double.valueOf(neighbor)) < 0) {
+					if (isRunningMaxsum() && (neighbor.contains(RANDOM_PREFIX) 
+					    || compare(Double.valueOf(agentID), Double.valueOf(neighbor.replace("x", ""))) < 0)) {
 						// add the function to Maxsum function map
 						// add the neighbor to external-var-agent-set
 						MSFunctionMapIOwn.put(neighbor, pwFunc);
 					}
 				}
+				
 				if (lineWithSemiColon.startsWith(NEIGHBOR_SET)) {
 					lineWithSemiColon = lineWithSemiColon.replace(NEIGHBOR_SET, "");
-					lineWithSemiColon = lineWithSemiColon.replace("x_", "");
+					lineWithSemiColon = lineWithSemiColon.replace("x", "");
 					String[] agentWithNeighbors = lineWithSemiColon.split(" ");
 					// 3: 1 4 5
 					if (agentWithNeighbors.length - 1 > maxNumberOfNeighbors) {
@@ -1321,58 +1344,46 @@ public class AgentPDDCOP extends Agent {
 						rootAgent = agentWithNeighbors[0].replaceAll(":", "");
 					}
 				}
+				
+        if (nameMzn.contains(INIT_PROB_PREFIX)) {
+          nameMzn = nameMzn.replace(INIT_PROB_PREFIX + "_y", "");
+
+          // Read variable with agentID only
+          if (!nameMzn.equals(agentID)) {
+            continue;
+          }
+
+          // process values
+          valueMzn = valueMzn.replace("[", "");
+          valueMzn = valueMzn.replace("]", "");
+
+          // alpha=1.2,beta=3.4565
+          double alpha = Double.valueOf(valueMzn.split(",")[0].replace("alpha=", ""));
+          double beta = Double.valueOf(valueMzn.split(",")[1].replace("beta=", ""));
+          
+          RandomGenerator rg = new Well19937c(DEFAULT_BETA_SAMPLING_SEED);
+          initialDistribution = new BetaDistribution(rg, alpha, beta);
+        }
+        
+        if (nameMzn.contains(TRANS_FUNC_PREFIX)) {
+          nameMzn = nameMzn.replace(TRANS_FUNC_PREFIX + "_y", "");
+
+          // Read variable with agentID only
+          if (!nameMzn.equals(agentID)) {
+            continue;
+          }
+
+          // process values
+          valueMzn = valueMzn.replace("[", "");
+          valueMzn = valueMzn.replace("]", "");
+
+          // alpha=1.2
+          double alpha = Double.valueOf(valueMzn.replace("alpha=", ""));
+        }
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
-	
-	public boolean isRunningMaxsum() {
-		return dcop_algorithm == DcopAlgorithm.MAXSUM || dcop_algorithm == DcopAlgorithm.HYBRID_MAXSUM || dcop_algorithm == DcopAlgorithm.CAF_MAXSUM;
-	}
-	
-	public double[] parseFunction(String[] termArray, String selfAgent) {
-		double coeffArray[] = new double[7];
-		Arrays.fill(coeffArray, Integer.MIN_VALUE);
-		int neighborID = -1;
-		for (String term : termArray) {
-			// -281x_1^2
-			if (term.contains(selfAgent + "^2")) {
-				coeffArray[0] = Double.parseDouble(term.replace(selfAgent + "^2", ""));
-			}
-			// -22x_10^2
-			else if (term.contains("^2")) {
-				term = term.replace("^2", "");
-				coeffArray[2] = Double.parseDouble(term.split("x_")[0]);
-				// neighbor
-				coeffArray[6] = Double.parseDouble(term.split("x_")[1]);
-				neighborID = (int) coeffArray[6];
-			}
-			// constant 358
-			else if (!term.contains("_")) {
-				coeffArray[5] = Double.parseDouble(term);
-
-			}
-			// 288x_1x_10 OR 252x_10 OR 199x_1
-			// split the "x_"
-			// count for number of element
-			// then comparing number
-			// done
-			else {
-				String[] smallerTerms = term.split("x_");
-				if (smallerTerms.length == 3) {
-					coeffArray[4] = Double.parseDouble(smallerTerms[0]);
-				} else {
-					int variable = Integer.valueOf(smallerTerms[1]);
-					if (variable == neighborID) {
-						coeffArray[3] = Double.parseDouble(smallerTerms[0]);
-					} else {
-						coeffArray[1] = Double.parseDouble(smallerTerms[0]);
-					}
-				}
-			}
-		}
-		return coeffArray;
 	}
 
 	private void parseInputFileDiscrete(String inputFileName) {
@@ -1698,6 +1709,64 @@ public class AgentPDDCOP extends Agent {
 			e.printStackTrace();
 		}
 	}
+	
+	public boolean isRunningMaxsum() {
+		return dcop_algorithm == DcopAlgorithm.MAXSUM || dcop_algorithm == DcopAlgorithm.HYBRID_MAXSUM || dcop_algorithm == DcopAlgorithm.CAF_MAXSUM;
+	}
+	
+	// 9.386x3^2 -5.77744x3 -3.91612x1^2 -6.10079x1 -6.70358x3x1 7.41036
+	// 9.386x3^2 -5.77744x3 -3.91612y3^2 -6.10079y3 -6.70358x3y3 7.41036
+	public String[] parseFunction(String[] termArray, String selfAgent, boolean hasRandom) {
+		String coeffArray[] = new String[7];
+		Arrays.fill(coeffArray, null);
+		
+		String neighbor = "";
+		
+		String otherVarPrefix = hasRandom ? "y" : "x";
+		
+		for (String term : termArray) {
+			// -281x1^2
+			if (term.contains(selfAgent + "^2")) {
+				coeffArray[0] = term.replace(selfAgent + "^2", "");
+			}
+			// -22x10^2
+			// -22y10^2
+			else if (term.contains("^2")) {
+				term = term.replace("^2", "");
+				coeffArray[2] = term.split(otherVarPrefix)[0];
+				
+				// neighbor
+				neighbor = otherVarPrefix + term.split(otherVarPrefix)[1];
+				coeffArray[6] = neighbor;
+			}
+			// constant 358
+			else if (!term.contains("x") && !term.contains("y")) {
+				coeffArray[5] = term;
+
+			}
+			// 288x1x10 OR 252x10 OR 199x1
+			// 288x1y10 OR 252y10 OR 199x1
+			// split the "x_"
+			// count for number of element
+			// then comparing number
+			// done
+			else {
+				// 288x1x10 or 288x1y10
+				if (term.contains(selfAgent + neighbor) || term.contains(neighbor + selfAgent)) {
+					coeffArray[4] = term.split("x")[0]; // assuming that x stands before y
+				}
+				// 199x1 OR 199x10 OR 199y1 OR 199y10
+				else if (term.endsWith(selfAgent)) {
+					coeffArray[1] = term.replace(selfAgent, "");
+				}
+				else {
+					coeffArray[3] = term.replace(neighbor, "");
+				}
+			}
+		}
+		
+		return coeffArray;
+	}
 
 	public boolean isPrinting() {
 		return agentID.equals("2");
@@ -1843,7 +1912,7 @@ public class AgentPDDCOP extends Agent {
 
 		double difference = Math.abs(Double.parseDouble(oldValue) - Double.parseDouble(newValue));
 
-		switch (AgentPDDCOP.SWITCHING_TYPE) {
+		switch (SWITCHING_TYPE) {
 		case CONSTANT:
 			return equal ? 0 : switchingCost;
 		case LINEAR:
@@ -3203,5 +3272,21 @@ public class AgentPDDCOP extends Agent {
 
 	public void setApplyingRLearning(boolean isApplyingRLearning) {
 		this.isApplyingRLearning = isApplyingRLearning;
+	}
+
+	public HashMap<String, Interval> getDecisionVariableIntervalMap() {
+		return decisionVariableIntervalMap;
+	}
+
+	public void setDecisionVariableIntervalMap(HashMap<String, Interval> decisionVariableIntervalMap) {
+		this.decisionVariableIntervalMap = decisionVariableIntervalMap;
+	}
+
+	public HashMap<String, Interval> getSelfRandomVariableIntervalMap() {
+		return selfRandomVariableIntervalMap;
+	}
+
+	public void setSelfRandomVariableIntervalMap(HashMap<String, Interval> selfRandomVariableIntervalMap) {
+		this.selfRandomVariableIntervalMap = selfRandomVariableIntervalMap;
 	}
 }

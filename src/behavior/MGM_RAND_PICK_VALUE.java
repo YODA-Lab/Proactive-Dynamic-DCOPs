@@ -8,8 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import agent.AgentPDDCOP;
-import agent.AgentPDDCOP.DynamicType;
-import agent.AgentPDDCOP.PDDcopAlgorithm;
+import agent.DcopConstants.DynamicType;
+import agent.DcopConstants.PDDcopAlgorithm;
 
 /**
  * REVIEWED

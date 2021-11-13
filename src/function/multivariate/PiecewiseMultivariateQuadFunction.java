@@ -395,7 +395,7 @@ public final class PiecewiseMultivariateQuadFunction implements Serializable {
   }
   
   public String getOtherAgent() {
-    return getTheFirstFunction().getOtherAgent();
+    return getTheFirstFunction().getOtherVariable();
   }
   
   // Return the shallow copy of the first function without interval

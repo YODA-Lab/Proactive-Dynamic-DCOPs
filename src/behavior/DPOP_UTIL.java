@@ -21,8 +21,8 @@ import java.util.Map.Entry;
 import java.util.ArrayList;
 
 import agent.AgentPDDCOP;
-import agent.AgentPDDCOP.PDDcopAlgorithm;
-import agent.AgentPDDCOP.DynamicType;
+import agent.DcopConstants.PDDcopAlgorithm;
+import agent.DcopConstants.DynamicType;
 import table.AugmentedState;
 import table.Row;
 import table.Table;

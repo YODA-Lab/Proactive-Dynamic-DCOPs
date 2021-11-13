@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import agent.AgentPDDCOP;
-import agent.AgentPDDCOP.DynamicType;
+import agent.DcopConstants.DynamicType;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;

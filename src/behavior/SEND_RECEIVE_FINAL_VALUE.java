@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import agent.AgentPDDCOP;
-import agent.AgentPDDCOP.PDDcopAlgorithm;
+import agent.DcopConstants.PDDcopAlgorithm;
 import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;

@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 
 import agent.AgentPDDCOP;
-import agent.AgentPDDCOP.PDDcopAlgorithm;
+import agent.DcopConstants.PDDcopAlgorithm;
 import table.Row;
 
 /**
