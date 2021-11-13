@@ -5,7 +5,11 @@ import org.apache.commons.math3.distribution.BetaDistribution;
 public class TransitionFamilyDistribution {
   private final double alpha;
   
-  public TransitionFamilyDistribution of(double alpha) {
+  public static TransitionFamilyDistribution of() {
+    return new TransitionFamilyDistribution(0);
+  }
+  
+  public static TransitionFamilyDistribution of(double alpha) {
     return new TransitionFamilyDistribution(alpha);
   }
   

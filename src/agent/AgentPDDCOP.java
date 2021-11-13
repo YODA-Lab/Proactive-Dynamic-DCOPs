@@ -69,6 +69,7 @@ import behavior.LS_SEND_IMPROVE;
 import table.AugmentedState;
 import table.Row;
 import table.Table;
+import transition.TransitionFamilyDistribution;
 import transition.TransitionFunction;
 import jade.core.AID;
 import jade.core.Agent;
@@ -287,6 +288,7 @@ public class AgentPDDCOP extends Agent {
 	public int randomDomain;
 	
 	private BetaDistribution initialDistribution = new BetaDistribution(0, 0);
+	private TransitionFamilyDistribution transitionDistribution = TransitionFamilyDistribution.of();
 
 	public static String OUTPUT_FOLDER;
 
@@ -1362,7 +1364,7 @@ public class AgentPDDCOP extends Agent {
           double beta = Double.valueOf(valueMzn.split(",")[1].replace("beta=", ""));
           
           RandomGenerator rg = new Well19937c(DEFAULT_BETA_SAMPLING_SEED);
-          initialDistribution = new BetaDistribution(rg, alpha, beta);
+          setInitialDistribution(new BetaDistribution(rg, alpha, beta));
         }
         
         if (nameMzn.contains(TRANS_FUNC_PREFIX)) {
@@ -1379,6 +1381,7 @@ public class AgentPDDCOP extends Agent {
 
           // alpha=1.2
           double alpha = Double.valueOf(valueMzn.replace("alpha=", ""));
+          setTransitionDistribution(TransitionFamilyDistribution.of(alpha));
         }
 			}
 		} catch (IOException e) {
@@ -3289,4 +3292,20 @@ public class AgentPDDCOP extends Agent {
 	public void setSelfRandomVariableIntervalMap(HashMap<String, Interval> selfRandomVariableIntervalMap) {
 		this.selfRandomVariableIntervalMap = selfRandomVariableIntervalMap;
 	}
+
+  public TransitionFamilyDistribution getTransitionDistribution() {
+    return transitionDistribution;
+  }
+
+  public void setTransitionDistribution(TransitionFamilyDistribution transitionDistribution) {
+    this.transitionDistribution = transitionDistribution;
+  }
+
+  public BetaDistribution getInitialDistribution() {
+    return initialDistribution;
+  }
+
+  public void setInitialDistribution(BetaDistribution initialDistribution) {
+    this.initialDistribution = initialDistribution;
+  }
 }
