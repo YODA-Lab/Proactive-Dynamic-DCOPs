@@ -242,8 +242,11 @@ public class AgentPDDCOP extends Agent {
 	private Map<Integer, Double> MGMQualityMap = new HashMap<>();
 	private Map<Integer, Long> MGMRuntimeMap = new HashMap<>();
 
-//	private double lastMGMQuality = 0D;
+//	private double lastMGMQuality = 
 //	private long lastMGMRuntime = 0L;
+	
+	 // for reuse information
+  private Map<AID, Integer> constraintInfoMap = new HashMap<>();
 
 	// Mapping from horizon to the difference in runtime of when the solution
 	// converges to the last time step
@@ -414,175 +417,168 @@ public class AgentPDDCOP extends Agent {
 		bean = ManagementFactory.getThreadMXBean();
 		bean.setThreadContentionMonitoringEnabled(true);
 
-		int theLastTimeStep = simulateActualValueAndComputeDistribution();
-		
-		// Simulate random variables for R_LEARNING
-		if (pddcop_algorithm == PDDcopAlgorithm.R_LEARNING) {
-			simulateActualValueForRLearning();
-			
-			// Initialize R functions
-			for (String previous : decisionVariableDomainMap.get(agentID)) {
-				for (String current : decisionVariableDomainMap.get(agentID)) {
-					for (String random : selfRandomVariableDomainMap.get(agentID)) {
-						AugmentedState state = AugmentedState.of(random, previous, current);
-						RFunction.put(state, 0D);
-						
-						// Previous = null for the case of horizon = 0
-						AugmentedState state_null_prev = AugmentedState.of(random, current);
-						RFunction.put(state_null_prev, 0D);
-					}
-				}	
-			}
-		}
-
-		print("pickedRandomMap=" + pickedRandomMap);
-		print("probabilityAtEachTimeStepMap=");
-		for (Entry<String, double[][]> entry : probabilityAtEachTimeStepMap.entrySet()) {
-			print(entry.getKey() + "=" + Arrays.deepToString(entry.getValue()));
-		}
-
-		SequentialBehaviour mainSequentialBehaviourList = new SequentialBehaviour();
-		// Done reviewing these two behaviors
-		mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
-		mainSequentialBehaviourList.addSubBehaviour(new PSEUDOTREE_GENERATION(this));
-
-		// TODO:
-		if (pddcop_algorithm == PDDcopAlgorithm.BOUND_DPOP) {
-			SortedSet<SortedMap<String, String>> boundDpopRandomCombinations = computeRandomCombinations(
-					boundDpopRandomDomains);
-
-			for (SortedMap<String, String> randomValueMapping : boundDpopRandomCombinations) {
-				// Modify the constraint tables with random variables
-//		    dpopRandomTableList
-
-				dpopBoundRandomTableList = computeDpopBoundRandomTable(dpopRandomTableList, randomValueMapping);
-
-				// TODO: solve with max
-				mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, horizon));
-				mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, horizon));
-
-				// TODO: solve with min
-
-				// Store the max/min utility value
-
-				// Root agent will write down the maximum difference in (max - min) value to the
-				// output file
-
-				// Naming the output file and writing down the value
-			}
-
-		}
-
-		// Solve for the last time step for INFINITE
-		if (dynamicType == DynamicType.INFINITE_HORIZON) {
-			if (dcop_algorithm == DcopAlgorithm.DPOP && pddcop_algorithm != PDDcopAlgorithm.LS_RAND) {
-				mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, horizon));
-				mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, horizon));
-			} else if (dcop_algorithm == DcopAlgorithm.MGM) {
-				mainSequentialBehaviourList.addSubBehaviour(new MGM_RAND_PICK_VALUE(this, horizon));
-				for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
-					mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_VALUE(this, horizon));
-					mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_IMPROVE(this, horizon));
-					mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_UTIL(this, horizon, localTS));
-				}
-			}
-		}
-
-		// Combine DCOPs from 0 -> theLastTimeStep
-		// Take into account the switching cost to the solution at horizon h if there is any
-		if (pddcop_algorithm == PDDcopAlgorithm.C_DCOP) {
-			if (dcop_algorithm == DcopAlgorithm.DPOP) {
-				mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, theLastTimeStep));
-				mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, theLastTimeStep));
-			}
-		} else if (isAlgorithmIn(new PDDcopAlgorithm[] { PDDcopAlgorithm.LS_SDPOP, PDDcopAlgorithm.FORWARD,
-				PDDcopAlgorithm.HYBRID, PDDcopAlgorithm.REACT })) {
-			for (int i = 0; i <= theLastTimeStep; i++) {
-				if (dcop_algorithm == DcopAlgorithm.DPOP) {
-					mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
-					mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
-				} else if (dcop_algorithm == DcopAlgorithm.MGM) {
-					mainSequentialBehaviourList.addSubBehaviour(new MGM_RAND_PICK_VALUE(this, i));
-					for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
-						mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_VALUE(this, i));
-						mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_IMPROVE(this, i));
-						mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_UTIL(this, i, localTS));
-					}
-				}
-			}
-		} else if (pddcop_algorithm == PDDcopAlgorithm.BACKWARD) {
-			for (int i = theLastTimeStep; i >= 0; i--) {
-				if (dcop_algorithm == DcopAlgorithm.DPOP) {
-					mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
-					mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
-				} else if (dcop_algorithm == DcopAlgorithm.MGM) {
-					mainSequentialBehaviourList.addSubBehaviour(new MGM_RAND_PICK_VALUE(this, i));
-					for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
-						mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_VALUE(this, i));
-						mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_IMPROVE(this, i));
-						mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_UTIL(this, i, localTS));
-					}
-				}
-			}
-		} else if (pddcop_algorithm == PDDcopAlgorithm.LS_RAND) {
-			mainSequentialBehaviourList.addSubBehaviour(new LS_RAND_PICK_VALUE(this));
-		} else if (pddcop_algorithm == PDDcopAlgorithm.R_LEARNING) {
-			// Behaviors for learning the R function
-			// Solving DCOP with current state ~ similar to REACT
-			// Solving DCOP with the next state ~ similar to REACT
-			// Behaviors for running the online version
-			for (int i = 0; i <= rLearningIteration - 1; i++) {
-				// Solving for current state
-				isSolvingForCurrentState = true;
-				mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
-				mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));				
-				// Update R and average reward only when having the solution of the previous state and the current state
-				if (i > 0) {
-					mainSequentialBehaviourList.addSubBehaviour(new R_LEARNING_UPDATE(this, i-1));
-				}
-			}
-			
-			// Mapping R-learning to DCOPs and solve for solution
-			for (int i = 0; i <= theLastTimeStep; i++) {
-				// R-learning values are converted into utility function in DPOP_UTIL
-				mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
-				mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
-			}
-		}
-
-		// Add the discounted tables to time steps 0 -> lastTimeStep for all algorithms
-		// In order to compute solution quality of PD-DCOP
-		// Not used for solving PD-DCOPs
-		for (int timeIndex = 0; timeIndex <= horizon; timeIndex++) {
-			discountedExpectedTableEachTSMap.get(timeIndex)
-					.addAll(computeDiscountedDecisionTableList(rawDecisionTableList, timeIndex, discountFactor));
-			discountedExpectedTableEachTSMap.get(timeIndex)
-					.addAll(computeDiscountedExpectedRandomTableList(rawRandomTableList, timeIndex, discountFactor));
-		}
-
-		// Behaviors for local search approaches of PD-DCOPs
-		if (isAlgorithmIn(new PDDcopAlgorithm[] { PDDcopAlgorithm.LS_RAND, PDDcopAlgorithm.LS_SDPOP })) {
-			mainSequentialBehaviourList.addSubBehaviour(new INIT_PROPAGATE_DPOP_VALUE(this));
-			mainSequentialBehaviourList.addSubBehaviour(new INIT_RECEIVE_DPOP_VALUE(this));
-			mainSequentialBehaviourList.addSubBehaviour(new INIT_RECEIVE_SEND_LS_UTIL(this));
-
-			for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
-				mainSequentialBehaviourList.addSubBehaviour(new LS_SEND_IMPROVE(this, theLastTimeStep, localTS));
-				mainSequentialBehaviourList.addSubBehaviour(new LS_RECEIVE_IMPROVE(this, theLastTimeStep, localTS));
-				mainSequentialBehaviourList.addSubBehaviour(new LS_RECEIVE_VALUE(this, theLastTimeStep, localTS));
-				mainSequentialBehaviourList
-						.addSubBehaviour(new LS_RECEIVE_SEND_LS_UTIL(this, theLastTimeStep, localTS));
-			}
-		}
-
-		mainSequentialBehaviourList.addSubBehaviour(new SEND_RECEIVE_FINAL_VALUE(this));
-		mainSequentialBehaviourList.addSubBehaviour(new SEND_RECEIVE_FINAL_UTIL(this));
-
-		mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
+		SequentialBehaviour mainSequentialBehaviourList = isDiscrete() ? computeBehaviorDiscrete() : computeBehaviorContinuous();
 		addBehaviour(mainSequentialBehaviourList);
 	}
+	
+	// TODO: To complete
+	private SequentialBehaviour computeBehaviorContinuous() {
+	  SequentialBehaviour mainSequentialBehaviourList = new SequentialBehaviour();
+	  
+	  mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
+//	  mainSequentialBehaviourList.addSubBehaviour(new BROADCAST_RECEIVE_HEURISTIC_INFO(this));
+	  mainSequentialBehaviourList.addSubBehaviour(new PSEUDOTREE_GENERATION(this));
+	  
+	  return mainSequentialBehaviourList;
+	}
+	
+	private SequentialBehaviour computeBehaviorDiscrete() {
+   int theLastTimeStep = simulateActualValueAndComputeDistribution();
+    
+    // Simulate random variables for R_LEARNING in Discrete PD-DCOPs
+    if (pddcop_algorithm == PDDcopAlgorithm.R_LEARNING && isDiscrete()) {
+      simulateActualValueForRLearning();
+      
+      // Initialize R functions
+      for (String previous : decisionVariableDomainMap.get(agentID)) {
+        for (String current : decisionVariableDomainMap.get(agentID)) {
+          for (String random : selfRandomVariableDomainMap.get(agentID)) {
+            AugmentedState state = AugmentedState.of(random, previous, current);
+            RFunction.put(state, 0D);
+            
+            // Previous = null for the case of horizon = 0
+            AugmentedState state_null_prev = AugmentedState.of(random, current);
+            RFunction.put(state_null_prev, 0D);
+          }
+        } 
+      }
+    }
+    
+    if (isDiscrete()) {
+      print("pickedRandomMap=" + pickedRandomMap);
+      print("probabilityAtEachTimeStepMap=");
+      for (Entry<String, double[][]> entry : probabilityAtEachTimeStepMap.entrySet()) {
+        print(entry.getKey() + "=" + Arrays.deepToString(entry.getValue()));
+      }
+    }
+	  
+	  SequentialBehaviour mainSequentialBehaviourList = new SequentialBehaviour();
+    // Done reviewing these two behaviors
+    mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
+    mainSequentialBehaviourList.addSubBehaviour(new PSEUDOTREE_GENERATION(this));
 
-	private List<Table> computeDpopBoundRandomTable(List<Table> randTableList, SortedMap<String, String> mapping) {
+    // Solve for the last time step for INFINITE
+    if (dynamicType == DynamicType.INFINITE_HORIZON) {
+      if (dcop_algorithm == DcopAlgorithm.DPOP && pddcop_algorithm != PDDcopAlgorithm.LS_RAND) {
+        mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, horizon));
+        mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, horizon));
+      } else if (dcop_algorithm == DcopAlgorithm.MGM) {
+        mainSequentialBehaviourList.addSubBehaviour(new MGM_RAND_PICK_VALUE(this, horizon));
+        for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
+          mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_VALUE(this, horizon));
+          mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_IMPROVE(this, horizon));
+          mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_UTIL(this, horizon, localTS));
+        }
+      }
+    }
+
+    // Combine DCOPs from 0 -> theLastTimeStep
+    // Take into account the switching cost to the solution at horizon h if there is any
+    if (pddcop_algorithm == PDDcopAlgorithm.C_DCOP) {
+      if (dcop_algorithm == DcopAlgorithm.DPOP) {
+        mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, theLastTimeStep));
+        mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, theLastTimeStep));
+      }
+    } else if (isAlgorithmIn(new PDDcopAlgorithm[] { PDDcopAlgorithm.LS_SDPOP, PDDcopAlgorithm.FORWARD,
+        PDDcopAlgorithm.HYBRID, PDDcopAlgorithm.REACT })) {
+      for (int i = 0; i <= theLastTimeStep; i++) {
+        if (dcop_algorithm == DcopAlgorithm.DPOP) {
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
+        } else if (dcop_algorithm == DcopAlgorithm.MGM) {
+          mainSequentialBehaviourList.addSubBehaviour(new MGM_RAND_PICK_VALUE(this, i));
+          for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
+            mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_VALUE(this, i));
+            mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_IMPROVE(this, i));
+            mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_UTIL(this, i, localTS));
+          }
+        }
+      }
+    } else if (pddcop_algorithm == PDDcopAlgorithm.BACKWARD) {
+      for (int i = theLastTimeStep; i >= 0; i--) {
+        if (dcop_algorithm == DcopAlgorithm.DPOP) {
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
+        } else if (dcop_algorithm == DcopAlgorithm.MGM) {
+          mainSequentialBehaviourList.addSubBehaviour(new MGM_RAND_PICK_VALUE(this, i));
+          for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
+            mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_VALUE(this, i));
+            mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_IMPROVE(this, i));
+            mainSequentialBehaviourList.addSubBehaviour(new MGM_SEND_RECEIVE_UTIL(this, i, localTS));
+          }
+        }
+      }
+    } else if (pddcop_algorithm == PDDcopAlgorithm.LS_RAND) {
+      mainSequentialBehaviourList.addSubBehaviour(new LS_RAND_PICK_VALUE(this));
+    } else if (pddcop_algorithm == PDDcopAlgorithm.R_LEARNING) {
+      // Behaviors for learning the R function
+      // Solving DCOP with current state ~ similar to REACT
+      // Solving DCOP with the next state ~ similar to REACT
+      // Behaviors for running the online version
+      for (int i = 0; i <= rLearningIteration - 1; i++) {
+        // Solving for current state
+        isSolvingForCurrentState = true;
+        mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
+        mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));       
+        // Update R and average reward only when having the solution of the previous state and the current state
+        if (i > 0) {
+          mainSequentialBehaviourList.addSubBehaviour(new R_LEARNING_UPDATE(this, i-1));
+        }
+      }
+      
+      // Mapping R-learning to DCOPs and solve for solution
+      for (int i = 0; i <= theLastTimeStep; i++) {
+        // R-learning values are converted into utility function in DPOP_UTIL
+        mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
+        mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
+      }
+    }
+
+    // Add the discounted tables to time steps 0 -> lastTimeStep for all algorithms
+    // In order to compute solution quality of PD-DCOP
+    // Not used for solving PD-DCOPs
+    for (int timeIndex = 0; timeIndex <= horizon; timeIndex++) {
+      discountedExpectedTableEachTSMap.get(timeIndex)
+          .addAll(computeDiscountedDecisionTableList(rawDecisionTableList, timeIndex, discountFactor));
+      discountedExpectedTableEachTSMap.get(timeIndex)
+          .addAll(computeDiscountedExpectedRandomTableList(rawRandomTableList, timeIndex, discountFactor));
+    }
+
+    // Behaviors for local search approaches of PD-DCOPs
+    if (isAlgorithmIn(new PDDcopAlgorithm[] { PDDcopAlgorithm.LS_RAND, PDDcopAlgorithm.LS_SDPOP })) {
+      mainSequentialBehaviourList.addSubBehaviour(new INIT_PROPAGATE_DPOP_VALUE(this));
+      mainSequentialBehaviourList.addSubBehaviour(new INIT_RECEIVE_DPOP_VALUE(this));
+      mainSequentialBehaviourList.addSubBehaviour(new INIT_RECEIVE_SEND_LS_UTIL(this));
+
+      for (int localTS = 0; localTS <= MAX_ITERATION; localTS++) {
+        mainSequentialBehaviourList.addSubBehaviour(new LS_SEND_IMPROVE(this, theLastTimeStep, localTS));
+        mainSequentialBehaviourList.addSubBehaviour(new LS_RECEIVE_IMPROVE(this, theLastTimeStep, localTS));
+        mainSequentialBehaviourList.addSubBehaviour(new LS_RECEIVE_VALUE(this, theLastTimeStep, localTS));
+        mainSequentialBehaviourList
+            .addSubBehaviour(new LS_RECEIVE_SEND_LS_UTIL(this, theLastTimeStep, localTS));
+      }
+    }
+
+    mainSequentialBehaviourList.addSubBehaviour(new SEND_RECEIVE_FINAL_VALUE(this));
+    mainSequentialBehaviourList.addSubBehaviour(new SEND_RECEIVE_FINAL_UTIL(this));
+
+    mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
+    
+    return mainSequentialBehaviourList;
+	}
+
+	@SuppressWarnings("unused")
+  private List<Table> computeDpopBoundRandomTable(List<Table> randTableList, SortedMap<String, String> mapping) {
 		List<Table> resultingList = new ArrayList<>();
 
 		for (Table randTable : randTableList) {
@@ -604,7 +600,8 @@ public class AgentPDDCOP extends Agent {
 
 	// Given a mapping: random variable -> List of values (domain)
 	// Compute a set that contains mapping: random variable -> value
-	private SortedSet<SortedMap<String, String>> computeRandomCombinations(
+	@SuppressWarnings("unused")
+  private SortedSet<SortedMap<String, String>> computeRandomCombinations(
 			SortedMap<String, List<String>> randomVariableDomains) {
 		SortedSet<SortedMap<String, String>> realizationCombinations = new TreeSet<>();
 
@@ -1224,129 +1221,118 @@ public class AgentPDDCOP extends Agent {
 		print();
 	}
 	
-	private void parseInputFileContinuous(String inputFileName) {
-		int maxNumberOfNeighbors = Integer.MIN_VALUE;
+  private void parseInputFileContinuous(String inputFileName) {
+    int maxNumberOfNeighbors = Integer.MIN_VALUE;
+    Map<String, Set<String>> neighborSetMap = new HashMap<>();
 
-		final String DECISION_VARIABLE = "decision";
-		final String RANDOM_VARIABLE = "random";
-		final String FUNCTION = "function";
-		
-		final String TRANS_FUNC_PREFIX = "transition";
-		final String INIT_PROB_PREFIX = "initial_distribution";
-		final String NEIGHBOR_SET = "neighbor set: ";
+    final String DECISION_VARIABLE = "decision";
+    final String RANDOM_VARIABLE = "random";
+    final String FUNCTION = "function";
 
-		try (BufferedReader br = new BufferedReader(
-				new FileReader(System.getProperty("user.dir") + "/" +  inputFileName))) {
-			List<String> lineWithSemiColonList = new ArrayList<String>();
+    final String TRANS_FUNC_PREFIX = "transition";
+    final String INIT_PROB_PREFIX = "initial_distribution";
+    final String NEIGHBOR_SET = "neighbor set: ";
 
-			String line = br.readLine();
-			while (line != null) {
-				if (line.length() == 0 || line.startsWith("%") == true) {
-					line = br.readLine();
-					continue;
-				}
+    try (BufferedReader br = new BufferedReader(new FileReader(System.getProperty("user.dir") + "/" + inputFileName))) {
+      List<String> lineWithSemiColonList = new ArrayList<String>();
 
-				// concatenate line until meet ';'
-				if (line.endsWith(";") == false) {
-					do {
-						line += br.readLine();
-					} while (line.endsWith(";") == false);
-				}
+      String line = br.readLine();
+      while (line != null) {
+        if (line.length() == 0 || line.startsWith("%") == true) {
+          line = br.readLine();
+          continue;
+        }
+
+        // concatenate line until meet ';'
+        if (line.endsWith(";") == false) {
+          do {
+            line += br.readLine();
+          } while (line.endsWith(";") == false);
+        }
 
 //				line = line.replace(" ","");
-				line = line.replace(";", "");
-				lineWithSemiColonList.add(line);
-				line = br.readLine();
-			}
+        line = line.replace(";", "");
+        lineWithSemiColonList.add(line);
+        line = br.readLine();
+      }
 
-			// Process line by line;
-			for (String lineWithSemiColon : lineWithSemiColonList) {
-				String nameMzn = lineWithSemiColon.split("=")[0];
-				String valueMzn = lineWithSemiColon.split("=")[1];
-				
-				/** DECISION_VARIABLE */
-				// read decision variable domain
-				if (nameMzn.contains(DECISION_VARIABLE)) {
-					// process name
-					String decisionVariable = nameMzn.replace(DECISION_VARIABLE + "_x", "");
+      // Process line by line;
+      for (String lineWithSemiColon : lineWithSemiColonList) {
+        String nameMzn = lineWithSemiColon.split("=")[0];
+        String valueMzn = lineWithSemiColon.split("=")[1];
 
-					// process values
-					valueMzn = valueMzn.replace("[", "");
-					valueMzn = valueMzn.replace("]", "");
-					double lowerBound = Double.valueOf(valueMzn.split(",")[0]);
-					double upperBound = Double.valueOf(valueMzn.split(",")[1]);
-					decisionVariableList.add(decisionVariable);
-					decisionVariableIntervalMap.put(decisionVariable, new Interval(lowerBound, upperBound));
-				}
-				if (nameMzn.contains(RANDOM_VARIABLE)) {
-					// process name
-					String randomVariable = nameMzn.replace(DECISION_VARIABLE + "_y", "");
-					
-					// Only add self random variable if any
-					if (randomVariable.equals(agentID)) {
-						// process values
-						valueMzn = valueMzn.replace("[", "");
-						valueMzn = valueMzn.replace("]", "");
-						double lowerBound = Double.valueOf(valueMzn.split(",")[0]);
-						double upperBound = Double.valueOf(valueMzn.split(",")[1]);
-						
-						selfRandomVariableIntervalMap.put(randomVariable, new Interval(lowerBound, upperBound));
-					}
-				}
+        /** DECISION_VARIABLE */
+        // read decision variable domain
+        if (nameMzn.contains(DECISION_VARIABLE)) {
+          // process name
+          String decisionVariable = nameMzn.replace(DECISION_VARIABLE + "_x", "");
 
-				/** FUNCTION */
-				// function(x3,x1)=9.386x3^2 -5.77744x3 -3.91612x1^2 -6.10079x1 -6.70358x3x1 7.41036;
-				// BinaryFunction func = new BinaryFunction(-1, 20, -3, 40, -2, 6)
-				// Double.valueOf(idStr), 1.0);
-				if (lineWithSemiColon.startsWith(FUNCTION)) {
-					// x1^ and x10^
-					if (!lineWithSemiColon.contains("x" + agentID + "^"))
-						continue;
+          // process values
+          valueMzn = valueMzn.replace("[", "");
+          valueMzn = valueMzn.replace("]", "");
+          double lowerBound = Double.valueOf(valueMzn.split(",")[0]);
+          double upperBound = Double.valueOf(valueMzn.split(",")[1]);
+          decisionVariableList.add(decisionVariable);
+          decisionVariableIntervalMap.put(decisionVariable, new Interval(lowerBound, upperBound));
+        }
+        if (nameMzn.contains(RANDOM_VARIABLE)) {
+          // process name
+          String randomVariable = nameMzn.replace(DECISION_VARIABLE + "_y", "");
 
-					lineWithSemiColon = lineWithSemiColon.split("=")[1];
-					String[] termStrList = lineWithSemiColon.split(" ");
-					String[] functionParamters = parseFunction(termStrList, "x" + agentID, lineWithSemiColon.contains("y"));
-					
-					// TODO: This neighbor might be a random variable
-					String neighbor = functionParamters[6];
-					
-					MultivariateQuadFunction func = new MultivariateQuadFunction(functionParamters, agentID, neighbor);
+          // Only add self random variable if any
+          if (randomVariable.equals(agentID)) {
+            // process values
+            valueMzn = valueMzn.replace("[", "");
+            valueMzn = valueMzn.replace("]", "");
+            double lowerBound = Double.valueOf(valueMzn.split(",")[0]);
+            double upperBound = Double.valueOf(valueMzn.split(",")[1]);
 
-					// Adding the new neighbor to neighborStrSet
-					if (!neighbor.contains(RANDOM_PREFIX)) {
-					  neighborStrSet.add(neighbor);
-					}
+            selfRandomVariableIntervalMap.put(randomVariable, new Interval(lowerBound, upperBound));
+          }
+        }
 
-					PiecewiseMultivariateQuadFunction pwFunc = new PiecewiseMultivariateQuadFunction();
-					// creating the interval map
-					Map<String, Interval> intervalMap = new HashMap<>();
-					intervalMap.put("x" + agentID, globalInterval);
-					intervalMap.put(neighbor, globalInterval);
+        /** FUNCTION */
+        // function(x3,x1)=9.386x3^2 -5.77744x3 -3.91612x1^2 -6.10079x1 -6.70358x3x1
+        // 7.41036;
+        // BinaryFunction func = new BinaryFunction(-1, 20, -3, 40, -2, 6)
+        // Double.valueOf(idStr), 1.0);
+        if (lineWithSemiColon.startsWith(FUNCTION)) {
+          // x1^ and x10^
+          if (!lineWithSemiColon.contains("x" + agentID + "^"))
+            continue;
 
-					pwFunc.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
-					functionMap.put(neighbor, pwFunc);
+          lineWithSemiColon = lineWithSemiColon.split("=")[1];
+          String[] termStrList = lineWithSemiColon.split(" ");
+          String[] functionParamters = parseFunction(termStrList, "x" + agentID, lineWithSemiColon.contains("y"));
 
-					// Own the function
-					if (isRunningMaxsum() && (neighbor.contains(RANDOM_PREFIX) 
-					    || compare(Double.valueOf(agentID), Double.valueOf(neighbor.replace("x", ""))) < 0)) {
-						// add the function to Maxsum function map
-						// add the neighbor to external-var-agent-set
-						MSFunctionMapIOwn.put(neighbor, pwFunc);
-					}
-				}
-				
-				if (lineWithSemiColon.startsWith(NEIGHBOR_SET)) {
-					lineWithSemiColon = lineWithSemiColon.replace(NEIGHBOR_SET, "");
-					lineWithSemiColon = lineWithSemiColon.replace("x", "");
-					String[] agentWithNeighbors = lineWithSemiColon.split(" ");
-					// 3: 1 4 5
-					if (agentWithNeighbors.length - 1 > maxNumberOfNeighbors) {
-						maxNumberOfNeighbors = agentWithNeighbors.length - 1;
-//						rootAgent = Integer.parseInt(agentWithNeighbors[0].replaceAll(":", ""));
-						rootAgent = agentWithNeighbors[0].replaceAll(":", "");
-					}
-				}
-				
+          // TODO: This neighbor might be a random variable
+          String neighbor = functionParamters[6];
+
+          MultivariateQuadFunction func = new MultivariateQuadFunction(functionParamters, agentID, neighbor);
+
+          // Adding the new neighbor to neighborStrSet
+          if (!neighbor.contains(RANDOM_PREFIX)) {
+            neighborStrSet.add(neighbor);
+          }
+
+          PiecewiseMultivariateQuadFunction pwFunc = new PiecewiseMultivariateQuadFunction();
+          // creating the interval map
+          Map<String, Interval> intervalMap = new HashMap<>();
+          intervalMap.put("x" + agentID, globalInterval);
+          intervalMap.put(neighbor, globalInterval);
+
+          pwFunc.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
+          functionMap.put(neighbor, pwFunc);
+
+          // Own the function
+          if (isRunningMaxsum() && (neighbor.contains(RANDOM_PREFIX)
+              || compare(Double.valueOf(agentID), Double.valueOf(neighbor.replace("x", ""))) < 0)) {
+            // add the function to Maxsum function map
+            // add the neighbor to external-var-agent-set
+            MSFunctionMapIOwn.put(neighbor, pwFunc);
+          }
+        }
+
         if (nameMzn.contains(INIT_PROB_PREFIX)) {
           nameMzn = nameMzn.replace(INIT_PROB_PREFIX + "_y", "");
 
@@ -1362,11 +1348,11 @@ public class AgentPDDCOP extends Agent {
           // alpha=1.2,beta=3.4565
           double alpha = Double.valueOf(valueMzn.split(",")[0].replace("alpha=", ""));
           double beta = Double.valueOf(valueMzn.split(",")[1].replace("beta=", ""));
-          
+
           RandomGenerator rg = new Well19937c(DEFAULT_BETA_SAMPLING_SEED);
           setInitialDistribution(new BetaDistribution(rg, alpha, beta));
         }
-        
+
         if (nameMzn.contains(TRANS_FUNC_PREFIX)) {
           nameMzn = nameMzn.replace(TRANS_FUNC_PREFIX + "_y", "");
 
@@ -1383,11 +1369,40 @@ public class AgentPDDCOP extends Agent {
           double alpha = Double.valueOf(valueMzn.replace("alpha=", ""));
           setTransitionDistribution(TransitionFamilyDistribution.of(alpha));
         }
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+
+        if (lineWithSemiColon.startsWith(NEIGHBOR_SET)) {
+          String neighborMaping = lineWithSemiColon.replace(NEIGHBOR_SET, "");
+          // neighbor set: x1: x11 x3 y1
+          // x1: x11 x3 y1
+
+          String agent = neighborMaping.split(": ")[0];
+          // x11 x3 y1
+          String neighborSetStr = neighborMaping.split(": ")[1];
+          // Do not consider random variable
+          // neighbor set: y1: x1 ;
+          if (!agent.contains(RANDOM_PREFIX)) {
+            Set<String> neighborSet = new HashSet<>();
+
+            for (String neighbor : neighborSetStr.split(" ")) {
+              if (!neighbor.contains(RANDOM_PREFIX)) {
+                neighborSet.add(neighbor);
+              }
+            }
+
+            neighborSetMap.put(agent, neighborSet);
+            agentHeuristicStringMap.put(agent, (double) neighborSet.size());
+
+            if (neighborSet.size() > maxNumberOfNeighbors) {
+              rootAgent = agent;
+              maxNumberOfNeighbors = neighborSet.size();
+            }
+          }
+        }
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
 
 	private void parseInputFileDiscrete(String inputFileName) {
 		final String DECISION_VARIABLE = "decision";
@@ -1687,25 +1702,23 @@ public class AgentPDDCOP extends Agent {
 
 				randHeuristicMap.put(agent, count);
 			}
-//			randomCount = allRandomVariableSet.size();
 
-			// Compute heuristic values for each agent
-			SortedSet<String> allAgents = new TreeSet<>(neighborSetMap.keySet());
-			double maxValue = -Double.MAX_VALUE;
-//			print("AgentID=" + agentID + " has neighborSetMap=" + neighborSetMap);
+    // Compute heuristic values for each agent
+      SortedSet<String> allAgents = new TreeSet<>(neighborSetMap.keySet());
+      double maxValue = -Double.MAX_VALUE;
 
-			for (String agent : allAgents) {
-				int agentRandHeuristic = (allRandomVariableSet.contains(agent) ? 1 + 1 : 1 + 0)
-						* randHeuristicMap.get(agent);
-				double value = heuristicWeight * agentRandHeuristic
-						+ (1 - heuristicWeight) * neighborSetMap.get(agent).size();
-				agentHeuristicStringMap.put(agent, value);
+      for (String agent : allAgents) {
+        int agentRandHeuristic = (allRandomVariableSet.contains(agent) ? 1 + 1 : 1 + 0)
+            * randHeuristicMap.get(agent);
+        double value = heuristicWeight * agentRandHeuristic
+            + (1 - heuristicWeight) * neighborSetMap.get(agent).size();
+        agentHeuristicStringMap.put(agent, value);
 
-				if (Double.compare(value, maxValue) > 0) {
-					maxValue = value;
-					rootAgent = agent;
-				}
-			}
+        if (Double.compare(value, maxValue) > 0) {
+          maxValue = value;
+          rootAgent = agent;
+        }
+      }
 			/** Place to test printing out */
 			/** end of testing */
 		} catch (IOException e) {
@@ -3276,6 +3289,14 @@ public class AgentPDDCOP extends Agent {
 	public void setApplyingRLearning(boolean isApplyingRLearning) {
 		this.isApplyingRLearning = isApplyingRLearning;
 	}
+	
+  public Map<AID, Integer> getConstraintInfoMap() {
+    return constraintInfoMap;
+  }
+
+  public void setConstraintInfoMap(Map<AID, Integer> constraintInfoMap) {
+    this.constraintInfoMap = constraintInfoMap;
+  }
 
 	public HashMap<String, Interval> getDecisionVariableIntervalMap() {
 		return decisionVariableIntervalMap;
@@ -3307,5 +3328,13 @@ public class AgentPDDCOP extends Agent {
 
   public void setInitialDistribution(BetaDistribution initialDistribution) {
     this.initialDistribution = initialDistribution;
+  }
+  
+  public boolean isContinuous() {
+    return dcopType == DcopType.CONTINUOUS;
+  }
+  
+  public boolean isDiscrete() {
+    return dcopType == DcopType.DISCRETE;
   }
 }
