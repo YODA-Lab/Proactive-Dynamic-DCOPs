@@ -1,5 +1,7 @@
 package transition;
 
+import java.util.Objects;
+
 import org.apache.commons.math3.distribution.BetaDistribution;
 
 public class TransitionFamilyDistribution {
@@ -35,5 +37,25 @@ public class TransitionFamilyDistribution {
   // TODO: Compute mean
   public double computeBeta(double mean) {
       return 0;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(alpha);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (!(obj instanceof TransitionFamilyDistribution))
+      return false;
+    TransitionFamilyDistribution other = (TransitionFamilyDistribution) obj;
+    return Double.doubleToLongBits(alpha) == Double.doubleToLongBits(other.alpha);
+  }
+
+  @Override
+  public String toString() {
+    return "TransitionFamilyDistribution [alpha=" + alpha + "]";
   }
 }

@@ -291,7 +291,8 @@ public class AgentPDDCOP extends Agent {
 	public int randomDomain;
 	
 	private BetaDistribution initialDistribution = new BetaDistribution(0, 0);
-	private TransitionFamilyDistribution transitionDistribution = TransitionFamilyDistribution.of();
+	private TransitionFamilyDistribution transitionDistributionFamily = TransitionFamilyDistribution.of();
+  private Map<String, Set<String>> neighborSetMap = new HashMap<>();
 
 	public static String OUTPUT_FOLDER;
 
@@ -416,6 +417,15 @@ public class AgentPDDCOP extends Agent {
 		registerWithDF();
 		bean = ManagementFactory.getThreadMXBean();
 		bean.setThreadContentionMonitoringEnabled(true);
+		
+		if (isContinuous()) {
+		  print("decisionVariableIntervalMap=" + decisionVariableIntervalMap);
+		  print("selfRandomVariableDomainMap=" + selfRandomVariableDomainMap);
+		  print("functionMap=" + functionMap);
+		  print("neighborSetMap=" + neighborSetMap);
+		  print("initialDistribution=" + initialDistribution);
+		  print("transitionDistributionFamily=" + transitionDistributionFamily);
+		}
 
 		SequentialBehaviour mainSequentialBehaviourList = isDiscrete() ? computeBehaviorDiscrete() : computeBehaviorContinuous();
 		addBehaviour(mainSequentialBehaviourList);
@@ -1223,7 +1233,6 @@ public class AgentPDDCOP extends Agent {
 	
   private void parseInputFileContinuous(String inputFileName) {
     int maxNumberOfNeighbors = Integer.MIN_VALUE;
-    Map<String, Set<String>> neighborSetMap = new HashMap<>();
 
     final String DECISION_VARIABLE = "decision";
     final String RANDOM_VARIABLE = "random";
@@ -3315,11 +3324,11 @@ public class AgentPDDCOP extends Agent {
 	}
 
   public TransitionFamilyDistribution getTransitionDistribution() {
-    return transitionDistribution;
+    return transitionDistributionFamily;
   }
 
   public void setTransitionDistribution(TransitionFamilyDistribution transitionDistribution) {
-    this.transitionDistribution = transitionDistribution;
+    this.transitionDistributionFamily = transitionDistribution;
   }
 
   public BetaDistribution getInitialDistribution() {
