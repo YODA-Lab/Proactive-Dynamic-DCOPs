@@ -30,11 +30,11 @@ public interface DcopConstants {
      * Used to solve for the maximal-utility of DCOPs by realizing values of random
      * variables
      */
-    BOUND_DPOP
+    BOUND_DPOP,
   }
 
   public static enum DcopAlgorithm {
-    DPOP, MGM, MAXSUM, HYBRID_MAXSUM, CAF_MAXSUM
+    DPOP, MGM, MAXSUM, HYBRID_MAXSUM, CAF_MAXSUM, EC_DPOP, AC_DPOP, CAC_DPOP, CONTINUOUS_DSA
   }
 
   public static enum SwitchingType {
@@ -45,23 +45,23 @@ public interface DcopConstants {
     FINITE_HORIZON, INFINITE_HORIZON, ONLINE, STATIONARY
   }
 
-  public static final int EF_DPOP = 0;
-  
-  public static final int DPOP = 1;
-  public static final int AF_DPOP = 2;
-  public static final int CAF_DPOP = 3;
-  
-  public static final int MAXSUM = 4;
-  public static final int HYBRID_MAXSUM = 5;
-  public static final int CAF_MAXSUM = 6;
-  
-  public static final int DISCRETE_DPOP = 7;
-  
-  public static final int DISCRETE_DSA = 8;
-  public static final int CONTINUOUS_DSA = 9;
-  
-  public static final String algTypes[] = { "EF_DPOP", "DPOP", "AF_DPOP", "CAF_DPOP",
-      "MAXSUM", "HYBRID_MAXSUM", "CAF_MAXSUM", "DISCRETE_DPOP", "DISCRETE_DSA", "CONTINUOUS_DSA"};
+//  public static final int EF_DPOP = 0;
+//  
+//  public static final int DPOP = 1;
+//  public static final int AF_DPOP = 2;
+//  public static final int CAF_DPOP = 3;
+//  
+//  public static final int MAXSUM = 4;
+//  public static final int HYBRID_MAXSUM = 5;
+//  public static final int CAF_MAXSUM = 6;
+//  
+//  public static final int DISCRETE_DPOP = 7;
+//  
+//  public static final int DISCRETE_DSA = 8;
+//  public static final int CONTINUOUS_DSA = 9;
+//  
+//  public static final String algTypes[] = { "EF_DPOP", "DPOP", "AF_DPOP", "CAF_DPOP",
+//      "MAXSUM", "HYBRID_MAXSUM", "CAF_MAXSUM", "DISCRETE_DPOP", "DISCRETE_DSA", "CONTINUOUS_DSA"};
   
   public static final int FUNC_TO_VAR_TO_SEND_OUT = 0;
   public static final int FUNC_TO_VAR_TO_STORE = 1;

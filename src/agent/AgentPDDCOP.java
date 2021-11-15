@@ -144,6 +144,10 @@ public class AgentPDDCOP extends Agent {
 	
 	// mapping <neighbor, function<>
 	private Map<String, PiecewiseMultivariateQuadFunction> functionMap = new HashMap<>();
+	private PiecewiseMultivariateQuadFunction agentViewFunction;
+	private Map<String, PiecewiseMultivariateQuadFunction> functionWithPParentMap = new HashMap<>();
+	private Map<Integer, PiecewiseMultivariateQuadFunction> expectedFunctionMap = new HashMap<>();
+	
 	// for Hybrid Max-Sum
 		private Map<String, PiecewiseMultivariateQuadFunction> MSFunctionMapIOwn = new HashMap<>();
 //	private int onlineRun;
@@ -433,21 +437,7 @@ public class AgentPDDCOP extends Agent {
 		addBehaviour(mainSequentialBehaviourList);
 	}
 	
-	// TODO: To complete
-	private SequentialBehaviour computeBehaviorContinuous() {
-    // Simulate the random variable values and compute the mean
-    samplingAndComputeMean();
-	  
-	  SequentialBehaviour mainSequentialBehaviourList = new SequentialBehaviour();
-	  
-	  mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
-	  mainSequentialBehaviourList.addSubBehaviour(new PSEUDOTREE_GENERATION(this));
-    mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
-
-	  return mainSequentialBehaviourList;
-	}
-	
-	// Welford's online algorithm for running mean
+	 // Welford's online algorithm for running mean
   private void samplingAndComputeMean() {
     for (int samplingIteration = 1; samplingIteration <= SAMPLING_STEPS; samplingIteration++) {
       BetaDistribution currentDistribution = initialDistribution;
@@ -463,6 +453,43 @@ public class AgentPDDCOP extends Agent {
         currentDistribution = transitionDistributionFamily.computeBetaDistribution(sample);
       }
     }
+  }
+	
+	// TODO: To be completed
+	private SequentialBehaviour computeBehaviorContinuous() {
+    // Simulate the random variable values and compute the mean
+    samplingAndComputeMean();
+    
+    computeExpectedFunctionEachTimeStep();
+	  
+	  SequentialBehaviour mainSequentialBehaviourList = new SequentialBehaviour();
+	  
+	  mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
+	  mainSequentialBehaviourList.addSubBehaviour(new PSEUDOTREE_GENERATION(this));
+    mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
+
+	  return mainSequentialBehaviourList;
+	}
+
+	// Decision functions are contained in a hashmap: neighbor -> function
+	// Random functions are contained in a hashmap: timestep -> expected function
+  private void computeExpectedFunctionEachTimeStep() {
+    // Only keep the constraints with parent or pseudo-parent
+    // Or keep the function with random variable (self, random)
+    for (Entry<String, PiecewiseMultivariateQuadFunction> entry : functionMap.entrySet()) {
+      if (parentAndPseudoStrList.contains(entry.getKey())) {
+        functionWithPParentMap.put(entry.getKey(), entry.getValue());
+      }
+      else if (entry.getKey().contains(RANDOM_PREFIX)) {
+        for (int timeStep = 0; timeStep < horizon; timeStep++) {
+          Map<String, Double> randomValueMap = new HashMap<>();
+          double distributionMean = meanAtEveryTimeStep.get(timeStep);
+          randomValueMap.put(entry.getKey(), distributionMean);
+          
+          expectedFunctionMap.put(timeStep, entry.getValue().evaluateToUnaryFunction(randomValueMap));
+        }
+      }
+    }    
   }
 
   private SequentialBehaviour computeBehaviorDiscrete() {
@@ -3376,5 +3403,26 @@ public class AgentPDDCOP extends Agent {
 
   public void setMeanAtEveryTimeStep(Map<Integer, Double> meanAtEveryTimeStep) {
     this.meanAtEveryTimeStep = meanAtEveryTimeStep;
+  }
+
+  public PiecewiseMultivariateQuadFunction getAgentViewFunction() {
+    return agentViewFunction;
+  }
+
+  public void setAgentViewFunction(PiecewiseMultivariateQuadFunction agentViewFunction) {
+    this.agentViewFunction = agentViewFunction;
+  }
+
+  public Map<String, PiecewiseMultivariateQuadFunction> getFunctionWithPParentMap() {
+    return functionWithPParentMap;
+  }
+  
+  public boolean isRunningContinousDpop() {
+    return dcop_algorithm == DcopAlgorithm.EC_DPOP || dcop_algorithm == DcopAlgorithm.AC_DPOP ||
+        dcop_algorithm == DcopAlgorithm.CAC_DPOP;
+  }
+
+  public Map<Integer, PiecewiseMultivariateQuadFunction> getExpectedFunctionMap() {
+    return expectedFunctionMap;
   }
 }
