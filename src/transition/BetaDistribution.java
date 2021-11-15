@@ -17,17 +17,6 @@ public class BetaDistribution extends org.apache.commons.math3.distribution.Beta
     super(rg, alpha, beta);
   }
 
-//  @Override
-//  public String toString() {
-//    return "BetaDistribution [randomData=" + randomData + ", random=" + random + ", getAlpha()=" + getAlpha()
-//        + ", getBeta()=" + getBeta() + ", getSolverAbsoluteAccuracy()=" + getSolverAbsoluteAccuracy()
-//        + ", getNumericalMean()=" + getNumericalMean() + ", getNumericalVariance()=" + getNumericalVariance()
-//        + ", getSupportLowerBound()=" + getSupportLowerBound() + ", getSupportUpperBound()=" + getSupportUpperBound()
-//        + ", isSupportLowerBoundInclusive()=" + isSupportLowerBoundInclusive() + ", isSupportUpperBoundInclusive()="
-//        + isSupportUpperBoundInclusive() + ", isSupportConnected()=" + isSupportConnected() + ", sample()=" + sample()
-//        + ", getClass()=" + getClass() + ", hashCode()=" + hashCode() + ", toString()=" + super.toString() + "]";
-//  }
-
   @Override
   public String toString() {
     return "BetaDistribution [alpha=" + getAlpha() + ", beta=" + getBeta() + "]";

@@ -4,6 +4,7 @@ import static java.lang.Double.compare;
 import static java.lang.System.out;
 import static agent.DcopConstants.RANDOM_PREFIX;
 import static agent.DcopConstants.DEFAULT_BETA_SAMPLING_SEED;
+import static agent.DcopConstants.SAMPLING_STEPS;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -292,6 +293,7 @@ public class AgentPDDCOP extends Agent {
 	private BetaDistribution initialDistribution = new BetaDistribution(0, 0);
 	private TransitionFamilyDistribution transitionDistributionFamily = TransitionFamilyDistribution.of();
   private Map<String, Set<String>> neighborSetMap = new HashMap<>();
+  private Map<Integer, Double> meanAtEveryTimeStep = new HashMap<>(); // Assume that each agent has at most one random variable
 
 	public static String OUTPUT_FOLDER;
 
@@ -435,13 +437,33 @@ public class AgentPDDCOP extends Agent {
 	  SequentialBehaviour mainSequentialBehaviourList = new SequentialBehaviour();
 	  
 	  mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
-//	  mainSequentialBehaviourList.addSubBehaviour(new BROADCAST_RECEIVE_HEURISTIC_INFO(this));
 	  mainSequentialBehaviourList.addSubBehaviour(new PSEUDOTREE_GENERATION(this));
+	  
+	  // Simulate the random variable values and compute the mean
+	  samplingAndComputeMean();
 	  
 	  return mainSequentialBehaviourList;
 	}
 	
-	private SequentialBehaviour computeBehaviorDiscrete() {
+	// Welford's online algorithm for running mean
+  private void samplingAndComputeMean() {
+    for (int samplingIteration = 1; samplingIteration <= SAMPLING_STEPS; samplingIteration++) {
+      BetaDistribution currentDistribution = initialDistribution;
+
+      for (int timeStep = 0; timeStep <= horizon; timeStep++) {
+        double currentMean = meanAtEveryTimeStep.getOrDefault(timeStep, 0D);
+        double sample = currentDistribution.sample();
+        
+        double updatedMean = ((samplingIteration - 1) * currentMean + sample) / samplingIteration;
+        meanAtEveryTimeStep.put(timeStep, updatedMean);
+
+        // Compute the Beta distribution for the next time step
+        currentDistribution = transitionDistributionFamily.computeBetaDistribution(sample);
+      }
+    }
+  }
+
+  private SequentialBehaviour computeBehaviorDiscrete() {
    int theLastTimeStep = simulateActualValueAndComputeDistribution();
     
     // Simulate random variables for R_LEARNING in Discrete PD-DCOPs
@@ -1327,7 +1349,13 @@ public class AgentPDDCOP extends Agent {
           // creating the interval map
           Map<String, Interval> intervalMap = new HashMap<>();
           intervalMap.put(selfAgent, decisionVariableIntervalMap.get(selfAgent));
-          intervalMap.put(neighborAgent, decisionVariableIntervalMap.get(neighborAgent));
+
+          if (!neighborAgent.contains(RANDOM_PREFIX)) {
+            intervalMap.put(neighborAgent, decisionVariableIntervalMap.get(neighborAgent)); 
+          } else {
+            intervalMap.put(neighborAgent, randomVariableIntervalMap.get(neighborAgent));
+          }
+          
 
           pwFunc.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
           functionMap.put(neighborAgent, pwFunc);
@@ -3338,5 +3366,13 @@ public class AgentPDDCOP extends Agent {
   
   public boolean isDiscrete() {
     return dcopType == DcopType.DISCRETE;
+  }
+
+  public Map<Integer, Double> getMeanAtEveryTimeStep() {
+    return meanAtEveryTimeStep;
+  }
+
+  public void setMeanAtEveryTimeStep(Map<Integer, Double> meanAtEveryTimeStep) {
+    this.meanAtEveryTimeStep = meanAtEveryTimeStep;
   }
 }

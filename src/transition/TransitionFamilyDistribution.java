@@ -2,8 +2,6 @@ package transition;
 
 import java.util.Objects;
 
-import org.apache.commons.math3.distribution.BetaDistribution;
-
 public class TransitionFamilyDistribution {
   private final double alpha;
   
