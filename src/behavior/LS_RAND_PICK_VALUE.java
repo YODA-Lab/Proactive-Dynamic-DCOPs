@@ -29,11 +29,20 @@ public class LS_RAND_PICK_VALUE extends OneShotBehaviour {
 		List<String> domain = agent.getDecisionVariableDomainMap().get(agent.getAgentID());
 		
 		for (int ts = 0; ts <= agent.getHorizon(); ts++) {
-			agent.getChosenValueAtEachTSMap().put(ts, domain.get(agent.getRandom().nextInt(domain.size())));
-//      agent.getChosenValueAtEachTSMap().put(ts, domain.get(ts % domain.size()));
+			if (agent.isDiscrete()) {
+		     agent.getChosenValueAtEachTSMap().put(ts, domain.get(agent.getRandom().nextInt(domain.size())));
+			}
+			else if (agent.isContinuous()) {
+			  double lower = agent.getDecisionVariableIntervalMap().get(agent.getAgentID()).getLowerBound();
+			  double upper = agent.getDecisionVariableIntervalMap().get(agent.getAgentID()).getUpperBound();
+			  
+			  double randomSample = lower + Math.random() * (upper - lower);
+			  agent.getChosenValueAtEachTSMap().put(ts, String.valueOf(randomSample));
+			}
+		  
 		}
 		
-		agent.print("choose random values=" + agent.getChosenValueAtEachTSMap());
+		agent.print("Chosen random values=" + agent.getChosenValueAtEachTSMap());
 		
 		agent.stopStimulatedTiming();
 	}
