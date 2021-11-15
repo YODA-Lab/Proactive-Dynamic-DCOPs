@@ -131,6 +131,7 @@ public class AgentPDDCOP extends Agent {
 	 * DCOP parameters To be read from arguments
 	 */
 	private String agentID;
+	
 	private PDDcopAlgorithm pddcop_algorithm;
 	private DcopAlgorithm dcop_algorithm;
 	private DcopType dcopType;
@@ -368,7 +369,7 @@ public class AgentPDDCOP extends Agent {
 		decisionDomain = Integer.valueOf(a[3].replace("dx", ""));
 		randomDomain = Integer.valueOf(a[4].replace("dy", ""));
 
-		agentID = getLocalName();
+		agentID = getLocalName().replace("x", "");
 
 		for (int timeStep = 0; timeStep <= horizon; timeStep++) {
 			discountedExpectedTableEachTSMap.put(timeStep, new ArrayList<Table>());
@@ -398,7 +399,7 @@ public class AgentPDDCOP extends Agent {
 		}
 
 		// Set root
-		isRoot = agentID.equals(rootAgent);
+		isRoot = getLocalName().equals(rootAgent);
 		
 		setOutputFileName();
 
@@ -434,14 +435,15 @@ public class AgentPDDCOP extends Agent {
 	
 	// TODO: To complete
 	private SequentialBehaviour computeBehaviorContinuous() {
+    // Simulate the random variable values and compute the mean
+    samplingAndComputeMean();
+	  
 	  SequentialBehaviour mainSequentialBehaviourList = new SequentialBehaviour();
 	  
 	  mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
 	  mainSequentialBehaviourList.addSubBehaviour(new PSEUDOTREE_GENERATION(this));
-	  
-	  // Simulate the random variable values and compute the mean
-	  samplingAndComputeMean();
-	  
+    mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
+
 	  return mainSequentialBehaviourList;
 	}
 	
@@ -1325,20 +1327,20 @@ public class AgentPDDCOP extends Agent {
         // Double.valueOf(idStr), 1.0);
         if (nameMzn.startsWith(FUNCTION)) {
           // x1^ and x10^
-          if (!valueMzn.contains("x" + agentID + "^"))
+          if (!valueMzn.contains(getLocalName() + "^"))
             continue;
 
           String functionHead = nameMzn.replace(FUNCTION + "(", "").replace(")", "");
           String[] scope = functionHead.split(",");
-          String selfAgent = "x" + agentID;
-          String neighborAgent = scope[0].equals(selfAgent) ? scope[1] : scope[0];
+//          String selfAgent = "x" + agentID;
+          String neighborAgent = scope[0].equals(getLocalName()) ? scope[1] : scope[0];
           
           String[] termStrList = valueMzn.split(" ");
-          String[] functionParamters = parseFunction(termStrList, selfAgent, neighborAgent);
+          String[] functionParamters = parseFunction(termStrList, getLocalName(), neighborAgent);
 
           print("functionParamters=" + Arrays.deepToString(functionParamters));
 
-          MultivariateQuadFunction func = new MultivariateQuadFunction(functionParamters, agentID, neighborAgent);
+          MultivariateQuadFunction func = new MultivariateQuadFunction(functionParamters, getLocalName(), neighborAgent);
 
           // Adding the new neighbor to neighborStrSet
           if (!neighborAgent.contains(RANDOM_PREFIX)) {
@@ -1348,7 +1350,7 @@ public class AgentPDDCOP extends Agent {
           PiecewiseMultivariateQuadFunction pwFunc = new PiecewiseMultivariateQuadFunction();
           // creating the interval map
           Map<String, Interval> intervalMap = new HashMap<>();
-          intervalMap.put(selfAgent, decisionVariableIntervalMap.get(selfAgent));
+          intervalMap.put(getLocalName(), decisionVariableIntervalMap.get(getLocalName()));
 
           if (!neighborAgent.contains(RANDOM_PREFIX)) {
             intervalMap.put(neighborAgent, decisionVariableIntervalMap.get(neighborAgent)); 
@@ -1824,7 +1826,7 @@ public class AgentPDDCOP extends Agent {
 
 		for (String neighborStr : neighborStrSet) {
 			ServiceDescription sd = new ServiceDescription();
-			sd.setType(neighborStr);
+			sd.setType(neighborStr.replace("x", ""));
 			sd.setName(agentID);
 			dfd.addServices(sd);
 		}
@@ -3004,7 +3006,7 @@ public class AgentPDDCOP extends Agent {
 
 	public void print(String s) {
 //    if (agentID.equals("8")) {
-		System.out.println("Agent " + agentID + " " + s);
+		System.out.println("Agent " + getLocalName() + " " + s);
 //    }
 	}
 

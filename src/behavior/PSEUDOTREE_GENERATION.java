@@ -48,6 +48,8 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 
 	@Override
 	public void action() {
+	   agent.print("Start building pseudo-tree");
+	  
 		for (AID neighbor : agent.getNeighborAIDSet()) {
 			neighborHeuristicMap.put(neighbor, agent.getAgentHeuristicStringMap().get(neighbor.getLocalName()));
 		}
@@ -187,6 +189,8 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 		if (agent.isRoot() == false) {
 			agent.getParentAndPseudoStrList().add(agent.getParentAID().getLocalName());
 		}
+		
+		agent.print("Done building pseudo-tree");
 
 		// Add tables for DPOP here (those contain only parent and pseudo-parents)
 		agent.getDpopDecisionTableList()

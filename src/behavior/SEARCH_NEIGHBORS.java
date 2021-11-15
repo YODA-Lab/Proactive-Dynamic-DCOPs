@@ -14,9 +14,11 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
  */
 public class SEARCH_NEIGHBORS extends OneShotBehaviour implements MESSAGE_TYPE {
 
-	private static final long serialVersionUID = 6680449924898094747L;
-
-	AgentPDDCOP agent;
+	/**
+   * 
+   */
+  private static final long serialVersionUID = -4671159077938034634L;
+  AgentPDDCOP agent;
 	
 	public SEARCH_NEIGHBORS(AgentPDDCOP agent) {
 		super(agent);
@@ -25,6 +27,8 @@ public class SEARCH_NEIGHBORS extends OneShotBehaviour implements MESSAGE_TYPE {
 	
 	@Override
 	public void action() {
+	  agent.print("Start looking for neighbors:" + agent.getNeighborStrSet());
+	  
 		DFAgentDescription templateDF = new DFAgentDescription();
 		ServiceDescription serviceDescription = new ServiceDescription();
 		serviceDescription.setType(agent.getAgentID());
@@ -34,11 +38,14 @@ public class SEARCH_NEIGHBORS extends OneShotBehaviour implements MESSAGE_TYPE {
 			try {
 				DFAgentDescription[] foundAgentList = DFService.search(myAgent, templateDF);
 				agent.getNeighborAIDSet().clear();
-				for (int foundAgentIndex=0; foundAgentIndex<foundAgentList.length; foundAgentIndex++)
-					agent.getNeighborAIDSet().add(foundAgentList[foundAgentIndex].getName());
+				for (int foundAgentIndex=0; foundAgentIndex<foundAgentList.length; foundAgentIndex++) {
+				  agent.getNeighborAIDSet().add(foundAgentList[foundAgentIndex].getName());
+				}
 			} catch (FIPAException e) {
 				e.printStackTrace();
 			}
-		}		
+		}
+		
+		agent.print("Done looking for neighbors");
 	}
 }

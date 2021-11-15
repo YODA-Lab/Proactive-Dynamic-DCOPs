@@ -27,12 +27,12 @@ public class Main {
     rt.setCloseVM(true);
     Profile p = new ProfileImpl();
     p.setParameter(Profile.MAIN_HOST, "localhost");
-    p.setParameter(Profile.GUI, "false");
+    p.setParameter(Profile.GUI, "true");
     ContainerController cc = rt.createMainContainer(p);
     for (int i = 1; i <= agentCount; i++) {
       AgentController ac;
       try {
-        ac = cc.createNewAgent(String.valueOf(i), "agent.AgentPDDCOP", args);
+        ac = cc.createNewAgent("x" + String.valueOf(i), "agent.AgentPDDCOP", args);
         ac.start();
       } catch (StaleProxyException e) {
         e.printStackTrace();
