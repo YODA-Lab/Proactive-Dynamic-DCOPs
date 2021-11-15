@@ -68,7 +68,6 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 			MessageTemplate template = MessageTemplate.MatchPerformative(PSEUDOTREE);
 			ACLMessage receivedMessage = myAgent.blockingReceive(template);
 
-//			if (receivedMessage != null) {
 			AID sender = receivedMessage.getSender();
 
 			// first time the agent is visited
@@ -79,19 +78,11 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 				neighborHeuristicMap.remove(sender);
 				// set parent
 				agent.setParentAID(sender);
-//					agent.getParentAndPseudoStrList().add(sender.getLocalName());
-
 			} // end of first IF
 			else if (receivedMessage.getContent().equals("CHILD") && neighborHeuristicMap.containsKey(sender)) {
 				// remove sender from open_neighbors and add to pseudo_children
 				neighborHeuristicMap.remove(sender);
 				agent.getPseudoChildrenAIDSet().add(sender);
-
-				// send PSEUDO message to sender;
-//					ACLMessage pseudoMsg = new ACLMessage(PSEUDOTREE);
-//					pseudoMsg.setContent("PSEUDO");
-//					pseudoMsg.addReceiver(sender);
-//					agent.send(pseudoMsg);
 
 				agent.sendStringMessage(sender, "PSEUDO", PSEUDOTREE);
 
@@ -102,7 +93,6 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 				// remove sender from children_agent, and add to pseudo_parent
 				agent.getChildrenAIDSet().remove(sender);
 				agent.getPseudoParentAIDList().add(sender);
-//					agent.getParentAndPseudoStrList().add(sender.getLocalName());
 			}
 
 			// Forward the CHILD message to the next open neighbor
@@ -114,20 +104,10 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 				AID childrenWithBestInfo = returnAndRemoveNeighborCurrentBestInfo();
 				agent.getChildrenAIDSet().add(childrenWithBestInfo);
 
-				// send the message to y0
-//					ACLMessage childMsg = new ACLMessage(PSEUDOTREE);
-//					childMsg.setContent("CHILD");
-//					childMsg.addReceiver(childrenWithBestInfo);
-//					agent.send(childMsg);
-
 				agent.sendStringMessage(childrenWithBestInfo, "CHILD", PSEUDOTREE);
 
 			} else {
 				if (agent.isRoot() == false) {
-//						ACLMessage finishMsg = new ACLMessage(PSEUDOTREE);
-//						finishMsg.setContent("FINISH");
-//						finishMsg.addReceiver(agent.getParentAID());
-//						agent.send(finishMsg);
 					agent.sendStringMessage(agent.getParentAID(), "FINISH", PSEUDOTREE);
 				}
 //					printTree(isRoot);
@@ -138,10 +118,6 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 
 				break;
 			}
-//			}
-//			else {
-//				block();
-//			}
 		}
 
 		// confirm process
@@ -149,15 +125,9 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 		// set pseudotree_process = true
 		if (agent.isRoot()) {
 			for (AID childrenAID : agent.getChildrenAIDSet()) {
-//				ACLMessage treeFinishMsg = new ACLMessage(PSEUDOTREE);
-//				treeFinishMsg.setContent("TREE_FINISH");
-//				treeFinishMsg.addReceiver(childrenAID);
-//				agent.send(treeFinishMsg);
-
 				agent.sendStringMessage(childrenAID, "TREE_FINISH", PSEUDOTREE);
 
 			}
-//			isPseudotreeProcess = FINISHED;
 		}
 		// waiting for message from the parent
 		// send message to all the children
@@ -165,20 +135,13 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 			while (WAITING_FOR_MSG) {
 				MessageTemplate template = MessageTemplate.MatchPerformative(PSEUDOTREE);
 				ACLMessage receivedMessage = myAgent.blockingReceive(template);
-//				if (receivedMessage != null) {
+
 				if (receivedMessage.getContent().equals("TREE_FINISH")) {
 					for (AID childrenAgentAID : agent.getChildrenAIDSet()) {
-//							ACLMessage treeFinishMsg = new ACLMessage(PSEUDOTREE);
-//							treeFinishMsg.setContent("TREE_FINISH");
-//							treeFinishMsg.addReceiver(childrenAgentAID);
-//							agent.send(treeFinishMsg);
 						agent.sendStringMessage(childrenAgentAID, "TREE_FINISH", PSEUDOTREE);
 					}
 					break;
-				}
-//				}
-//				else
-//					block();		
+				}	
 			}
 		}
 
