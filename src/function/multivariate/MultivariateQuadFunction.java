@@ -52,6 +52,21 @@ public final class MultivariateQuadFunction implements Serializable {
 	public MultivariateQuadFunction() {
 		coefficients.put("", "", 0.0);
 	}
+	
+	public static MultivariateQuadFunction switchingCostFunction(String selfAgent, String valueStr, SwitchingType type) {
+	  double value = Double.valueOf(valueStr);
+	  
+	  MultivariateQuadFunction swFunc = new MultivariateQuadFunction();
+	  
+	  // (x - value)^2 = x^2 - 2 * value + value^2
+	  if (type == SwitchingType.QUADRATIC) {
+	    swFunc.addOrUpdate(selfAgent, selfAgent, 1D);
+	    swFunc.addOrUpdate(selfAgent, "", -2 * value);
+	    swFunc.addOrUpdate("", "",  value * value);
+	  }
+	  
+	  return swFunc;
+	}
 
 	// function -281v_2^2 199v_2 -22v_0^2 252v_0 288v_2v_0 358;
 	/**

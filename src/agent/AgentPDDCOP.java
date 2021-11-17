@@ -12,6 +12,7 @@ import static agent.DcopConstants.DcopAlgorithm.CAC_MAXSUM;
 import static agent.DcopConstants.DcopAlgorithm.HYBRID_MAXSUM;
 import static agent.DcopConstants.DcopAlgorithm.CAC_DPOP;
 import static agent.DcopConstants.DcopAlgorithm.AC_DPOP;
+import static agent.DcopConstants.SwitchingType.LINEAR;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -327,6 +328,7 @@ public class AgentPDDCOP extends Agent {
   
   private final boolean isApprox = true; // Used in APPROX_DPOP
   private final int numberOfApproxAgents = 0; // Used in APPROX_DPOP
+  private static final SwitchingType switchingCostType = SwitchingType.QUADRATIC;
 
 	public AgentPDDCOP() {
 	}
