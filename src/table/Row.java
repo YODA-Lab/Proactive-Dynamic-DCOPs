@@ -83,6 +83,10 @@ public class Row implements Serializable {
 	public void setUtility(double utility) {
 		this.utility = utility;
 	}
+	
+	 public void addValueToTheEnd(String value) {
+	    valueList.add(value);
+	  }
 
   @Override
   public String toString() {

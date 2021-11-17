@@ -1,13 +1,11 @@
 package behavior;
 
-import static agent.DcopConstants.DcopAlgorithm.DPOP;
 import static agent.DcopConstants.DcopAlgorithm.EC_DPOP;
 import static agent.DcopConstants.DcopAlgorithm.APPROX_DPOP;
 import static agent.DcopConstants.DcopAlgorithm.AC_DPOP;
 import static agent.DcopConstants.ADD_MORE_POINTS;
 import static agent.DcopConstants.DONE_AT_INTERNAL_NODE;
 import static agent.DcopConstants.DONE_AT_LEAF;
-import static agent.DcopConstants.DPOP_UTIL;
 import static agent.DcopConstants.NOT_ADD_POINTS;
 import static agent.DcopConstants.RANDOM_PREFIX;
 import static java.lang.Double.compare;
@@ -15,7 +13,6 @@ import static java.lang.System.out;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 
-import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
@@ -23,10 +20,8 @@ import jade.lang.acl.UnreadableException;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.math.RoundingMode;
 import java.nio.file.Files;
@@ -39,13 +34,11 @@ import java.util.Set;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -712,7 +705,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
           double gradient = derivativePw.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap);
           
-          double movedPpValue = Double.valueOf(ppValueToMove) + agent.GRADIENT_SCALING_FACTOR * gradient;
+          double movedPpValue = Double.valueOf(ppValueToMove) + AgentPDDCOP.GRADIENT_SCALING_FACTOR * gradient;
+          String movedPpValueStr = String.valueOf(movedPpValue);
           
           if (agent.isPrinting()) {
             System.out.println("Agent to move:" + ppAgentToMove);
@@ -720,12 +714,12 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
             System.out.println("Derivative is: " + derivativePw);
             System.out.println("ppValueToMove " + ppValueToMove);
             System.out.println("Argmax value is: " + argMax);
-            System.out.println("Moved value is: " + movedPpValue);
+            System.out.println("Moved value is: " + movedPpValueStr);
           }
           
           // only move if the new point is within the interval
-          if (agent.getSelfDomain().contains(movedPpValue)) {         
-            valueList.set(ppToMoveIndex, String.valueOf(movedPpValue));
+          if (agent.getSelfDomain().contains(movedPpValueStr)) {         
+            valueList.set(ppToMoveIndex, movedPpValueStr);
           }
         }
       }
@@ -1691,7 +1685,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       // If containing pParent, update the utility 
       if (joinedTable.containsAgent(pParent)) {
         for (Row row : joinedTable.getRowList()) {
-          Map<String, Double> valueMap = new HashMap<>();
+          Map<String, String> valueMap = new HashMap<>();
           valueMap.put(pParent, row.getValueAtPosition(joinedTable.indexOf(pParent)));
           valueMap.put(agent.getLocalName(), row.getValueAtPosition(joinedTable.indexOf(agent.getLocalName())));
           row.setUtility(row.getUtility() + pFunction.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap));
@@ -1703,11 +1697,11 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
         newTable.extendToTheEndOfLabel(pParent);
         
         // Add values for the new label of pParent
-        Set<Double> pValueList = agent.getCurrentDiscreteValues(currentTimeStep);
+        Set<String> pValueList = agent.getCurrentDiscreteValues(currentTimeStep);
         
-        for (Double pValue : pValueList) {
-          for (Row row : joinedTable.getRowSet()) {
-            Map<String, Double> valueMap = new HashMap<>();
+        for (String pValue : pValueList) {
+          for (Row row : joinedTable.getRowList()) {
+            Map<String, String> valueMap = new HashMap<>();
             valueMap.put(pParent, pValue);
             valueMap.put(agent.getLocalName(), row.getValueAtPosition(joinedTable.indexOf(agent.getLocalName())));
             double newUtility = row.getUtility() + pFunction.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap); 
@@ -1753,8 +1747,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     return utilTable;
   }
   
-  private Set<List<Double>> kmeanCluster(Set<List<Double>> dataset, int numClusters) {
-    Set<List<Double>> centroids = new HashSet<>();
+  private Set<List<String>> kmeanCluster(Set<List<String>> dataset, int numClusters) {
+    Set<List<String>> centroids = new HashSet<>();
     SimpleKMeans kmean = new SimpleKMeans();
     
     ArrayList<Attribute> attritbuteList = new ArrayList<Attribute>();
@@ -1764,8 +1758,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     }
 
     Instances instances = new Instances("cluster", attritbuteList, dataset.size());
-    for (List<Double> rawData : dataset) {
-      Instance pointInstance = new SparseInstance(1.0, rawData.stream().mapToDouble(Double::doubleValue).toArray());
+    for (List<String> rawData : dataset) {
+      Instance pointInstance = new SparseInstance(1.0, rawData.stream().mapToDouble(Double::valueOf).toArray());
       instances.add(pointInstance);
     }
     
@@ -1776,7 +1770,12 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       Instances centroidsInstance = kmean.getClusterCentroids();
       
       for (Instance pointArray : centroidsInstance) {
-        centroids.add(Arrays.stream(pointArray.toDoubleArray()).boxed().collect(Collectors.toList()));
+        
+        List<String> centroidList = new ArrayList<>();
+        for (double value : pointArray.toDoubleArray()) {
+          centroidList.add(String.valueOf(value));
+        }
+        centroids.add(centroidList);
       }
     } catch (Exception e) {
       e.printStackTrace();

@@ -6,11 +6,15 @@ import static java.lang.Math.sqrt;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Map.Entry;
+
+import com.google.common.collect.Sets;
 
 import zexception.FunctionException;
 
@@ -284,5 +288,106 @@ public class Table implements Serializable {
       }
     }
     return sqrt(distance);
+  }
+  
+  public boolean containsAgent(String agent) {
+    return decVarLabel.contains(agent);
+  }
+  
+  public int indexOf(String agent) {
+    return decVarLabel.indexOf(agent);
+  }
+  
+  public void extendToTheEndOfLabel(String agent) {
+    decVarLabel.add(agent);
+  }
+  
+  public void addRowSet(Set<Row> rows) {
+    rowList.addAll(rows);
+  }
+  
+  /**
+   * TODO: Review this function. Find where the function appears. The map is partial only
+   * Given a Map<String, Set<Double>>, find the corresponding points and do the interpolation
+   * Return a set of Row. Used to add to the table later in DPOP UTIL
+   * @param valueMap
+   * @return
+   */
+  public Set<Row> interpolateGivenValueSetMap(Map<String, Set<String>> valueMap, int stepSize) {
+    Set<Row> interpolatedRows = new HashSet<>();
+    
+    // create all points to be interpolated
+    List<Set<String>> valueSetList = new ArrayList<>();
+    Map<String, Integer> agentPositionInTheValeSet = new HashMap<>();
+    int position = 0;
+    // The traversal order is the same as the variable ordering in the Cartesian product later
+    for (Entry<String, Set<String>> entry : valueMap.entrySet()) {
+      valueSetList.add(entry.getValue());
+      agentPositionInTheValeSet.put(entry.getKey(), position);
+      position++;
+    }
+    Set<List<String>> productInterpolatedValues = Sets.cartesianProduct(valueSetList);
+        
+    for (List<String> partialPoint : productInterpolatedValues) {
+      for (Row row : rowList) {
+        List<String> point = new ArrayList<>(row.getValueList());
+
+        // replace the point at the position of the agent in the label with the value at the given position
+        for (Entry<String, Integer> entry : agentPositionInTheValeSet.entrySet()) {
+          if (decVarLabel.contains(entry.getKey())) {
+            point.set(positionOfVariableInTheLabel(entry.getKey()), partialPoint.get(entry.getValue()));
+          }
+        }
+        
+        interpolatedRows.add(inverseWeightedInterpolation(point, stepSize));
+      }
+    }
+    
+    return interpolatedRows;
+  }
+  
+  public int positionOfVariableInTheLabel(String agent) {
+    return decVarLabel.indexOf(agent);
+  }
+  
+  /**
+   * THIS FUNCTION IS UNIT-TESTED
+   * Do the interpolation with the inverse weights.
+   * @param interpolatedPoint
+   * @return the row if the point needed to be interpolated is already in the table
+   */
+  public Row inverseWeightedInterpolation(List<String> interpolatedPoint, int percentageOfTable) {
+    List<Double> inverseWeights = new ArrayList<>();
+    double interpolatedUtility = 0;
+    for (int i = 0; i < this.rowList.size(); i+= percentageOfTable) {
+      Row row = this.rowList.get(i);
+      
+      double eucliDistance = euclidDistance(row.getValueList(), interpolatedPoint);
+      
+      // Return null if the interpolatedPoint is already in the table
+      if (compare(eucliDistance, 0) == 0) {
+        return row;
+      }
+      
+      double weight = 1.0 / eucliDistance;
+      interpolatedUtility += weight * row.getUtility();
+      inverseWeights.add(weight);
+    }
+            
+    double sumOfWeights = inverseWeights.stream().mapToDouble(x -> x).sum();
+    return new Row(interpolatedPoint, interpolatedUtility / sumOfWeights);
+  }
+  
+  private double euclidDistance(List<String> pointA, List<String> pointB) {    
+    double distance = 0;
+    for (int index = 0; index < pointA.size(); index++) {
+      double valueA = Double.valueOf(pointA.get(index));
+      double valueB = Double.valueOf(pointB.get(index));
+      
+//      distance += Math.pow(pointA.get(index) - pointB.get(index), 2);
+      distance += Math.pow(valueA - valueB, 2);
+    }
+    
+    return Math.sqrt(distance);
   }
 }
