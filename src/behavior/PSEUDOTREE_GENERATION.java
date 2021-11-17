@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import agent.AgentPDDCOP;
+import function.multivariate.PiecewiseMultivariateQuadFunction;
 import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
@@ -155,10 +156,24 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 		
 		agent.print("Done building pseudo-tree");
 
-		// Add tables for DPOP here (those contain only parent and pseudo-parents)
-		agent.getDpopDecisionTableList()
-				.addAll(agent.getTableWithoutChildrenAndPseudochilren(agent.getRawDecisionTableList()));
-		agent.getDpopRandomTableList()
-				.addAll(agent.getTableWithoutChildrenAndPseudochilren(agent.getRawRandomTableList()));
+		if (agent.isDiscrete()) {
+  		// Add tables for DPOP here (those contain only parent and pseudo-parents)
+  		agent.getDpopDecisionTableList()
+  				.addAll(agent.getTableWithoutChildrenAndPseudochilren(agent.getRawDecisionTableList()));
+  		agent.getDpopRandomTableList()
+  				.addAll(agent.getTableWithoutChildrenAndPseudochilren(agent.getRawRandomTableList()));
+		}
+		else if (agent.isContinuous()) {	    
+	    for (Entry<String, PiecewiseMultivariateQuadFunction> entry : agent.getNeighborFunctionMap().entrySet()) {
+	      String neighbor = entry.getKey();
+	      PiecewiseMultivariateQuadFunction constraint = entry.getValue();
+	      
+	      if (agent.getParentAndPseudoStrList().contains(neighbor)) {
+	        agent.setFunctionWithPParentMap(neighbor, constraint);
+	      }
+	    }
+	    
+	    
+		}
 	}
 }

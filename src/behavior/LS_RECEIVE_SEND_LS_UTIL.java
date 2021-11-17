@@ -49,7 +49,7 @@ public class LS_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSAGE
     double localSearchQuality = utilFromChildren + 
         agent.utilityLSWithParentAndPseudoAndUnary() - agent.computeSwitchingCostAllTimeStep();
     
-    agent.stopStimulatedTiming();
+    agent.stopSimulatedTiming();
 
 		if (!agent.isRoot()) {
 			agent.sendObjectMessageWithTime(agent.getParentAID(), localSearchQuality, LS_UTIL, agent.getSimulatedTime());
@@ -76,7 +76,7 @@ public class LS_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSAGE
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
         
-      agent.stopStimulatedTiming();
+      agent.stopSimulatedTiming();
 //      if (receivedMessage != null) {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
           

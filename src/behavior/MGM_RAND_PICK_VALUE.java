@@ -44,7 +44,7 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
     agent.getMgmTableList().clear();
     agent.getMgmTableList().addAll(computeDiscountedMGMAndSwitchingCostTables(agent.getDynamicType(), agent.getPDDCOP_Algorithm(), pd_dcop_time_step));
     
-    agent.stopStimulatedTiming();
+    agent.stopSimulatedTiming();
   }
   
   /**

@@ -5,10 +5,19 @@ import static java.lang.System.out;
 import static agent.DcopConstants.RANDOM_PREFIX;
 import static agent.DcopConstants.DEFAULT_BETA_SAMPLING_SEED;
 import static agent.DcopConstants.SAMPLING_STEPS;
+import static agent.DcopConstants.DcopAlgorithm.DPOP;
+import static agent.DcopConstants.DcopAlgorithm.MAXSUM;
+import static agent.DcopConstants.DcopAlgorithm.DISCRETE_DSA;
+import static agent.DcopConstants.DcopAlgorithm.CAC_MAXSUM;
+import static agent.DcopConstants.DcopAlgorithm.HYBRID_MAXSUM;
+import static agent.DcopConstants.DcopAlgorithm.CAC_DPOP;
+import static agent.DcopConstants.DcopAlgorithm.AC_DPOP;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
@@ -23,6 +32,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.zip.GZIPOutputStream;
 import java.util.Random;
 
 import com.google.common.collect.Sets;
@@ -118,6 +128,8 @@ public class AgentPDDCOP extends Agent {
 	private static final long serialVersionUID = 2919994686894853596L;
 
 	public static final String INPUT_FOLDER = "input_files";
+	 public static final double GRADIENT_SCALING_FACTOR = Math.pow(10, -3);
+
 
 	public static final SwitchingType SWITCHING_TYPE = SwitchingType.CONSTANT;
 	public static final int MAX_ITERATION = 40;
@@ -143,8 +155,11 @@ public class AgentPDDCOP extends Agent {
 	private double heuristicWeight;
 	
 	// mapping <neighbor, function<>
-	private Map<String, PiecewiseMultivariateQuadFunction> functionMap = new HashMap<>();
-	private PiecewiseMultivariateQuadFunction agentViewFunction;
+	private Map<String, PiecewiseMultivariateQuadFunction> neighborFunctionMap = new HashMap<>();
+
+  private PiecewiseMultivariateQuadFunction agentViewFunction;
+  
+  // Assume binary and unary functions
 	private Map<String, PiecewiseMultivariateQuadFunction> functionWithPParentMap = new HashMap<>();
 	private Map<Integer, PiecewiseMultivariateQuadFunction> expectedFunctionMap = new HashMap<>();
 	
@@ -299,8 +314,19 @@ public class AgentPDDCOP extends Agent {
 	private TransitionFamilyDistribution transitionDistributionFamily = TransitionFamilyDistribution.of();
   private Map<String, Set<String>> neighborSetMap = new HashMap<>();
   private Map<Integer, Double> meanAtEveryTimeStep = new HashMap<>(); // Assume that each agent has at most one random variable
+  
+  private Map<Integer, PiecewiseMultivariateQuadFunction> dpopFunctionEachTimeStepMap = new HashMap<>();
+  private Map<Integer, List<Table>> dpopTableEachTimeStepMap = new HashMap<>();
 
 	public static String OUTPUT_FOLDER;
+	
+  private int gradientIteration;
+  private int numberOfPoints;
+
+  private Map<Integer, Set<String>> currentDiscreteValuesMap = new HashMap<>();
+  
+  private final boolean isApprox = true; // Used in APPROX_DPOP
+  private final int numberOfApproxAgents = 0; // Used in APPROX_DPOP
 
 	public AgentPDDCOP() {
 	}
@@ -341,7 +367,6 @@ public class AgentPDDCOP extends Agent {
 
 			sb.insert(0, "instanceID=" + instanceID + "_");
 			localSearchOutputFileName = localSearchFolder + sb.toString();
-//			onlineOutputFileName = localSearchFolder + "OnlineRun=" + onlineRun + "_" + sb.toString();
 			onlineOutputFileName = localSearchOutputFileName; 
 		}
 	}
@@ -360,8 +385,9 @@ public class AgentPDDCOP extends Agent {
 		dynamicType = DynamicType.valueOf((String) args[6]);
 		heuristicWeight = Double.valueOf((String) args[7]);
 		rLearningIteration = Integer.valueOf((String) args[8]);
-		dcopType = DcopType.valueOf((String) args[9]);
-//		setOnlineRun(Integer.valueOf((String) args[8]));
+    gradientIteration = Integer.valueOf((String) args[9]);
+    numberOfPoints = Integer.valueOf((String) args[10]);
+		dcopType = DcopType.valueOf((String) args[11]);
 
 		String a[] = inputFileName.substring(inputFileName.indexOf("/") + 1).replaceAll("instance_", "")
 				.replaceAll(".dzn", "").split("_");
@@ -381,7 +407,6 @@ public class AgentPDDCOP extends Agent {
 
 		// Different seed values for combination of (instanceID, agentID)
 		randomSeed = (instanceID + 1) * Integer.valueOf(agentID) * horizon;
-//		randomSeed = (instanceID + 1) * Integer.valueOf(agentID) * horizon * (onlineRun + 1);
 		rdn.setSeed(randomSeed);
 	}
 
@@ -427,7 +452,7 @@ public class AgentPDDCOP extends Agent {
 		if (isContinuous()) {
 		  print("decisionVariableIntervalMap=" + decisionVariableIntervalMap);
 		  print("randomVariableIntervalMap=" + randomVariableIntervalMap);
-		  print("functionMap=" + functionMap);
+		  print("functionMap=" + neighborFunctionMap);
 		  print("neighborSetMap=" + neighborSetMap);
 		  print("initialDistribution=" + initialDistribution.toString());
 		  print("transitionDistributionFamily=" + transitionDistributionFamily);
@@ -459,38 +484,48 @@ public class AgentPDDCOP extends Agent {
 	private SequentialBehaviour computeBehaviorContinuous() {
     // Simulate the random variable values and compute the mean
     samplingAndComputeMean();
-    
-    computeExpectedFunctionEachTimeStep();
+        
+    for (int timeStep = 0; timeStep <= horizon; timeStep ++) {
+      currentDiscreteValuesMap.put(timeStep, decisionVariableIntervalMap.get(getLocalName()).getMidPoints(numberOfPoints));
+    }
 	  
 	  SequentialBehaviour mainSequentialBehaviourList = new SequentialBehaviour();
 	  
 	  mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
 	  mainSequentialBehaviourList.addSubBehaviour(new PSEUDOTREE_GENERATION(this));
     mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
+    
+    if (pddcop_algorithm == PDDcopAlgorithm.FORWARD || pddcop_algorithm == PDDcopAlgorithm.GRADIENT) {
+      for (int i = 0; i <= horizon; i++) {
+        if (dcop_algorithm == DcopAlgorithm.DPOP) {
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
+        }
+        else if (dcop_algorithm == DcopAlgorithm.CONTINUOUS_DSA) {
+          // TODO
+        }
+      }
+    
+    }
+    else if (pddcop_algorithm == PDDcopAlgorithm.GRADIENT_RAND) {
+      mainSequentialBehaviourList.addSubBehaviour(new LS_RAND_PICK_VALUE(this));
+    }
+    else if (pddcop_algorithm == PDDcopAlgorithm.BACKWARD) {
+      for (int i = horizon; i >= 0; i--) {
+        if (dcop_algorithm == DcopAlgorithm.DPOP) {
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
+        } 
+        else if (dcop_algorithm == DcopAlgorithm.CONTINUOUS_DSA) {
+          // TODO
+        }
+      }
+    }
+    
+    
 
 	  return mainSequentialBehaviourList;
 	}
-
-	// Decision functions are contained in a hashmap: neighbor -> function
-	// Random functions are contained in a hashmap: timestep -> expected function
-  private void computeExpectedFunctionEachTimeStep() {
-    // Only keep the constraints with parent or pseudo-parent
-    // Or keep the function with random variable (self, random)
-    for (Entry<String, PiecewiseMultivariateQuadFunction> entry : functionMap.entrySet()) {
-      if (parentAndPseudoStrList.contains(entry.getKey())) {
-        functionWithPParentMap.put(entry.getKey(), entry.getValue());
-      }
-      else if (entry.getKey().contains(RANDOM_PREFIX)) {
-        for (int timeStep = 0; timeStep < horizon; timeStep++) {
-          Map<String, Double> randomValueMap = new HashMap<>();
-          double distributionMean = meanAtEveryTimeStep.get(timeStep);
-          randomValueMap.put(entry.getKey(), distributionMean);
-          
-          expectedFunctionMap.put(timeStep, entry.getValue().evaluateToUnaryFunction(randomValueMap));
-        }
-      }
-    }    
-  }
 
   private SequentialBehaviour computeBehaviorDiscrete() {
    int theLastTimeStep = simulateActualValueAndComputeDistribution();
@@ -514,12 +549,10 @@ public class AgentPDDCOP extends Agent {
       }
     }
     
-    if (isDiscrete()) {
-      print("pickedRandomMap=" + pickedRandomMap);
-      print("probabilityAtEachTimeStepMap=");
-      for (Entry<String, double[][]> entry : probabilityAtEachTimeStepMap.entrySet()) {
-        print(entry.getKey() + "=" + Arrays.deepToString(entry.getValue()));
-      }
+    print("pickedRandomMap=" + pickedRandomMap);
+    print("probabilityAtEachTimeStepMap=");
+    for (Entry<String, double[][]> entry : probabilityAtEachTimeStepMap.entrySet()) {
+      print(entry.getKey() + "=" + Arrays.deepToString(entry.getValue()));
     }
 	  
 	  SequentialBehaviour mainSequentialBehaviourList = new SequentialBehaviour();
@@ -777,6 +810,22 @@ public class AgentPDDCOP extends Agent {
 
 		return lastTimeStep;
 	}
+	
+  public void sendByteObjectMessageWithTime(AID receiver, PiecewiseMultivariateQuadFunction content, int msgCode,
+      long time) throws IOException {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    GZIPOutputStream gzipOut = new GZIPOutputStream(baos);
+    ObjectOutputStream objectOut = new ObjectOutputStream(gzipOut);
+    objectOut.writeObject(content);
+    objectOut.close();
+    byte[] data = baos.toByteArray();
+
+    ACLMessage message = new ACLMessage(msgCode);
+    message.setByteSequenceContent(data);
+    message.addReceiver(receiver);
+    message.setLanguage(String.valueOf(time));
+    send(message);
+  }
 
 	// JADE function: stop the Agent
 	protected void takeDown() {
@@ -835,7 +884,7 @@ public class AgentPDDCOP extends Agent {
 			bestImproveValueMap.clear();
 		}
 
-		stopStimulatedTiming();
+		stopSimulatedTiming();
 
 		for (AID neighbor : neighborAIDSet) {
 			sendObjectMessageWithTime(neighbor, bestImproveUtilityMap, MESSAGE_TYPE.LS_IMPROVE, simulatedTime);
@@ -1387,7 +1436,7 @@ public class AgentPDDCOP extends Agent {
           
 
           pwFunc.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
-          functionMap.put(neighborAgent, pwFunc);
+          neighborFunctionMap.put(neighborAgent, pwFunc);
 
           // Own the function
           if (isRunningMaxsum() && (neighborAgent.contains(RANDOM_PREFIX)
@@ -1790,7 +1839,7 @@ public class AgentPDDCOP extends Agent {
 	}
 	
 	public boolean isRunningMaxsum() {
-		return dcop_algorithm == DcopAlgorithm.MAXSUM || dcop_algorithm == DcopAlgorithm.HYBRID_MAXSUM || dcop_algorithm == DcopAlgorithm.CAF_MAXSUM;
+		return dcop_algorithm == DcopAlgorithm.MAXSUM || dcop_algorithm == DcopAlgorithm.HYBRID_MAXSUM || dcop_algorithm == DcopAlgorithm.CAC_MAXSUM;
 	}
 	
 	// 9.386x3^2 -5.77744x3 -3.91612x1^2 -6.10079x1 -6.70358x3x1 7.41036
@@ -3017,7 +3066,7 @@ public class AgentPDDCOP extends Agent {
 	/**
 	 * Update the simulated runtime += currentTime - currentStartTime
 	 */
-	public void stopStimulatedTiming() {
+	public void stopSimulatedTiming() {
 		simulatedTime += bean.getCurrentThreadUserTime() - currentStartTime;
 	}
 
@@ -3412,10 +3461,6 @@ public class AgentPDDCOP extends Agent {
   public void setAgentViewFunction(PiecewiseMultivariateQuadFunction agentViewFunction) {
     this.agentViewFunction = agentViewFunction;
   }
-
-  public Map<String, PiecewiseMultivariateQuadFunction> getFunctionWithPParentMap() {
-    return functionWithPParentMap;
-  }
   
   public boolean isRunningContinousDpop() {
     return dcop_algorithm == DcopAlgorithm.EC_DPOP || dcop_algorithm == DcopAlgorithm.AC_DPOP ||
@@ -3424,5 +3469,92 @@ public class AgentPDDCOP extends Agent {
 
   public Map<Integer, PiecewiseMultivariateQuadFunction> getExpectedFunctionMap() {
     return expectedFunctionMap;
+  }
+  
+  public boolean hasRandomFunction(int timeStep) {
+    for (Entry<String, PiecewiseMultivariateQuadFunction> entry : neighborFunctionMap.entrySet()) {
+      if (entry.getKey().contains(RANDOM_PREFIX)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  public PiecewiseMultivariateQuadFunction getExpectedFunction(int timeStep) {
+    return expectedFunctionMap.getOrDefault(timeStep, null);
+  }
+  
+  public boolean isRunningDiscreteAlg() {
+    return dcop_algorithm == DPOP || dcop_algorithm == MAXSUM || dcop_algorithm == DISCRETE_DSA;
+  }
+  
+  public boolean isRunningHybridAlg() {
+    return dcop_algorithm == AC_DPOP || dcop_algorithm == CAC_DPOP 
+        || dcop_algorithm == HYBRID_MAXSUM || dcop_algorithm == CAC_MAXSUM;
+  }
+
+  public Map<Integer, PiecewiseMultivariateQuadFunction> getDpopFunctionEachTimeStepMap() {
+    return dpopFunctionEachTimeStepMap;
+  }
+  
+  public void setDpopFunctionEachTimeStepMap(int timeStep, PiecewiseMultivariateQuadFunction function) {
+    dpopFunctionEachTimeStepMap.put(timeStep, function);
+  }
+
+  public Map<Integer, List<Table>> getDpopTableEachTimeStepMap() {
+    return dpopTableEachTimeStepMap;
+  }
+  
+  public void setDpopTableEachTimeStepMap(int timeStep, List<Table> tableList) {
+    dpopTableEachTimeStepMap.put(timeStep, tableList);
+  }
+  
+  public void clearDpopTableEachTimeStepMap(int timeStep) {
+    dpopTableEachTimeStepMap.remove(timeStep);
+  }
+
+  public Map<Integer, Set<String>> getCurrentDiscreteValuesMap() {
+    return currentDiscreteValuesMap;
+  }
+  
+  public Set<String> getCurrentDiscreteValues(int timeStep) {
+    return currentDiscreteValuesMap.getOrDefault(timeStep, new HashSet<>());
+  }
+
+  public int getGradientIteration() {
+    return gradientIteration;
+  }
+  
+  public Map<String, PiecewiseMultivariateQuadFunction> getNeighborFunctionMap() {
+    return neighborFunctionMap;
+  }
+
+  public Map<String, PiecewiseMultivariateQuadFunction> getFunctionWithPParentMap() {
+    return functionWithPParentMap;
+  }
+
+  public void setFunctionWithPParentMap(String neighbor, PiecewiseMultivariateQuadFunction functionWithPP) {
+    functionWithPParentMap.put(neighbor, functionWithPP);
+  }
+  
+  public int getNumberOfPoints() {
+    return numberOfPoints;
+  }
+  
+  public boolean isApprox() {
+    return isApprox;
+  }
+  
+  public int getNumberOfApproxAgents() {
+    return numberOfApproxAgents;
+  }
+  
+  public Interval getSelfInterval() {
+    return decisionVariableIntervalMap.get(getLocalName());
+  }
+  
+  public boolean isClustering() {
+    return dcop_algorithm == CAC_DPOP || dcop_algorithm == CAC_MAXSUM;
   }
 }

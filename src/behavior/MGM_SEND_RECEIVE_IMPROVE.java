@@ -54,7 +54,7 @@ public class MGM_SEND_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAG
       }
     }
 
-    agent.stopStimulatedTiming();
+    agent.stopSimulatedTiming();
 
     for (AID neighbor : agent.getNeighborAIDSet()) {
       agent.sendObjectMessageWithTime(neighbor, maxGain, MESSAGE_TYPE.MGM_IMPROVE, agent.getSimulatedTime());
@@ -82,7 +82,7 @@ public class MGM_SEND_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAG
       agent.setChosenValueAtEachTimeStep(timeStep, chosenMGMValue);
     }
     
-    agent.stopStimulatedTiming();
+    agent.stopSimulatedTiming();
   }
   
   private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {
@@ -94,7 +94,7 @@ public class MGM_SEND_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAG
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
         
-      agent.stopStimulatedTiming();
+      agent.stopSimulatedTiming();
 //      if (receivedMessage != null) {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
           

@@ -1,15 +1,32 @@
 package behavior;
 
+import static agent.DcopConstants.DcopAlgorithm.DPOP;
+import static agent.DcopConstants.DcopAlgorithm.EC_DPOP;
+import static agent.DcopConstants.DcopAlgorithm.APPROX_DPOP;
+import static agent.DcopConstants.DcopAlgorithm.AC_DPOP;
+import static agent.DcopConstants.ADD_MORE_POINTS;
+import static agent.DcopConstants.DONE_AT_INTERNAL_NODE;
+import static agent.DcopConstants.DONE_AT_LEAF;
+import static agent.DcopConstants.DPOP_UTIL;
+import static agent.DcopConstants.NOT_ADD_POINTS;
+import static agent.DcopConstants.RANDOM_PREFIX;
+import static java.lang.Double.compare;
+import static java.lang.System.out;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 
+import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.math.RoundingMode;
 import java.nio.file.Files;
@@ -17,15 +34,35 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 
 import agent.AgentPDDCOP;
 import agent.DcopConstants.PDDcopAlgorithm;
+import function.Interval;
+import function.multivariate.MultivariateQuadFunction;
+import function.multivariate.PiecewiseMultivariateQuadFunction;
 import agent.DcopConstants.DynamicType;
-import table.AugmentedState;
 import table.Row;
 import table.Table;
+import weka.clusterers.SimpleKMeans;
+import weka.core.Attribute;
+import weka.core.Instance;
+import weka.core.Instances;
+import weka.core.SparseInstance;
 
 /**
  * @author khoihd REVIEWED <br>
@@ -67,9 +104,11 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 	AgentPDDCOP agent;
 
-	private int currentTimeStep;
+	private final int currentTimeStep;
 
 	private List<Table> dpopTableList = new ArrayList<>();
+	
+	private Map<String, PiecewiseMultivariateQuadFunction> dpopFunctionMap = new HashMap<>();
 
 	@SuppressWarnings("unused")
 	private boolean isMaximize = true; // set to true by default
@@ -82,107 +121,817 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 	@Override
 	public void action() {
-		if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.BOUND_DPOP)) {
-			dpopTableList.addAll(agent.getDpopDecisionTableList());
-			dpopTableList.addAll(agent.getDpopBoundRandomTableList());
-		} else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.LS_SDPOP) && isFirstTimeUTIL()) {
-			Table joinedDecisionTable = joinTableList(agent.getDpopDecisionTableList());
+	  if (agent.isDiscrete()) {
+	    actionDiscrete();
+	  }
+	  else {
+	    actionContinuous();
+	  }
+	}
+	
+	private void actionContinuous() {
+	  dpopFunctionMap.putAll(agent.getFunctionWithPParentMap());
+	  
+	  // Compute expected function if has any and add the expected function to the dpopFuncionList
+	  if (agent.hasRandomFunction(currentTimeStep)) {
+	    computeExpectedFunctionCurrentTimeStep(currentTimeStep);
+	    dpopFunctionMap.put(agent.getLocalName(), agent.getExpectedFunction(currentTimeStep));
+	  }
+	  
+	  if (agent.isRunningDiscreteAlg()) {
+      List<Table> tableListFromFunction = createDCOPTableFromFunction(dpopFunctionMap.values(), currentTimeStep);
+      dpopTableList.addAll(tableListFromFunction);
+    }
+	  
+	   // TODO: Handle switching cost function / table for FORWARD / BACKWARD
+    
+    if (agent.isRunningDiscreteAlg()) {
+      doUtil_TABLE();
+    } else if (agent.getDcop_algorithm() == EC_DPOP || agent.getDcop_algorithm() == APPROX_DPOP) {
+      doUtil_FUNC();
+    } else if (agent.isRunningHybridAlg()) {
+      doUtil_HYBRID();
+    }
+	}
+	
+  private void doUtil_TABLE() {
+    if (agent.isLeaf())
+      leaf_TABLE();
+    else if (agent.isRoot())
+      root_TABLE();
+    else
+      internalNode_TABLE();
+  }
+  
+  private void doUtil_FUNC() {
+    if (agent.isLeaf())
+      leaf_FUNC();
+    else if (agent.isRoot())
+      root_FUNC();
+    else
+      internalNode_FUNC();
+  }
+  
+  private void doUtil_HYBRID() {  
+    if (agent.isLeaf())
+      leaf_HYBRID();
+    else if (agent.isRoot())
+      root_HYBRID();
+    else
+      internalNode_HYBRID();
+  }
+  
+  public void leaf_TABLE() {
+    agent.startSimulatedTiming();
+    
+    out.println("LEAF " + agent.getLocalName() + " is running");
+    // get the first table
+    Table combinedTable = dpopTableList.get(0);
+    // combinedTable.printDecVar();
+    // joining other tables with table 0
+    int currentTableListDPOPsize = dpopTableList.size();
+    for (int index = 1; index < currentTableListDPOPsize; index++) {
+      Table pseudoParentTable = dpopTableList.get(index);
+      combinedTable = joinTable(combinedTable, pseudoParentTable);
+    }
 
-			agent.setStoredReuseTable(joinedDecisionTable);
-		} else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.LS_SDPOP) && !isFirstTimeUTIL()) {
-		}
-		// Add actual tables to compute actual quality
-		// Add tables to DPOP table list for solving
-		else if (agent.isDynamic(DynamicType.ONLINE) || agent.isDynamic(DynamicType.STATIONARY)) {
-			// Add actual tables for REACT
-			if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT)) {
-				agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
-						.addAll(agent.computeActualDpopTableGivenRandomValues(currentTimeStep));
-				agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
-				
-				dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
-			}
-			else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.R_LEARNING)) {
-				// DPOP_UTIL will be called twice
-				// First time for learning: true -> false
-				// Second time for applying: false -> true
-				if (currentTimeStep == 0) {
-					// Switching from learning to applying
-					agent.switchApplyingRLearning();
-				}
-				
-				// Learning R values
-				if (!agent.isApplyingRLearning()) {
-					agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
-						.addAll(agent.computeActualDpopTableGivenRandomValues(currentTimeStep));
-					agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());	
-					
-					dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
-					// Add unary constraint table with the switching cost to the dpopTableList
-					if (currentTimeStep > 0) {
-						Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(),
-								agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
-								agent.getChosenValueAtEachTimeStep(currentTimeStep - 1));
-						dpopTableList.add(switchingCostToPreviousSolution);
-					}
-				}
-				// Applying R learning
-				else {
-					// Apply R learning with R values
-					// The actual DPOP table has been added above
-					dpopTableList.addAll(agent.computeRLearningDpopTableGivenRandomValues(currentTimeStep));
-					dpopTableList.addAll(agent.getDpopDecisionTableList());
-					// No need to add unary constraint since R-learning has taken into account the previous decision variable in its domain
-				}
-			}
-			// Add discounted expected tables for FORWARD and HYBRID
-			else {
-				agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
-					.addAll(agent.computeActualDpopTableGivenRandomValues(currentTimeStep));
-				agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
+    agent.setAgentViewTable(combinedTable);
+    Table projectedTable = projectOperator(combinedTable, agent.getLocalName());
 
-				double df = agent.getDiscountFactor();
-				dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(),
-						currentTimeStep, df));
-				dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
-						currentTimeStep, df));
+    agent.stopSimulatedTiming();
 
-				if (currentTimeStep > 0) {
-					Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(),
-							agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
-							agent.getChosenValueAtEachTimeStep(currentTimeStep - 1));
-					dpopTableList.add(switchingCostToPreviousSolution);
-				}
-			}
-		} else {
-			// For all other algorithms
-			// Compute decision, random and switching cost tables
-			// Add all of them to the dpopTableList
-			dpopTableList.addAll(computeDiscountedDpopAndSwitchingCostTables(agent.getDynamicType(),
-					agent.getPDDCOP_Algorithm(), currentTimeStep));
-		}
+    agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());
+  }
+  
+  /*
+   */
+  public void leaf_FUNC() { 
+    agent.startSimulatedTiming();
+  
+    out.println("LEAF " + agent.getLocalName() + " is running");
 
-		if (agent.isLeaf()) {
-			agent.print("Leaf is running");
-			leafDoUtilProcess();
-			agent.print("Leaf is done");
-		} else if (agent.isRoot()) {
-			agent.print("Root is running");
-			try {
-				rootDoUtilProcess();
-			} catch (UnreadableException e) {
-				e.printStackTrace();
-			}
-			agent.print("Root is done");
-		} else {
-			agent.print("Internal node is running");
-			try {
-				internalNodeDoUtilProcess();
-			} catch (UnreadableException e) {
-				e.printStackTrace();
-			}
-			agent.print("Internal node is done");
-		}
+//    List<PiecewiseMultivariateQuadFunction> tempFunctionList = new ArrayList<>(dpopFunctionMap.values());
+    
+    PiecewiseMultivariateQuadFunction combinedFunction = new PiecewiseMultivariateQuadFunction();
+
+    for (PiecewiseMultivariateQuadFunction func : dpopFunctionMap.values()) {
+      combinedFunction = combinedFunction.addPiecewiseFunction(func);
+    }
+
+    combinedFunction.setOwner(agent.getLocalName());
+
+    agent.setAgentViewFunction(combinedFunction);
+
+    PiecewiseMultivariateQuadFunction projectedFunction = null;
+
+    if (agent.getDcop_algorithm() == APPROX_DPOP) {
+      projectedFunction = combinedFunction.approxProject(agent.getNumberOfPoints(), agent.getLocalName(),
+          agent.getNumberOfApproxAgents(), agent.isApprox());
+    } 
+    else if (agent.getDcop_algorithm() == EC_DPOP) {
+      projectedFunction = combinedFunction.analyticalProject();
+    }
+
+    agent.stopSimulatedTiming();
+    
+    try {
+      agent.sendByteObjectMessageWithTime(agent.getParentAID(), projectedFunction, DPOP_UTIL, agent.getSimulatedTime());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+  
+  /*
+   * This function has been REVIEWED
+   * 1. Move the values of parent and pseudo-parents 
+   *    The values are the numberOfPoints
+   * 2. After moving:
+   *  - For each value combination, find the max from sum of utility function
+   *  - Create UTIL message from the valueCombination and max value
+   *  - Agent_view is not needed.
+   */
+  public void leaf_HYBRID() {
+    agent.startSimulatedTiming();
+
+    out.println("LEAF " + agent.getLocalName() + " is running");
+    
+    // Sum up all functions to create agentViewFunction
+    PiecewiseMultivariateQuadFunction sumFunction = new PiecewiseMultivariateQuadFunction();
+    
+    for (PiecewiseMultivariateQuadFunction function : dpopFunctionMap.values()) {
+      sumFunction = sumFunction.addPiecewiseFunction(function);
+    }
+    
+    agent.setAgentViewFunction(sumFunction);
+    
+    /*
+     * Move the values of parent and pseudo-parents
+     */
+    Set<List<String>> productPPValues = movingPointsUsingTheGradient(null, DONE_AT_LEAF);
+    
+   /*
+    * After moving, find the max utility from all functions with parent and pseudo-parents
+    * For each value list
+    *  Evaluate the sumFunction with the given value list to a unary function
+    *  Find the max of that Unary function
+    *  Add to the UTIL messages
+    * End
+    */
+    List<String> label = agent.getParentAndPseudoStrList();
+    
+    Table utilTable = new Table(label);
+    
+    for (List<String> valueList : productPPValues) {
+      Map<String, String> valueMapOfOtherVariables = new HashMap<>();
+
+      for (int parentIndex = 0; parentIndex < agent.getParentAndPseudoStrList().size(); parentIndex++) {
+        String pAgent = label.get(parentIndex);
+        String pValue = valueList.get(parentIndex);
+
+        valueMapOfOtherVariables.put(pAgent, pValue);
+      }
+      
+      PiecewiseMultivariateQuadFunction unaryFunction = sumFunction.evaluateToUnaryFunction(valueMapOfOtherVariables);
+      
+      double max = -Double.MAX_VALUE;
+      
+      for (Map<String, Interval> interval : sumFunction.getTheFirstIntervalSet()) {
+        double maxArgmax[] = unaryFunction.getTheFirstFunction().getMaxAndArgMax(interval);
+        
+        if (compare(maxArgmax[0], max) > 0) {
+          max = maxArgmax[0];
+        }
+      }
+      
+      utilTable.addRow(new Row(valueList, max));
+    }
+    
+//    agent.setSimulatedTime(agent.getSimulatedTime() + agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
+    agent.stopSimulatedTiming();
+    
+    System.out.println("Agent " + agent.getLocalName() + " send utilTable size " + utilTable.size() + " to agent " + agent.getParentAID().getLocalName());
+    agent.sendObjectMessageWithTime(agent.getParentAID(), utilTable, DPOP_UTIL, agent.getSimulatedTime());
+  }
+  
+  private void internalNode_TABLE() {
+    out.println("INTERNAL node " + agent.getLocalName() + " is running");
+
+    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+
+    // Start of processing 
+    agent.startSimulatedTiming();
+    
+    // After combined, it becomes a unary function
+    Table combinedUtilAndConstraintTable = combineMessage(receivedUTILmsgList);
+    
+    System.out.println("Agent " + agent.getLocalName() + " is joining tables");
+
+    for (Table pseudoParentTable : dpopTableList) {
+      combinedUtilAndConstraintTable = joinTable(combinedUtilAndConstraintTable, pseudoParentTable);
+    }
+    
+    System.out.println("Agent " + agent.getLocalName() + " finishes joining tables");
+
+    agent.setAgentViewTable(combinedUtilAndConstraintTable);
+    
+    System.out.println("Agent " + agent.getLocalName() + " is projecting table");
+
+    Table projectedTable = projectOperator(combinedUtilAndConstraintTable, agent.getLocalName());
+    
+    System.out.println("Agent " + agent.getLocalName() + " finishes projecting table");
+
+    agent.stopSimulatedTiming();
+    
+    agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());
+  }
+  
+  private void internalNode_FUNC() {
+    out.println("INTERNAL node " + agent.getLocalName() + " is running");
+
+    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+    
+    agent.startSimulatedTiming();
+    
+    System.out.println("Agent " + agent.getLocalName() + " has received all UTIL messages");
+    
+    // UnaryPiecewiseFunction
+    // PiecewiseMultivariateQuadFunction combinedFunctionMessage =
+    // combineMessageToFunction(receivedUTILmsgList);
+    PiecewiseMultivariateQuadFunction combinedFunctionMessage = null;
+    try {
+      combinedFunctionMessage = combineByteMessageToFunction(receivedUTILmsgList);
+    } catch (ClassNotFoundException e1) {
+      e1.printStackTrace();
+    } catch (IOException e1) {
+      e1.printStackTrace();
+    }
+
+    System.out.println(
+        "Agent " + agent.getLocalName() + " Internal node functions counts before joining rewards " + combinedFunctionMessage.size());
+
+    for (PiecewiseMultivariateQuadFunction pseudoParentFunction : dpopFunctionMap.values()) {
+      combinedFunctionMessage = combinedFunctionMessage.addPiecewiseFunction(pseudoParentFunction);
+    }
+
+    out.println("Agent " + agent.getLocalName() + " Internal node number of combined function: "
+        + combinedFunctionMessage.getFunctionMap().size());
+
+    combinedFunctionMessage.setOwner(agent.getLocalName());
+
+    agent.setAgentViewFunction(combinedFunctionMessage);
+
+    PiecewiseMultivariateQuadFunction projectedFunction = null;
+
+    out.println("Agent " + agent.getLocalName() + " Internal node number of combined function: "
+        + combinedFunctionMessage.getFunctionMap().size());
+
+    if (agent.getDcop_algorithm() == APPROX_DPOP) {
+      projectedFunction = combinedFunctionMessage.approxProject(agent.getNumberOfPoints(), agent.getLocalName(),
+          agent.getNumberOfApproxAgents(), agent.isApprox());
+    } else if (agent.getDcop_algorithm() == EC_DPOP) {
+      projectedFunction = combinedFunctionMessage.analyticalProject();
+    }
+
+    out.println("Agent " + agent.getLocalName() + " Internal node number of projected function: "
+        + projectedFunction.getFunctionMap().size());
+
+    agent.stopSimulatedTiming();
+
+    try {
+      agent.sendByteObjectMessageWithTime(agent.getParentAID(), projectedFunction, DPOP_UTIL, agent.getSimulatedTime());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+  
+  /**
+   * Join the UTIL tables from children and add up the utility functions to the table
+   * This is the agent_view_table
+   * 
+   * For value combinations of pParents:
+   *  Moving their values from the table using the derivative of the corresponding utility function
+   *  Given the current combination, all the possbible values of agent {}, create the set of interpolated row
+   *  Find the argmax and move that values
+   * End
+   * 
+   * After moving, we need to find the corresponding utility for each value combination.
+   * Interpolate the set of row, find the max
+   * Send this message up to the 
+   * 
+   * Interpolate new points using the joined tables
+   * Add the corresponding utility functions to the joinedTable
+   * Then send this UTIL message to the parent
+   */
+  private void internalNode_HYBRID() {    
+    out.println("INTERNAL node " + agent.getLocalName() + " is running");
+    
+    // Sum up all functions to create agentViewFunction
+    PiecewiseMultivariateQuadFunction sumFunction = new PiecewiseMultivariateQuadFunction();
+    
+//    for (String ppAgent : agent.getParentAndPseudoStrList()) {
+//      sumFunction = sumFunction.addPiecewiseFunction(dpopFunctionMap.get(ppAgent));
+//    }
+    
+    for (PiecewiseMultivariateQuadFunction func : dpopFunctionMap.values()) {
+      sumFunction.addPiecewiseFunction(func);
+    }
+    
+    agent.setAgentViewFunction(sumFunction);
+
+    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+    
+    agent.startSimulatedTiming();
+    
+    List<Table> tableList = createTableList(receivedUTILmsgList);
+    
+    System.out.println("Agent " + agent.getLocalName() + " receives the UTIL tables:");
+    for (Table table : tableList) {
+      System.out.println(table);
+    }
+    
+    // Interpolate points and join all the tables
+    out.println("Agent " + agent.getLocalName() + " starts interpolating and joining table");
+    Table joinedTable = interpolateAndJoinTable(tableList, NOT_ADD_POINTS);
+    out.println("Agent " + agent.getLocalName() + " finishes interpolating and joining table size " + joinedTable.size());
+    System.out.println("Agent " + agent.getLocalName() + " joined the table:");
+    System.out.println(joinedTable);
+    
+    out.println("Agent " + agent.getLocalName() + " starts adding functions to the table");
+    joinedTable = addTheUtilityFunctionsToTheJoinedTable(joinedTable);
+    out.println("Agent " + agent.getLocalName() + " finishes adding functions to the table size " + joinedTable.size());
+
+    agent.setAgentViewTable(joinedTable);
+    
+    out.println("Agent: " + agent.getLocalName() + " has agentViewTable label: " + agent.getAgentViewTable().getDecVarLabel());
+
+    out.println("Agent " + agent.getLocalName() + " starts moving points with joinedTable size: " + joinedTable.size());
+    Set<List<String>> productPPValues = movingPointsUsingTheGradient(joinedTable, DONE_AT_INTERNAL_NODE);
+    out.println("Agent " + agent.getLocalName() + " finishes moving points " + productPPValues.size());
+        
+    out.println("Agent " + agent.getLocalName() + " starts create UTIL tables from values set");
+
+    Table utilTable = createUtilTableFromValueSet(joinedTable, productPPValues);
+    out.println("Agent " + agent.getLocalName() + " finishes create UTIL tables from values set");
+
+    System.out.println("Agent " + agent.getLocalName() + " send utilTable size " + utilTable.size() + " to agent " + agent.getParentAID().getLocalName());
+    
+    agent.stopSimulatedTiming();
+    
+    agent.sendObjectMessageWithTime(agent.getParentAID(), utilTable, DPOP_UTIL, agent.getSimulatedTime());
+  }
+  
+  public void root_FUNC() {
+    out.println("ROOT node " + agent.getLocalName() + " is running");
+
+    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+    
+    // Start of processing time
+    agent.startSimulatedTiming();
+    
+    PiecewiseMultivariateQuadFunction combinedFunctionMessage = null;
+    try {
+      combinedFunctionMessage = combineByteMessageToFunction(receivedUTILmsgList);
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    for (PiecewiseMultivariateQuadFunction pseudoParentFunction : dpopFunctionMap.values()) {
+      combinedFunctionMessage = combinedFunctionMessage.addPiecewiseFunction(pseudoParentFunction);
+    }
+
+    combinedFunctionMessage.setOwner(agent.getAgentID());
+
+    // choose the maximum
+    double argmax = -Double.MAX_VALUE;
+    double max = -Double.MAX_VALUE;
+
+    // out.println("Root Combined function: " + combinedFunctionMessage);
+
+    for (Entry<MultivariateQuadFunction, Set<Map<String, Interval>>> functionEntry : combinedFunctionMessage.getFunctionMap()
+        .entrySet()) {
+      MultivariateQuadFunction function = functionEntry.getKey();
+      for (Map<String, Interval> intervalMap : functionEntry.getValue()) {
+        double[] maxAndArgMax = function.getMaxAndArgMax(intervalMap);
+
+        if (compare(maxAndArgMax[0], max) > 0) {
+          max = maxAndArgMax[0];
+          argmax = maxAndArgMax[1];
+        }
+      }
+    }
+    
+    agent.setChosenValueAtEachTimeStep(currentTimeStep, String.valueOf(argmax));
+
+    out.println("MAX VALUE IS " + max);
+    out.println("ARGMAX VALUE IS " + argmax);
+
+//    agent.setSimulatedTime(agent.getSimulatedTime() + agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
+    
+    agent.stopSimulatedTiming();
+  }
+  
+  public void root_TABLE() {
+    out.println("ROOT node " + agent.getLocalName() + " is running");
+    
+    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+
+    // Start of processing time
+    agent.startSimulatedTiming();
+
+    Table combinedUtilAndConstraintTable = combineMessage(receivedUTILmsgList);
+    // combinedUtilAndConstraintTable.printDecVar();
+    for (Table pseudoParentTable : dpopTableList) {
+      combinedUtilAndConstraintTable = joinTable(combinedUtilAndConstraintTable, pseudoParentTable);
+    }
+
+    out.println("Root is finding max and argmax");
+
+    // pick value with smallest utility
+    // since agent 0 is always at the beginning of the row formatted:
+    // agent0,agent1,..,agentN -> utility
+    double maxUtility = Integer.MIN_VALUE;
+    // System.err.println("Timestep " + agent.getCurrentTS() + " Combined
+    // messages at root:");
+    // combinedUtilAndConstraintTable.printDecVar();
+    for (Row row : combinedUtilAndConstraintTable.getRowList()) {
+      if (row.getUtility() > maxUtility) {
+        maxUtility = row.getUtility();
+        agent.setValueAtTimeStep(currentTimeStep, row.getValueAtPosition(0));
+      }
+    }
+
+    out.println("CHOSEN: " + agent.getChosenValueAtEachTimeStep(currentTimeStep));
+
+    out.println(agent.getPDDCOP_Algorithm() + " " + agent.getDcop_algorithm() + " utility " + maxUtility);
+
+//    agent.setSimulatedTime(agent.getSimulatedTime() + agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
+    
+    agent.stopSimulatedTiming();
+  }
+  
+  /**
+   * This function has been REVIEWED
+   */
+  public void root_HYBRID() {
+    out.println("ROOT " + agent.getLocalName() + " is running");
+    
+    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+
+    // Start of processing time
+    agent.startSimulatedTiming();
+    
+    List<Table> tableList = createTableList(receivedUTILmsgList);
+    
+    // Interpolate points and join all the tables
+    Table joinedTable = interpolateAndJoinTable(tableList, ADD_MORE_POINTS);
+        
+    double maxUtility = -Double.MAX_VALUE;
+    
+    // Find the maxUtility and argmax from the joinedTable
+    for (Row row : joinedTable.getRowList()) {
+      if (compare(row.getUtility(), maxUtility) > 0) {
+        // only choose the row with value in the interval
+        maxUtility = row.getUtility();
+        agent.setChosenValueAtEachTimeStep(currentTimeStep, row.getValueList().get(0));
+      }
+    }
+
+    out.println("CHOSEN: " + agent.getChosenValueAtEachTimeStep(currentTimeStep));
+
+    out.println(agent.getDcop_algorithm() + " utility " + maxUtility);
+
+    agent.stopSimulatedTiming();
+  }
+  
+  /**
+   * This function has been REVIEWED
+   * Moving the values of parent and pseudo-parent
+   * This function is called in both leaves and internal nodes.
+   * There is a flag to differentiate between the two.
+   * @param joinedTable this table is used in internal nodes. At leaf, it is null.
+   * @param flag FUNCTION_ONLY or FUNCTION_AND_TABLE
+   */
+  private Set<List<String>> movingPointsUsingTheGradient(Table joinedTable, int flag) {
+    Set<List<String>> immutableProductPPValues;
+    // Create a set of PP's value list
+    // Create a list of valueSet with the same ordering of PP
+    // Then do the Cartesian product to get the set of valueList (same ordering as PP)
+    List<Set<String>> valueSetList = new ArrayList<Set<String>>();
+    for (String pParent : agent.getParentAndPseudoStrList()) {
+      if (flag == DONE_AT_LEAF) {
+        valueSetList.add(agent.getCurrentDiscreteValues(currentTimeStep));
+      } // The joined table might contain the PP or not
+      else if (flag == DONE_AT_INTERNAL_NODE) {
+        Set<String> valueSetOfPParentToAdd = joinedTable.getValueSetOfGivenAgent(pParent, false);
+        valueSetList.add(valueSetOfPParentToAdd);
+      }
+    }
+    immutableProductPPValues = Sets.cartesianProduct(valueSetList);
+    
+    // Make the productPPValues to be mutable
+    Set<List<String>> mutableProductPPValues = new HashSet<>();
+    for (List<String> innerList : immutableProductPPValues) {
+      List<String> newList = new ArrayList<>(innerList);
+      mutableProductPPValues.add(newList);
+    }
+    
+    // Traverse the valueList
+    int maxIteration = flag == DONE_AT_LEAF ? agent.getGradientIteration() : agent.getGradientIteration() / 2;
+    
+    for (int movingIteration = 0; movingIteration < maxIteration; movingIteration++) {
+      if (agent.isPrinting()) {
+        System.out.println("Agent " + agent.getLocalName() + " is moving iteration " + movingIteration);
+      }
+      
+      for (List<String> valueList : mutableProductPPValues) {
+        if (agent.isPrinting()) {
+          System.out.println("Agent " + agent.getLocalName() + " is moving point " + valueList);
+        }
+        
+        // For each ppToMove (direction), take the derivative of the utility function
+        for (int ppToMoveIndex = 0; ppToMoveIndex < valueList.size(); ppToMoveIndex++) {
+          String ppAgentToMove = agent.getParentAndPseudoStrList().get(ppToMoveIndex);
+          String ppValueToMove = valueList.get(ppToMoveIndex);
+
+          PiecewiseMultivariateQuadFunction functionWithPP = dpopFunctionMap.get(ppAgentToMove);
+          
+          PiecewiseMultivariateQuadFunction derivativePw = agent.getDcop_algorithm() == AC_DPOP
+              ? functionWithPP.takeFirstPartialDerivative(ppAgentToMove)
+              : agent.getAgentViewFunction().takeFirstPartialDerivative(ppAgentToMove);
+          //          PiecewiseMultivariateQuadFunction derivativePw = agent.getAgentViewFunction().takeFirstPartialDerivative(ppAgentToMove);          
+          
+          // Create a map of other agents' values
+          Map<String, String> valueMapOfOtherVariables = new HashMap<>();
+          if (flag == DONE_AT_LEAF) {
+            valueMapOfOtherVariables.put(ppAgentToMove, ppValueToMove);
+          } else if (flag == DONE_AT_INTERNAL_NODE) {
+            for (int ppIndex = 0; ppIndex < agent.getParentAndPseudoStrList().size(); ppIndex++) {
+              String ppAgent = agent.getParentAndPseudoStrList().get(ppIndex);
+              String ppValue = valueList.get(ppIndex);
+              
+              valueMapOfOtherVariables.put(ppAgent, ppValue);
+            }
+          }
+          
+          double argMax = -Double.MAX_VALUE;
+          // Finding the arg_max of multivariate agent view function seems wrong
+          if (flag == DONE_AT_LEAF) {
+//            PiecewiseMultivariateQuadFunction unaryFunction = agent.getAgentViewFunction().evaluateToUnaryFunction(valueMapOfOtherVariables);
+            PiecewiseMultivariateQuadFunction unaryFunction = functionWithPP.evaluateToUnaryFunction(valueMapOfOtherVariables);
+            double max = -Double.MAX_VALUE;
+            
+            // Find the arg_max of THE agent after evaluating the binary constraint function to unary
+            for (Map<String, Interval> interval : unaryFunction.getTheFirstIntervalSet()) {
+              double maxArgmax[] = unaryFunction.getTheFirstFunction().getMaxAndArgMax(interval);
+              
+              if (compare(maxArgmax[0], max) > 0) {
+                max = maxArgmax[0];
+                argMax = maxArgmax[1];
+              }
+            }
+            
+            if (agent.isPrinting()) {
+              System.out.println("Unary function: " + unaryFunction);
+              System.out.println("Max of the function: " + max);
+              System.out.println("Argmax of the function: " + argMax);
+            }
+            
+          } else if (flag == DONE_AT_INTERNAL_NODE){            
+            argMax = agent.getAgentViewTable().maxArgmaxHybrid(valueMapOfOtherVariables, agent.getSelfInterval().getMidPointInHalfIntegerRanges())[1];
+            
+            if (agent.isPrinting()) {
+              System.out.println("Argmax of the table: " + argMax);
+            }
+          }
+          
+          Map<String, String> valueMap = new HashMap<>();
+          valueMap.put(agent.getLocalName(), String.valueOf(argMax));
+          valueMap.put(ppAgentToMove, ppValueToMove);
+
+          double gradient = derivativePw.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap);
+          
+          double movedPpValue = Double.valueOf(ppValueToMove) + agent.GRADIENT_SCALING_FACTOR * gradient;
+          
+          if (agent.isPrinting()) {
+            System.out.println("Agent to move:" + ppAgentToMove);
+            System.out.println("Unary function is: " + functionWithPP);
+            System.out.println("Derivative is: " + derivativePw);
+            System.out.println("ppValueToMove " + ppValueToMove);
+            System.out.println("Argmax value is: " + argMax);
+            System.out.println("Moved value is: " + movedPpValue);
+          }
+          
+          // only move if the new point is within the interval
+          if (agent.getSelfDomain().contains(movedPpValue)) {         
+            valueList.set(ppToMoveIndex, String.valueOf(movedPpValue));
+          }
+        }
+      }
+    }
+    
+    if (agent.isClustering()) {
+      return kmeanCluster(mutableProductPPValues, agent.getNumberOfPoints());
+    } else {
+      return mutableProductPPValues;
+    }
+  }
+  
+  private PiecewiseMultivariateQuadFunction combineByteMessageToFunction(List<ACLMessage> list)
+      throws IOException, ClassNotFoundException {
+    List<PiecewiseMultivariateQuadFunction> listFunction = new ArrayList<>();
+    for (ACLMessage msg : list) {
+      ByteArrayInputStream bais = new ByteArrayInputStream(msg.getByteSequenceContent());
+      GZIPInputStream gzipIn = new GZIPInputStream(bais);
+      ObjectInputStream objectIn = new ObjectInputStream(gzipIn);
+      PiecewiseMultivariateQuadFunction func = (PiecewiseMultivariateQuadFunction) objectIn.readObject();
+      objectIn.close();
+      listFunction.add(func);
+    }
+
+    int size = listFunction.size();
+    PiecewiseMultivariateQuadFunction function = listFunction.get(0);
+
+    for (int i = 1; i < size; i++) {
+      function = function.addPiecewiseFunction(listFunction.get(i));
+    }
+
+    return function;
+  }
+  
+	
+  /**
+   * Create the DCOP tables from agent.getCurrentDiscreteValues(currentTimeStep);
+   */
+  public List<Table> createDCOPTableFromFunction(Collection<PiecewiseMultivariateQuadFunction> functionList, int timeStep) {
+    List<Table> tableListWithParents = new ArrayList<>();
+    for (PiecewiseMultivariateQuadFunction pwFunction : functionList) {
+      MultivariateQuadFunction func = pwFunction.getTheFirstFunction(); // there is only one function in pw at this time
+
+      List<String> varListLabel = func.getVariableSet().stream().collect(Collectors.toList());
+      Table tableFromFunc = new Table(varListLabel);
+
+      List<List<String>> valueSetList = new ArrayList<List<String>>();
+      for (int i = 0; i < varListLabel.size(); i++) {
+        valueSetList.add(new ArrayList<>(agent.getCurrentDiscreteValues(timeStep)));
+      }
+      
+      for (List<String> values : Lists.cartesianProduct(valueSetList)) {
+        Map<String, String> valueMap = new HashMap<>();
+        for (int i = 0; i < varListLabel.size(); i++) {
+          valueMap.put(varListLabel.get(i), values.get(i));
+        }
+        
+        Row newRow = new Row(new ArrayList<>(values), func.evaluateToValueGivenValueMap(valueMap));
+        tableFromFunc.addRow(newRow);
+      }
+      tableListWithParents.add(tableFromFunc);
+//      for (String valueOne : agent.getCurrentDiscreteValues(timeStep)) {
+//        Map<String, String> valueMap = new HashMap<>();
+//        List<String> rowValueList = new ArrayList<>();
+//        rowValueList.add(valueOne);
+//        valueMap.put(variableOne, valueOne);
+//        
+//        for (String valueTwo : agent.getCurrentDiscreteValues(timeStep)) {
+//          rowValueList.add(valueTwo);
+//          valueMap.put(variableTwo, valueTwo);
+//          Row newRow = new Row(new ArrayList<>(rowValueList), func.evaluateToValueGivenValueMap(valueMap));
+//          tableFromFunc.addRow(newRow);
+//          rowValueList.remove(1);
+//          valueMap.remove(variableTwo);
+//        }
+//        rowValueList.clear();
+//        valueMap.clear();
+//      }
+//      tableListWithParents.add(tableFromFunc);
+    }
+    
+    return tableListWithParents;
+  }
+  
+  /**
+   * Compute the expected function (if any) at current time step
+   * 
+   * THIS FUNCTION HAS TO BE CALLED AFTER THE PSEUDOTREE_GENERATION behavior has been executed
+   */
+  private void computeExpectedFunctionCurrentTimeStep(int timeStep) {
+    for (Entry<String, PiecewiseMultivariateQuadFunction> entry : agent.getNeighborFunctionMap().entrySet()) {
+      if (entry.getKey().contains(RANDOM_PREFIX)) {
+        Map<String, Double> randomValueMap = new HashMap<>();
+        double distributionMean = agent.getMeanAtEveryTimeStep().get(timeStep);
+        randomValueMap.put(entry.getKey(), distributionMean);
+
+        agent.getExpectedFunctionMap().put(timeStep, entry.getValue().evaluateToUnaryFunction(randomValueMap));
+      }
+    }
+  }    
+	
+	private void actionDiscrete() {
+    if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.BOUND_DPOP)) {
+      dpopTableList.addAll(agent.getDpopDecisionTableList());
+      dpopTableList.addAll(agent.getDpopBoundRandomTableList());
+    } 
+    else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.LS_SDPOP) && isFirstTimeUTIL()) {
+      Table joinedDecisionTable = joinTableList(agent.getDpopDecisionTableList());
+
+      agent.setStoredReuseTable(joinedDecisionTable);
+    } 
+    else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.LS_SDPOP) && !isFirstTimeUTIL()) {
+    }
+    // Add actual tables to compute actual quality
+    // Add tables to DPOP table list for solving
+    else if (agent.isDynamic(DynamicType.ONLINE) || agent.isDynamic(DynamicType.STATIONARY)) {
+      // Add actual tables for REACT
+      if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT)) {
+        agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
+            .addAll(agent.computeActualDpopTableGivenRandomValues(currentTimeStep));
+        agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
+        
+        dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
+      }
+      else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.R_LEARNING)) {
+        // DPOP_UTIL will be called twice
+        // First time for learning: true -> false
+        // Second time for applying: false -> true
+        if (currentTimeStep == 0) {
+          // Switching from learning to applying
+          agent.switchApplyingRLearning();
+        }
+        
+        // Learning R values
+        if (!agent.isApplyingRLearning()) {
+          agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
+            .addAll(agent.computeActualDpopTableGivenRandomValues(currentTimeStep));
+          agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList()); 
+          
+          dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
+          // Add unary constraint table with the switching cost to the dpopTableList
+          if (currentTimeStep > 0) {
+            Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(),
+                agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
+                agent.getChosenValueAtEachTimeStep(currentTimeStep - 1));
+            dpopTableList.add(switchingCostToPreviousSolution);
+          }
+        }
+        // Applying R learning
+        else {
+          // Apply R learning with R values
+          // The actual DPOP table has been added above
+          dpopTableList.addAll(agent.computeRLearningDpopTableGivenRandomValues(currentTimeStep));
+          dpopTableList.addAll(agent.getDpopDecisionTableList());
+          // No need to add unary constraint since R-learning has taken into account the previous decision variable in its domain
+        }
+      }
+      // Add discounted expected tables for FORWARD and HYBRID
+      else {
+        agent.getActualDpopTableAcrossTimeStep().computeIfAbsent(currentTimeStep, k -> new ArrayList<>())
+          .addAll(agent.computeActualDpopTableGivenRandomValues(currentTimeStep));
+        agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
+
+        double df = agent.getDiscountFactor();
+        dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(),
+            currentTimeStep, df));
+        dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
+            currentTimeStep, df));
+
+        if (currentTimeStep > 0) {
+          Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(),
+              agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
+              agent.getChosenValueAtEachTimeStep(currentTimeStep - 1));
+          dpopTableList.add(switchingCostToPreviousSolution);
+        }
+      }
+    } else {
+      // For all other algorithms
+      // Compute decision, random and switching cost tables
+      // Add all of them to the dpopTableList
+      dpopTableList.addAll(computeDiscountedDpopAndSwitchingCostTables(agent.getDynamicType(),
+          agent.getPDDCOP_Algorithm(), currentTimeStep));
+    }
+
+    if (agent.isLeaf()) {
+      agent.print("Leaf is running");
+      leafDoUtilProcess();
+      agent.print("Leaf is done");
+    } else if (agent.isRoot()) {
+      agent.print("Root is running");
+      try {
+        rootDoUtilProcess();
+      } catch (UnreadableException e) {
+        e.printStackTrace();
+      }
+      agent.print("Root is done");
+    } else {
+      agent.print("Internal node is running");
+      try {
+        internalNodeDoUtilProcess();
+      } catch (UnreadableException e) {
+        e.printStackTrace();
+      }
+      agent.print("Internal node is done");
+    }
+  
 	}
 
 	/**
@@ -216,7 +965,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 		Table projectedTable = projectOperator(combinedTable, agent.getLocalName());
 
-		agent.stopStimulatedTiming();
+		agent.stopSimulatedTiming();
 
 		agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());
 	}
@@ -238,7 +987,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 		Table projectedTable = projectOperator(combinedTable, agent.getLocalName());
 
-		agent.stopStimulatedTiming();
+		agent.stopSimulatedTiming();
 
 		agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());
 	}
@@ -371,7 +1120,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 			agent.getChosenValueAtEachTSMap().put(-1, agent.getSelfDomain().get(randomIndex));
 		}
 
-		agent.stopStimulatedTiming();
+		agent.stopSimulatedTiming();
 		agent.setOnlineSolvingTime(currentTimeStep, agent.getSimulatedTime());
 	}
 
@@ -487,7 +1236,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 			MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
 			ACLMessage receivedMessage = myAgent.blockingReceive(template);
 
-			agent.stopStimulatedTiming();
+			agent.stopSimulatedTiming();
 //	      if (receivedMessage != null) {
 			long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
 
@@ -828,5 +1577,211 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 					joinTableList(tableList.subList(size / 2, size)));
 		}
 	}
+	
+  private List<Table> createTableList(List<ACLMessage> receivedUTILmsgList) {
+    List<Table> tableList = new ArrayList<>();
+    for (ACLMessage msg : receivedUTILmsgList) {
+      try {
+        tableList.add((Table) msg.getContentObject());
+      } catch (UnreadableException e) {
+        e.printStackTrace();
+      }
+    } 
+    
+    return tableList;
+  }
+  
+  /**
+   * This function has been REVIEWED
+   * Interpolate points that are not common among tables <br>
+   * Fill in the table with interpolated points <br>
+   * @param tableList
+   * @return the joined table after interpolation
+   */
+  private Table interpolateAndJoinTable(List<Table> tableList, boolean isAddingPoints) {
+    // Find the common variables
+    Set<String> commonVariables = new HashSet<>();
+    
+    for (int i = 0; i < tableList.size() - 1; i++) {
+      for (int j = 1; j < tableList.size(); j++) {
+        Set<String> pairwiseCommonVar = new HashSet<String>(tableList.get(i).getDecVarLabel());
+        pairwiseCommonVar.retainAll(tableList.get(j).getDecVarLabel());
+        commonVariables.addAll(pairwiseCommonVar);
+      }
+    }
+            
+    /*
+     * For each table, find all value combination of the common variables from other tables
+     */
+    Map<Table, Set<Row>> interpolatedRowSetOfEachTable = new HashMap<>();
+    Map<String, Set<String>> valueFromAllTableMap = new HashMap<>();
+    
+    /*
+     * Traverse every table => create the map <Agent, Set<Double>>
+     */
+    out.println("Agent " + agent.getLocalName() + " start creatings value map from All table");
+    for (Table utilTable : tableList) { 
+      for (String commonAgent : commonVariables) {
+        Set<String> valueSetOtherTableGivenAgent = utilTable.getValueSetOfGivenAgent(commonAgent, false);
+        
+        if (isAddingPoints == ADD_MORE_POINTS) {
+          valueSetOtherTableGivenAgent.addAll(agent.getCurrentDiscreteValues(currentTimeStep));
+        }
+        
+        if (valueFromAllTableMap.containsKey(commonAgent)) {
+          valueFromAllTableMap.get(commonAgent).addAll(valueSetOtherTableGivenAgent);
+        } else {
+          valueFromAllTableMap.put(commonAgent, new HashSet<>(valueSetOtherTableGivenAgent));
+        }
+      }
+    }
+    out.println("Agent " + agent.getLocalName() + " finishes creatings value map from all table");
 
+    
+    /*
+     * For each table => do the interpolation and add them to the list
+     */
+    out.println("Agent " + agent.getLocalName() + " start interpolating tables");
+    for (Table utilTable : tableList) {
+      interpolatedRowSetOfEachTable.put(utilTable, utilTable.interpolateGivenValueSetMap(valueFromAllTableMap, 1));
+    }
+    out.println("Agent " + agent.getLocalName() + " finishes interpolating tables");
+
+    
+    // Add the interpolated row to the corresponding table
+    for (Entry<Table, Set<Row>> entry : interpolatedRowSetOfEachTable.entrySet()) {
+      entry.getKey().addRowSet(entry.getValue());
+    }
+    
+    out.println("Agent " + agent.getLocalName() + " start joining tables");
+    // Now joining all the tables
+    Table joinedTable = null;
+    for (Table table : interpolatedRowSetOfEachTable.keySet()) {
+      joinedTable = joinTable(joinedTable, table);
+    }
+    out.println("Agent " + agent.getLocalName() + " finishes joining tables");
+    
+    return joinedTable;
+  }
+  
+  /*
+   * THIS FUNCTION IS REVIEWED
+   * For each pp
+   *  If joinedTable contains pp
+   *    Evaluate the row by the function and update the row
+   *  Else if joinedTable doesn't contain pp
+   *    Get a list of pp values (interval.discretize())
+   *    Create new table with the label.add(pParent)
+   *    For each ppValue
+   *      For each row 
+   *        Get the <agent, value> and <pp, ppValue>, evaluate the function
+   *        Create the new row with extending the valueList
+   *        Add up to the utility value
+   *      End
+   *    End
+   *  Endif
+   * End
+   *
+   * @param joinedTable
+   * @return
+   */
+  private Table addTheUtilityFunctionsToTheJoinedTable(Table joinedTable) {  
+    for (String pParent : agent.getParentAndPseudoStrList()) {
+      PiecewiseMultivariateQuadFunction pFunction = dpopFunctionMap.get(pParent);
+      // If containing pParent, update the utility 
+      if (joinedTable.containsAgent(pParent)) {
+        for (Row row : joinedTable.getRowList()) {
+          Map<String, Double> valueMap = new HashMap<>();
+          valueMap.put(pParent, row.getValueAtPosition(joinedTable.indexOf(pParent)));
+          valueMap.put(agent.getLocalName(), row.getValueAtPosition(joinedTable.indexOf(agent.getLocalName())));
+          row.setUtility(row.getUtility() + pFunction.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap));
+        }
+      }
+      // Doesn't contain the pParent
+      else {
+        Table newTable = new Table(joinedTable.getDecVarLabel());
+        newTable.extendToTheEndOfLabel(pParent);
+        
+        // Add values for the new label of pParent
+        Set<Double> pValueList = agent.getCurrentDiscreteValues(currentTimeStep);
+        
+        for (Double pValue : pValueList) {
+          for (Row row : joinedTable.getRowSet()) {
+            Map<String, Double> valueMap = new HashMap<>();
+            valueMap.put(pParent, pValue);
+            valueMap.put(agent.getLocalName(), row.getValueAtPosition(joinedTable.indexOf(agent.getLocalName())));
+            double newUtility = row.getUtility() + pFunction.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap); 
+            
+            Row newRow = new Row(row.getValueList(), newUtility);
+            newRow.addValueToTheEnd(pValue);
+            newTable.addRow(newRow);
+          }
+        }
+        joinedTable = newTable;
+      }
+    }
+    return joinedTable;
+  
+  }
+  
+  /**
+   * This function has been REVIEWED
+   * Create the utilTable from agentViewTable (which contains this agent) and productPPValues of pParents
+   * @param agentViewTable
+   * @param productPPValues
+   * @return
+   */
+  private Table createUtilTableFromValueSet(Table agentViewTable, Set<List<String>> productPPValues) {
+    //Now calculate the new UTIL table to send to parent
+    List<String> label = agent.getParentAndPseudoStrList();
+    Table utilTable = new Table(label);
+
+    // Interpolate the table to get values for each of the valueList
+    for (List<String> valueList : productPPValues) {     
+      Map<String, String> valueMap = new HashMap<>();
+      for (int i = 0; i < valueList.size(); i++) {
+        valueMap.put(agent.getParentAndPseudoStrList().get(i), String.valueOf(valueList.get(i)));
+      }
+      
+      double maxUtil = agentViewTable.maxArgmaxHybrid(valueMap, agent.getSelfInterval().getMidPointInHalfIntegerRanges())[0];
+      
+      Row newRow = new Row(valueList, maxUtil);
+
+      // Add the utility of all functions to the row
+      utilTable.addRow(newRow);
+    }
+    return utilTable;
+  }
+  
+  private Set<List<Double>> kmeanCluster(Set<List<Double>> dataset, int numClusters) {
+    Set<List<Double>> centroids = new HashSet<>();
+    SimpleKMeans kmean = new SimpleKMeans();
+    
+    ArrayList<Attribute> attritbuteList = new ArrayList<Attribute>();
+    int numberAttributes = dataset.iterator().next().size();
+    for (int i = 1; i <= numberAttributes; i++) {
+      attritbuteList.add(new Attribute(String.valueOf(i)));
+    }
+
+    Instances instances = new Instances("cluster", attritbuteList, dataset.size());
+    for (List<Double> rawData : dataset) {
+      Instance pointInstance = new SparseInstance(1.0, rawData.stream().mapToDouble(Double::doubleValue).toArray());
+      instances.add(pointInstance);
+    }
+    
+    try {
+      kmean.setNumClusters(agent.getNumberOfPoints());
+      kmean.buildClusterer(instances);
+      
+      Instances centroidsInstance = kmean.getClusterCentroids();
+      
+      for (Instance pointArray : centroidsInstance) {
+        centroids.add(Arrays.stream(pointArray.toDoubleArray()).boxed().collect(Collectors.toList()));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    
+    return centroids;
+  }
 }

@@ -155,19 +155,19 @@ public class Interval implements Serializable {
     return valueSet;
   }
   
-  public Set<Double> getMidPointInIntegerRanges() {
+  public Set<String> getMidPointInIntegerRanges() {
     return getMidPoints(getIncrementRange());
   }
   
-  public Set<Double> getMidPointInHalfIntegerRanges() {
+  public Set<String> getMidPointInHalfIntegerRanges() {
     return getMidPoints(getIncrementRange() * 2);
   }
   
-  public Set<Double> getMidPointInQuarterIntegerRanges() {
+  public Set<String> getMidPointInQuarterIntegerRanges() {
     return getMidPoints(getIncrementRange() * 4);
   }
   
-  public Set<Double> getMidPointInEightIntegerRanges() {
+  public Set<String> getMidPointInEightIntegerRanges() {
     return getMidPoints(getIncrementRange() * 8);
   }
   
@@ -183,13 +183,14 @@ public class Interval implements Serializable {
     return valueSet;
   }
   
-  public Set<Double> getMidPoints(int numberOfValues) {
-    Set<Double> valueSet = new HashSet<>();
+  public Set<String> getMidPoints(int numberOfValues) {
+    Set<String> valueSet = new HashSet<>();
     
     double increment = (upperBound - lowerBound) / numberOfValues;
     double currentLB = lowerBound;
     for (int i = 0; i < numberOfValues; i++) {
-      valueSet.add(0.5 * (currentLB * 2 + increment));
+      double value = 0.5 * (currentLB * 2 + increment);
+      valueSet.add(String.valueOf(value));
       currentLB += increment;
     }
     

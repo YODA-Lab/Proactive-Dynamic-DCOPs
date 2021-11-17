@@ -38,12 +38,11 @@ public class LS_RAND_PICK_VALUE extends OneShotBehaviour {
 			  
 			  double randomSample = lower + Math.random() * (upper - lower);
 			  agent.getChosenValueAtEachTSMap().put(ts, String.valueOf(randomSample));
-			}
-		  
+			} 
 		}
 		
 		agent.print("Chosen random values=" + agent.getChosenValueAtEachTSMap());
 		
-		agent.stopStimulatedTiming();
+		agent.stopSimulatedTiming();
 	}
 }

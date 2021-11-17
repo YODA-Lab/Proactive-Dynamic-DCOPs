@@ -47,7 +47,7 @@ public class INIT_RECEIVE_DPOP_VALUE extends OneShotBehaviour implements MESSAGE
 			agent.getAgentViewEachTimeStepMap().put(sender, neighborValuesAtEachTSMap);
 		}
 		
-		agent.stopStimulatedTiming();
+		agent.stopSimulatedTiming();
 	}
 	
 	private List<ACLMessage> waitingForMessageFromNeighborsWithTime(int msgCode) {
@@ -58,7 +58,7 @@ public class INIT_RECEIVE_DPOP_VALUE extends OneShotBehaviour implements MESSAGE
 		  MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
 			ACLMessage receivedMessage = myAgent.blockingReceive(template);
 			
-			agent.stopStimulatedTiming();
+			agent.stopSimulatedTiming();
 //			if (receivedMessage != null) {
 				long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
 				

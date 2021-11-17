@@ -44,7 +44,7 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
     double localSearchQuality = utilFromChildren + 
         agent.utilityLSWithParentAndPseudoAndUnary() - agent.computeSwitchingCostAllTimeStep();
     
-    agent.stopStimulatedTiming();
+    agent.stopSimulatedTiming();
 
     if (!agent.isRoot()) {
       agent.sendObjectMessageWithTime(agent.getParentAID(), localSearchQuality, INIT_LS_UTIL, agent.getSimulatedTime());
@@ -65,7 +65,7 @@ public class INIT_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSA
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
         
-      agent.stopStimulatedTiming();
+      agent.stopSimulatedTiming();
 //      if (receivedMessage != null) {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
           

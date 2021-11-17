@@ -124,7 +124,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 
 			agent.addValuesToSendInValuePhase(agent.getAgentID(), chosenValue);
 
-			agent.stopStimulatedTiming();
+			agent.stopSimulatedTiming();
 
 			if (!agent.isLeaf()) {
 //				if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DCOP)) {
@@ -165,7 +165,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 			MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
 			receivedMessage = myAgent.blockingReceive(template);
 
-			agent.stopStimulatedTiming();
+			agent.stopSimulatedTiming();
 //      if (receivedMessage != null) {
 			long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
 			if (timeFromReceiveMessage > agent.getSimulatedTime()) {

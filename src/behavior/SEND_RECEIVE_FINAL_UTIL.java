@@ -81,7 +81,7 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
       messageForParent.add(actual_switching_cost);
     }
     
-    agent.stopStimulatedTiming();
+    agent.stopSimulatedTiming();
     
     if (!agent.isRoot()) {
       agent.sendObjectMessageWithTime(agent.getParentAID(), messageForParent, FINAL_UTIL, agent.getSimulatedTime());
@@ -119,7 +119,7 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
         
-      agent.stopStimulatedTiming();
+      agent.stopSimulatedTiming();
 //      if (receivedMessage != null) {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
           

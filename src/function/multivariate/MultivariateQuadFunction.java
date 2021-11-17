@@ -176,6 +176,10 @@ public final class MultivariateQuadFunction implements Serializable {
 //      intervals.put(entry.getKey(), entry.getValue());
 //    }
 //  }
+	
+	public <T> MultivariateQuadFunction evaluate(final String variable, T value) {
+	  return evaluate(variable, (Double) value);
+	}
 
 	/**
 	 * EVALUATE operator <br>
@@ -589,19 +593,19 @@ public final class MultivariateQuadFunction implements Serializable {
 		return func;
 	}
 
-	public MultivariateQuadFunction evaluateToFunctionGivenValueMap(Map<String, Double> valueMap) {
+	public <T> MultivariateQuadFunction evaluateToFunctionGivenValueMap(Map<String, T> valueMap) {
 		MultivariateQuadFunction func = new MultivariateQuadFunction(this);
-		for (Map.Entry<String, Double> entry : valueMap.entrySet()) {
+		for (Map.Entry<String, T> entry : valueMap.entrySet()) {
 			func = func.evaluate(entry.getKey(), entry.getValue());
 		}
 
 		return func;
 	}
 
-	public double evaluateToValueGivenValueMap(Map<String, Double> valueMap) {
+	public double evaluateToValueGivenValueMap(Map<String, String> valueMap) {
 		MultivariateQuadFunction func = new MultivariateQuadFunction(this);
 		int count = 1;
-		for (Map.Entry<String, Double> entry : valueMap.entrySet()) {
+		for (Map.Entry<String, String> entry : valueMap.entrySet()) {
 			if (count < valueMap.size()) {
 				func = func.evaluate(entry.getKey(), entry.getValue());
 			} else {
@@ -610,6 +614,10 @@ public final class MultivariateQuadFunction implements Serializable {
 			count++;
 		}
 		return Double.MAX_VALUE;
+	}
+	
+	public double evaluateUnaryFunction(String variable, String value) {
+	  return evaluateUnaryFunction(variable, Double.valueOf(value));
 	}
 
 	/**

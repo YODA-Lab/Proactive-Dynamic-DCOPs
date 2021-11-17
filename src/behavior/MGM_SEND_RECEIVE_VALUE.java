@@ -51,7 +51,7 @@ public class MGM_SEND_RECEIVE_VALUE extends OneShotBehaviour implements MESSAGE_
       agent.getAgentViewEachTimeStepMap().computeIfAbsent(sender, k-> new HashMap<>()).put(pd_dcop_time_step, valueFromThisNeighbor);
     }
     
-    agent.stopStimulatedTiming();
+    agent.stopSimulatedTiming();
   }
   
   private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {
@@ -63,7 +63,7 @@ public class MGM_SEND_RECEIVE_VALUE extends OneShotBehaviour implements MESSAGE_
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
         
-      agent.stopStimulatedTiming();
+      agent.stopSimulatedTiming();
 //      if (receivedMessage != null) {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
           

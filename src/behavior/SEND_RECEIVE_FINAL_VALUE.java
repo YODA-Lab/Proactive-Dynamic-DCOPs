@@ -64,7 +64,7 @@ public class SEND_RECEIVE_FINAL_VALUE extends OneShotBehaviour implements MESSAG
       }
     }
     
-    agent.stopStimulatedTiming();
+    agent.stopSimulatedTiming();
   }
 
   private List<ACLMessage> waitingForMessageFromNeighborsWithTime(int msgCode) {
@@ -75,7 +75,7 @@ public class SEND_RECEIVE_FINAL_VALUE extends OneShotBehaviour implements MESSAG
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
       
-      agent.stopStimulatedTiming();
+      agent.stopSimulatedTiming();
       
       long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
       

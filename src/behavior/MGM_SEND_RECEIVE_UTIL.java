@@ -46,7 +46,7 @@ public class MGM_SEND_RECEIVE_UTIL extends OneShotBehaviour implements MESSAGE_T
     
     double localSearchQuality = utilFromChildren + agent.getLocalUtilitiesForUTIL(agent.getChosenValueAtEachTSMap().get(pd_dcop_time_step), pd_dcop_time_step);
     
-    agent.stopStimulatedTiming();
+    agent.stopSimulatedTiming();
 
     if (!agent.isRoot()) {
       agent.sendObjectMessageWithTime(agent.getParentAID(), localSearchQuality, MGM_UTIL, agent.getSimulatedTime());
@@ -87,7 +87,7 @@ public class MGM_SEND_RECEIVE_UTIL extends OneShotBehaviour implements MESSAGE_T
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
         
-      agent.stopStimulatedTiming();
+      agent.stopSimulatedTiming();
 //      if (receivedMessage != null) {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
           

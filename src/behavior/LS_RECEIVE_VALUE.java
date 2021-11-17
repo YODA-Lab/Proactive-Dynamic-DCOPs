@@ -66,7 +66,7 @@ public class LS_RECEIVE_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 			}
 		}
 		
-		agent.stopStimulatedTiming();
+		agent.stopSimulatedTiming();
 		
     agent.print("is done SEND_RECEIVE_VALUE at iteration: " + localTimeStep);
 	}
@@ -80,7 +80,7 @@ public class LS_RECEIVE_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
         
-      agent.stopStimulatedTiming();
+      agent.stopSimulatedTiming();
 //      if (receivedMessage != null) {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
           
