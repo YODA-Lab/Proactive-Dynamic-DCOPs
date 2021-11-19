@@ -1,13 +1,10 @@
 package behavior;
 
-import static agent.DcopConstants.DcopAlgorithm.EC_DPOP;
-import static agent.DcopConstants.DcopAlgorithm.APPROX_DPOP;
-import static agent.DcopConstants.DcopAlgorithm.AC_DPOP;
+import static agent.DcopConstants.DcopAlgorithm;
 import static agent.DcopConstants.ADD_MORE_POINTS;
 import static agent.DcopConstants.DONE_AT_INTERNAL_NODE;
 import static agent.DcopConstants.DONE_AT_LEAF;
 import static agent.DcopConstants.NOT_ADD_POINTS;
-import static agent.DcopConstants.RANDOM_PREFIX;
 import static java.lang.Double.compare;
 import static java.lang.System.out;
 import static java.nio.file.StandardOpenOption.APPEND;
@@ -126,37 +123,40 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	private void actionContinuous() {
 	  dpopFunctionMap.putAll(agent.getFunctionWithPParentMap());
 	  
-	  // Compute expected function if has any and add the expected function to the dpopFuncionList
-	  if (agent.hasRandomFunction(currentTimeStep)) {
+	  // Expected function is stored with random variable as key
+	  // Switching cost function is stored with self variable as key
+	  
+	  // Compute expected function if any and add the expected function to the dpopFuncionList
+	  if (agent.hasRandomFunction()) {
 	    computeExpectedFunctionCurrentTimeStep(currentTimeStep);
-	    dpopFunctionMap.put(agent.getLocalName(), agent.getExpectedFunction(currentTimeStep));
+	    dpopFunctionMap.put(agent.getRandomVariable(), agent.getExpectedFunction(currentTimeStep));
 	  }
 	  
-	  // TODO: Double check if I should apply this for AC_DPOP and CAC_DPOP or not
-	  // How to move values with the additional switching cost function?
-	  
-	  // TODO: Compute switching cost table for discrete algorithms
-	  
-	  if (agent.getDcop_algorithm() == EC_DPOP) {
-      List<Table> tableListFromFunction = createDCOPTableFromFunction(dpopFunctionMap.values(), currentTimeStep);
+	  // TODO: Reviewing actions of AC_DPOP and CAC_DPOP
+	  // Make sure the expected table and the switching cost table is handled correctly
+	  if (agent.getDcop_algorithm() == DcopAlgorithm.AC_DPOP || agent.getDcop_algorithm() == DcopAlgorithm.CAC_DPOP) {
+	    // Doing this way will add random and switching cost table to the list
+	    List<Table> tableListFromFunction = createDCOPTableFromFunction(dpopFunctionMap.values(), currentTimeStep);
       dpopTableList.addAll(tableListFromFunction);
     }
 	  
-	  if (agent.getDcop_algorithm() == EC_DPOP) {
-	    if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.FORWARD) {
+	  // Add switching cost function / constraint to the appropriate map or list
+	  if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.FORWARD) {
+	    if (agent.getDcop_algorithm() == DcopAlgorithm.EC_DPOP) {
 	      addSwitchingCostFunction(currentTimeStep - 1);
 	    }
-	    else if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.BACKWARD) {
-	      addSwitchingCostFunction(currentTimeStep + 1);
-	    }
 	  }
+	  else if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.BACKWARD) {
+      if (agent.getDcop_algorithm() == DcopAlgorithm.EC_DPOP) {
+        addSwitchingCostFunction(currentTimeStep + 1);
+      }
+	  }	  
 	  
-	  
-    if (agent.isRunningDiscreteAlg()) {
+    if (agent.getDcop_algorithm() == DcopAlgorithm.DPOP) {
       doUtil_TABLE();
-    } else if (agent.getDcop_algorithm() == EC_DPOP || agent.getDcop_algorithm() == APPROX_DPOP) {
+    } else if (agent.getDcop_algorithm() == DcopAlgorithm.EC_DPOP || agent.getDcop_algorithm() == DcopAlgorithm.APPROX_DPOP) {
       doUtil_FUNC();
-    } else if (agent.isRunningHybridAlg()) {
+    } else if (agent.getDcop_algorithm() == DcopAlgorithm.AC_DPOP || agent.getDcop_algorithm() == DcopAlgorithm.CAC_DPOP) {
       doUtil_HYBRID();
     }
 	}
@@ -167,11 +167,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     }
     
     String prevValue = agent.getChosenValueAtEachTimeStep(timeStep);
-    
     PiecewiseMultivariateQuadFunction swFunc = switchingCostFunctionGivenSolution(agent.getLocalName(), prevValue, AgentPDDCOP.SWITCHING_TYPE);
-    
     dpopFunctionMap.put(agent.getLocalName(), swFunc);
-    
   }
 
   private void doUtil_TABLE() {
@@ -229,8 +226,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     agent.startSimulatedTiming();
   
     out.println("LEAF " + agent.getLocalName() + " is running");
-
-//    List<PiecewiseMultivariateQuadFunction> tempFunctionList = new ArrayList<>(dpopFunctionMap.values());
     
     PiecewiseMultivariateQuadFunction combinedFunction = new PiecewiseMultivariateQuadFunction();
 
@@ -244,11 +239,11 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
     PiecewiseMultivariateQuadFunction projectedFunction = null;
 
-    if (agent.getDcop_algorithm() == APPROX_DPOP) {
+    if (agent.getDcop_algorithm() == DcopAlgorithm.APPROX_DPOP) {
       projectedFunction = combinedFunction.approxProject(agent.getNumberOfPoints(), agent.getLocalName(),
           agent.getNumberOfApproxAgents(), agent.isApprox());
     } 
-    else if (agent.getDcop_algorithm() == EC_DPOP) {
+    else if (agent.getDcop_algorithm() == DcopAlgorithm.EC_DPOP) {
       projectedFunction = combinedFunction.analyticalProject();
     }
 
@@ -405,10 +400,10 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     out.println("Agent " + agent.getLocalName() + " Internal node number of combined function: "
         + combinedFunctionMessage.getFunctionMap().size());
 
-    if (agent.getDcop_algorithm() == APPROX_DPOP) {
+    if (agent.getDcop_algorithm() == DcopAlgorithm.APPROX_DPOP) {
       projectedFunction = combinedFunctionMessage.approxProject(agent.getNumberOfPoints(), agent.getLocalName(),
           agent.getNumberOfApproxAgents(), agent.isApprox());
-    } else if (agent.getDcop_algorithm() == EC_DPOP) {
+    } else if (agent.getDcop_algorithm() == DcopAlgorithm.EC_DPOP) {
       projectedFunction = combinedFunctionMessage.analyticalProject();
     }
 
@@ -448,10 +443,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     // Sum up all functions to create agentViewFunction
     PiecewiseMultivariateQuadFunction sumFunction = new PiecewiseMultivariateQuadFunction();
     
-//    for (String ppAgent : agent.getParentAndPseudoStrList()) {
-//      sumFunction = sumFunction.addPiecewiseFunction(dpopFunctionMap.get(ppAgent));
-//    }
-    
     for (PiecewiseMultivariateQuadFunction func : dpopFunctionMap.values()) {
       sumFunction.addPiecewiseFunction(func);
     }
@@ -477,6 +468,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     System.out.println(joinedTable);
     
     out.println("Agent " + agent.getLocalName() + " starts adding functions to the table");
+
+    // TODO: Add the switching cost function to this table
     joinedTable = addTheUtilityFunctionsToTheJoinedTable(joinedTable);
     out.println("Agent " + agent.getLocalName() + " finishes adding functions to the table size " + joinedTable.size());
 
@@ -677,7 +670,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
           PiecewiseMultivariateQuadFunction functionWithPP = dpopFunctionMap.get(ppAgentToMove);
           
-          PiecewiseMultivariateQuadFunction derivativePw = agent.getDcop_algorithm() == AC_DPOP
+          PiecewiseMultivariateQuadFunction derivativePw = agent.getDcop_algorithm() == DcopAlgorithm.AC_DPOP
               ? functionWithPP.takeFirstPartialDerivative(ppAgentToMove)
               : agent.getAgentViewFunction().takeFirstPartialDerivative(ppAgentToMove);
           //          PiecewiseMultivariateQuadFunction derivativePw = agent.getAgentViewFunction().takeFirstPartialDerivative(ppAgentToMove);          
@@ -837,14 +830,15 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
    * THIS FUNCTION HAS TO BE CALLED AFTER THE PSEUDOTREE_GENERATION behavior has been executed
    */
   private void computeExpectedFunctionCurrentTimeStep(int timeStep) {
-    for (Entry<String, PiecewiseMultivariateQuadFunction> entry : agent.getNeighborFunctionMap().entrySet()) {
-      if (entry.getKey().contains(RANDOM_PREFIX)) {
-        Map<String, Double> randomValueMap = new HashMap<>();
-        double distributionMean = agent.getMeanAtEveryTimeStep().get(timeStep);
-        randomValueMap.put(entry.getKey(), distributionMean);
+    String randomVariable = agent.getRandomVariable(); 
+    if (randomVariable != null) {
+      PiecewiseMultivariateQuadFunction randomFunction = agent.getNeighborFunctionMap().get(randomVariable);
+      
+      Map<String, Double> randomValueMap = new HashMap<>();
+      double distributionMean = agent.getMeanAtEveryTimeStep().get(timeStep);
+      randomValueMap.put(randomVariable, distributionMean);
 
-        agent.getExpectedFunctionMap().put(timeStep, entry.getValue().evaluateToUnaryFunction(randomValueMap));
-      }
+      agent.getExpectedFunctionMap().put(timeStep, randomFunction.evaluateToUnaryFunction(randomValueMap));
     }
   }    
 	
@@ -1730,6 +1724,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
         }
       }
       // Doesn't contain the pParent
+      // Then extend a new column to the end of the label and each row
       else {
         Table newTable = new Table(joinedTable.getDecVarLabel());
         newTable.extendToTheEndOfLabel(pParent);

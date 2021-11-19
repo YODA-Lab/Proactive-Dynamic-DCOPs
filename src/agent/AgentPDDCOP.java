@@ -3473,14 +3473,18 @@ public class AgentPDDCOP extends Agent {
     return expectedFunctionMap;
   }
   
-  public boolean hasRandomFunction(int timeStep) {
+  public String getRandomVariable() {
     for (Entry<String, PiecewiseMultivariateQuadFunction> entry : neighborFunctionMap.entrySet()) {
       if (entry.getKey().contains(RANDOM_PREFIX)) {
-        return true;
+        return entry.getKey();
       }
     }
     
-    return false;
+    return null;
+  }
+  
+  public boolean hasRandomFunction() {
+    return getRandomVariable() != null;
   }
   
   public PiecewiseMultivariateQuadFunction getExpectedFunction(int timeStep) {
