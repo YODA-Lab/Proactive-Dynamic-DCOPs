@@ -51,8 +51,10 @@ import function.Interval;
 import function.multivariate.MultivariateQuadFunction;
 import function.multivariate.PiecewiseMultivariateQuadFunction;
 import agent.DcopConstants.DynamicType;
-import table.Row;
-import table.Table;
+import table.RowDouble;
+import table.RowString;
+import table.TableDouble;
+import table.TableString;
 import weka.clusterers.SimpleKMeans;
 import weka.core.Attribute;
 import weka.core.Instance;
@@ -101,7 +103,9 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 	private final int currentTimeStep;
 
-	private List<Table> dpopTableList = new ArrayList<>();
+	private List<TableString> dpopTableStringList = new ArrayList<>();
+	
+	private List<TableDouble> dpopTableDoubleList = new ArrayList<>();
 	
 	private Map<String, PiecewiseMultivariateQuadFunction> dpopFunctionMap = new HashMap<>();
 
@@ -147,8 +151,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	  // Convert function to table for DPOP
     if (agent.getDcop_algorithm() == DcopAlgorithm.DPOP) {
       // Doing this way will add random and switching cost table to the list
-      List<Table> tableListFromFunction = createDCOPTableFromFunction(dpopFunctionMap.values(), currentTimeStep);
-      dpopTableList.addAll(tableListFromFunction);
+      List<TableDouble> tableListFromFunction = createDCOPTableFromFunction(dpopFunctionMap.values(), currentTimeStep);
+      dpopTableDoubleList.addAll(tableListFromFunction);
     }
 	  
     if (agent.getDcop_algorithm() == DcopAlgorithm.DPOP) {
@@ -202,17 +206,17 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     
     out.println("LEAF " + agent.getLocalName() + " is running");
     // get the first table
-    Table combinedTable = dpopTableList.get(0);
+    TableDouble combinedTable = dpopTableDoubleList.get(0);
     // combinedTable.printDecVar();
     // joining other tables with table 0
-    int currentTableListDPOPsize = dpopTableList.size();
+    int currentTableListDPOPsize = dpopTableDoubleList.size();
     for (int index = 1; index < currentTableListDPOPsize; index++) {
-      Table pseudoParentTable = dpopTableList.get(index);
-      combinedTable = joinTable(combinedTable, pseudoParentTable);
+      TableDouble pseudoParentTable = dpopTableDoubleList.get(index);
+      combinedTable = joinTableDouble(combinedTable, pseudoParentTable);
     }
 
-    agent.setAgentViewTable(combinedTable);
-    Table projectedTable = projectOperator(combinedTable, agent.getLocalName());
+    agent.setAgentViewTableDouble(combinedTable);
+    TableDouble projectedTable = projectOperatorDouble(combinedTable, agent.getLocalName());
 
     agent.stopSimulatedTiming();
 
@@ -281,7 +285,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     /*
      * Move the values of parent and pseudo-parents
      */
-    Set<List<String>> productPPValues = movingPointsUsingTheGradient(null, DONE_AT_LEAF);
+    Set<List<Double>> productPPValues = movingPointsUsingTheGradient(null, DONE_AT_LEAF);
     
    /*
     * After moving, find the max utility from all functions with parent and pseudo-parents
@@ -293,14 +297,14 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     */
     List<String> label = agent.getParentAndPseudoStrList();
     
-    Table utilTable = new Table(label);
+    TableDouble utilTable = new TableDouble(label);
     
-    for (List<String> valueList : productPPValues) {
-      Map<String, String> valueMapOfOtherVariables = new HashMap<>();
+    for (List<Double> valueList : productPPValues) {
+      Map<String, Double> valueMapOfOtherVariables = new HashMap<>();
 
       for (int parentIndex = 0; parentIndex < agent.getParentAndPseudoStrList().size(); parentIndex++) {
         String pAgent = label.get(parentIndex);
-        String pValue = valueList.get(parentIndex);
+        double pValue = valueList.get(parentIndex);
 
         valueMapOfOtherVariables.put(pAgent, pValue);
       }
@@ -318,7 +322,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
         }
       }
       
-      utilTable.addRow(new Row(valueList, max));
+      utilTable.addRow(new RowDouble(valueList, max));
     }
     
     agent.stopSimulatedTiming();
@@ -336,21 +340,21 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     agent.startSimulatedTiming();
     
     // After combined, it becomes a unary function
-    Table combinedUtilAndConstraintTable = combineMessage(receivedUTILmsgList);
+    TableDouble combinedUtilAndConstraintTable = combineMessageTableDouble(receivedUTILmsgList);
     
     System.out.println("Agent " + agent.getLocalName() + " is joining tables");
 
-    for (Table pseudoParentTable : dpopTableList) {
-      combinedUtilAndConstraintTable = joinTable(combinedUtilAndConstraintTable, pseudoParentTable);
+    for (TableDouble pseudoParentTable : dpopTableDoubleList) {
+      combinedUtilAndConstraintTable = joinTableDouble(combinedUtilAndConstraintTable, pseudoParentTable);
     }
     
     System.out.println("Agent " + agent.getLocalName() + " finishes joining tables");
 
-    agent.setAgentViewTable(combinedUtilAndConstraintTable);
+    agent.setAgentViewTableDouble(combinedUtilAndConstraintTable);
     
     System.out.println("Agent " + agent.getLocalName() + " is projecting table");
 
-    Table projectedTable = projectOperator(combinedUtilAndConstraintTable, agent.getLocalName());
+    TableDouble projectedTable = projectOperatorDouble(combinedUtilAndConstraintTable, agent.getLocalName());
     
     System.out.println("Agent " + agent.getLocalName() + " finishes projecting table");
 
@@ -452,16 +456,16 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     
     agent.startSimulatedTiming();
     
-    List<Table> tableList = createTableList(receivedUTILmsgList);
+    List<TableDouble> tableList = createTableList(receivedUTILmsgList);
     
     System.out.println("Agent " + agent.getLocalName() + " receives the UTIL tables:");
-    for (Table table : tableList) {
+    for (TableDouble table : tableList) {
       System.out.println(table);
     }
     
     // Interpolate points and join all the tables
     out.println("Agent " + agent.getLocalName() + " starts interpolating and joining table");
-    Table joinedTable = interpolateAndJoinTable(tableList, NOT_ADD_POINTS);
+    TableDouble joinedTable = interpolateAndJoinTable(tableList, NOT_ADD_POINTS);
     out.println("Agent " + agent.getLocalName() + " finishes interpolating and joining table size " + joinedTable.size());
     System.out.println("Agent " + agent.getLocalName() + " joined the table:");
     System.out.println(joinedTable);
@@ -471,17 +475,18 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     joinedTable = addTheUtilityFunctionsToTheJoinedTable(joinedTable);
     out.println("Agent " + agent.getLocalName() + " finishes adding functions to the table size " + joinedTable.size());
 
-    agent.setAgentViewTable(joinedTable);
+    agent.setAgentViewTableDouble(joinedTable);
     
     out.println("Agent: " + agent.getLocalName() + " has agentViewTable label: " + agent.getAgentViewTable().getDecVarLabel());
 
     out.println("Agent " + agent.getLocalName() + " starts moving points with joinedTable size: " + joinedTable.size());
-    Set<List<String>> productPPValues = movingPointsUsingTheGradient(joinedTable, DONE_AT_INTERNAL_NODE);
+
+    Set<List<Double>> productPPValues = movingPointsUsingTheGradient(joinedTable, DONE_AT_INTERNAL_NODE);
     out.println("Agent " + agent.getLocalName() + " finishes moving points " + productPPValues.size());
         
     out.println("Agent " + agent.getLocalName() + " starts create UTIL tables from values set");
 
-    Table utilTable = createUtilTableFromValueSet(joinedTable, productPPValues);
+    TableDouble utilTable = createUtilTableFromValueSet(joinedTable, productPPValues);
     out.println("Agent " + agent.getLocalName() + " finishes create UTIL tables from values set");
 
     System.out.println("Agent " + agent.getLocalName() + " send utilTable size " + utilTable.size() + " to agent " + agent.getParentAID().getLocalName());
@@ -551,10 +556,10 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     // Start of processing time
     agent.startSimulatedTiming();
 
-    Table combinedUtilAndConstraintTable = combineMessage(receivedUTILmsgList);
+    TableDouble combinedUtilAndConstraintTable = combineMessageTableDouble(receivedUTILmsgList);
     // combinedUtilAndConstraintTable.printDecVar();
-    for (Table pseudoParentTable : dpopTableList) {
-      combinedUtilAndConstraintTable = joinTable(combinedUtilAndConstraintTable, pseudoParentTable);
+    for (TableDouble pseudoParentTable : dpopTableDoubleList) {
+      combinedUtilAndConstraintTable = joinTableDouble(combinedUtilAndConstraintTable, pseudoParentTable);
     }
 
     out.println("Root is finding max and argmax");
@@ -566,10 +571,10 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     // System.err.println("Timestep " + agent.getCurrentTS() + " Combined
     // messages at root:");
     // combinedUtilAndConstraintTable.printDecVar();
-    for (Row row : combinedUtilAndConstraintTable.getRowList()) {
+    for (RowDouble row : combinedUtilAndConstraintTable.getRowList()) {
       if (row.getUtility() > maxUtility) {
         maxUtility = row.getUtility();
-        agent.setValueAtTimeStep(currentTimeStep, row.getValueAtPosition(0));
+        agent.setChosenDoubleValueAtEachTimeStep(currentTimeStep, row.getValueAtPosition(0));
       }
     }
 
@@ -593,10 +598,10 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     // Start of processing time
     agent.startSimulatedTiming();
     
-    List<Table> tableList = createTableList(receivedUTILmsgList);
+    List<TableDouble> tableList = createTableList(receivedUTILmsgList);
     
     // Interpolate points and join all the tables
-    Table joinedTable = interpolateAndJoinTable(tableList, ADD_MORE_POINTS);
+    TableDouble joinedTable = interpolateAndJoinTable(tableList, ADD_MORE_POINTS);
     
     // Might need to add expected table and unary constraint table
     joinedTable = addTheUtilityFunctionsToTheJoinedTable(joinedTable);
@@ -604,11 +609,11 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     double maxUtility = -Double.MAX_VALUE;
     
     // Find the maxUtility and argmax from the joinedTable
-    for (Row row : joinedTable.getRowList()) {
+    for (RowDouble row : joinedTable.getRowList()) {
       if (compare(row.getUtility(), maxUtility) > 0) {
         // only choose the row with value in the interval
         maxUtility = row.getUtility();
-        agent.setChosenValueAtEachTimeStep(currentTimeStep, row.getValueList().get(0));
+        agent.setChosenDoubleValueAtEachTimeStep(currentTimeStep, row.getValueList().get(0));
       }
     }
 
@@ -627,27 +632,27 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
    * @param joinedTable this table is used in internal nodes. At leaf, it is null.
    * @param flag FUNCTION_ONLY or FUNCTION_AND_TABLE
    */
-  private Set<List<String>> movingPointsUsingTheGradient(Table joinedTable, int flag) {
-    Set<List<String>> immutableProductPPValues;
+  private Set<List<Double>> movingPointsUsingTheGradient(TableDouble joinedTable, int flag) {
+    Set<List<Double>> immutableProductPPValues;
     // Create a set of PP's value list
     // Create a list of valueSet with the same ordering of PP
     // Then do the Cartesian product to get the set of valueList (same ordering as PP)
-    List<Set<String>> valueSetList = new ArrayList<Set<String>>();
+    List<Set<Double>> valueSetList = new ArrayList<Set<Double>>();
     for (String pParent : agent.getParentAndPseudoStrList()) {
       if (flag == DONE_AT_LEAF) {
         valueSetList.add(agent.getCurrentDiscreteValues(currentTimeStep));
       } // The joined table might contain the PP or not
       else if (flag == DONE_AT_INTERNAL_NODE) {
-        Set<String> valueSetOfPParentToAdd = joinedTable.getValueSetOfGivenAgent(pParent, false);
+        Set<Double> valueSetOfPParentToAdd = joinedTable.getValueSetOfGivenAgent(pParent, false);
         valueSetList.add(valueSetOfPParentToAdd);
       }
     }
     immutableProductPPValues = Sets.cartesianProduct(valueSetList);
     
     // Make the productPPValues to be mutable
-    Set<List<String>> mutableProductPPValues = new HashSet<>();
-    for (List<String> innerList : immutableProductPPValues) {
-      List<String> newList = new ArrayList<>(innerList);
+    Set<List<Double>> mutableProductPPValues = new HashSet<>();
+    for (List<Double> innerList : immutableProductPPValues) {
+      List<Double> newList = new ArrayList<>(innerList);
       mutableProductPPValues.add(newList);
     }
     
@@ -659,7 +664,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
         System.out.println("Agent " + agent.getLocalName() + " is moving iteration " + movingIteration);
       }
       
-      for (List<String> valueList : mutableProductPPValues) {
+      for (List<Double> valueList : mutableProductPPValues) {
         if (agent.isPrinting()) {
           System.out.println("Agent " + agent.getLocalName() + " is moving point " + valueList);
         }
@@ -667,7 +672,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
         // For each ppToMove (direction), take the derivative of the utility function
         for (int ppToMoveIndex = 0; ppToMoveIndex < valueList.size(); ppToMoveIndex++) {
           String ppAgentToMove = agent.getParentAndPseudoStrList().get(ppToMoveIndex);
-          String ppValueToMove = valueList.get(ppToMoveIndex);
+          double ppValueToMove = valueList.get(ppToMoveIndex);
 
           PiecewiseMultivariateQuadFunction functionWithPP = dpopFunctionMap.get(ppAgentToMove);
           
@@ -677,21 +682,20 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
           //          PiecewiseMultivariateQuadFunction derivativePw = agent.getAgentViewFunction().takeFirstPartialDerivative(ppAgentToMove);          
           
           // Create a map of other agents' values
-          Map<String, String> valueMapOfOtherVariables = new HashMap<>();
+          Map<String, Double> valueMapOfOtherVariables = new HashMap<>();
           if (flag == DONE_AT_LEAF) {
             valueMapOfOtherVariables.put(ppAgentToMove, ppValueToMove);
-          } 
-          else if (flag == DONE_AT_INTERNAL_NODE) {
+          } else if (flag == DONE_AT_INTERNAL_NODE) {
             for (int ppIndex = 0; ppIndex < agent.getParentAndPseudoStrList().size(); ppIndex++) {
               String ppAgent = agent.getParentAndPseudoStrList().get(ppIndex);
-              String ppValue = valueList.get(ppIndex);
+              double ppValue = valueList.get(ppIndex);
               
               valueMapOfOtherVariables.put(ppAgent, ppValue);
             }
           }
           
           double argMax = -Double.MAX_VALUE;
-
+          // Finding the arg_max of multivariate agent view function seems wrong
           if (flag == DONE_AT_LEAF) {
 //            PiecewiseMultivariateQuadFunction unaryFunction = agent.getAgentViewFunction().evaluateToUnaryFunction(valueMapOfOtherVariables);
             PiecewiseMultivariateQuadFunction unaryFunction = functionWithPP.evaluateToUnaryFunction(valueMapOfOtherVariables);
@@ -712,23 +716,22 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
               System.out.println("Max of the function: " + max);
               System.out.println("Argmax of the function: " + argMax);
             }
-          }
-          else if (flag == DONE_AT_INTERNAL_NODE) {            
-            argMax = agent.getAgentViewTable().maxArgmaxHybrid(valueMapOfOtherVariables, agent.getSelfInterval().getMidPointInHalfIntegerRanges())[1];
+            
+          } else if (flag == DONE_AT_INTERNAL_NODE){            
+            argMax = agent.getAgentViewTableDouble().maxArgmaxHybrid(valueMapOfOtherVariables, agent.getSelfInterval().getMidPointInHalfIntegerRanges())[1];
             
             if (agent.isPrinting()) {
               System.out.println("Argmax of the table: " + argMax);
             }
           }
           
-          Map<String, String> valueMap = new HashMap<>();
-          valueMap.put(agent.getLocalName(), String.valueOf(argMax));
+          Map<String, Double> valueMap = new HashMap<>();
+          valueMap.put(agent.getLocalName(), argMax);
           valueMap.put(ppAgentToMove, ppValueToMove);
 
           double gradient = derivativePw.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap);
           
-          double movedPpValue = Double.valueOf(ppValueToMove) + GRADIENT_SCALING_FACTOR * gradient;
-          String movedPpValueStr = String.valueOf(movedPpValue);
+          double movedPpValue = ppValueToMove + GRADIENT_SCALING_FACTOR * gradient;
           
           if (agent.isPrinting()) {
             System.out.println("Agent to move:" + ppAgentToMove);
@@ -736,12 +739,12 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
             System.out.println("Derivative is: " + derivativePw);
             System.out.println("ppValueToMove " + ppValueToMove);
             System.out.println("Argmax value is: " + argMax);
-            System.out.println("Moved value is: " + movedPpValueStr);
+            System.out.println("Moved value is: " + movedPpValue);
           }
           
           // only move if the new point is within the interval
-          if (agent.getSelfDomain().contains(movedPpValueStr)) {         
-            valueList.set(ppToMoveIndex, movedPpValueStr);
+          if (agent.getSelfInterval().contains(movedPpValue)) {         
+            valueList.set(ppToMoveIndex, movedPpValue);
           }
         }
       }
@@ -780,47 +783,29 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
   /**
    * Create the DCOP tables from agent.getCurrentDiscreteValues(currentTimeStep);
    */
-  public List<Table> createDCOPTableFromFunction(Collection<PiecewiseMultivariateQuadFunction> functionList, int timeStep) {
-    List<Table> tableListWithParents = new ArrayList<>();
+  public List<TableDouble> createDCOPTableFromFunction(Collection<PiecewiseMultivariateQuadFunction> functionList, int timeStep) {
+    List<TableDouble> tableListWithParents = new ArrayList<>();
     for (PiecewiseMultivariateQuadFunction pwFunction : functionList) {
       MultivariateQuadFunction func = pwFunction.getTheFirstFunction(); // there is only one function in pw at this time
 
       List<String> varListLabel = func.getVariableSet().stream().collect(Collectors.toList());
-      Table tableFromFunc = new Table(varListLabel);
+      TableDouble tableFromFunc = new TableDouble(varListLabel);
 
-      List<List<String>> valueSetList = new ArrayList<List<String>>();
+      List<List<Double>> valueSetList = new ArrayList<>();
       for (int i = 0; i < varListLabel.size(); i++) {
         valueSetList.add(new ArrayList<>(agent.getCurrentDiscreteValues(timeStep)));
       }
       
-      for (List<String> values : Lists.cartesianProduct(valueSetList)) {
-        Map<String, String> valueMap = new HashMap<>();
+      for (List<Double> values : Lists.cartesianProduct(valueSetList)) {
+        Map<String, Double> valueMap = new HashMap<>();
         for (int i = 0; i < varListLabel.size(); i++) {
           valueMap.put(varListLabel.get(i), values.get(i));
         }
         
-        Row newRow = new Row(new ArrayList<>(values), func.evaluateToValueGivenValueMap(valueMap));
+        RowDouble newRow = new RowDouble(new ArrayList<>(values), func.evaluateToValueGivenValueMap(valueMap));
         tableFromFunc.addRow(newRow);
       }
       tableListWithParents.add(tableFromFunc);
-//      for (String valueOne : agent.getCurrentDiscreteValues(timeStep)) {
-//        Map<String, String> valueMap = new HashMap<>();
-//        List<String> rowValueList = new ArrayList<>();
-//        rowValueList.add(valueOne);
-//        valueMap.put(variableOne, valueOne);
-//        
-//        for (String valueTwo : agent.getCurrentDiscreteValues(timeStep)) {
-//          rowValueList.add(valueTwo);
-//          valueMap.put(variableTwo, valueTwo);
-//          Row newRow = new Row(new ArrayList<>(rowValueList), func.evaluateToValueGivenValueMap(valueMap));
-//          tableFromFunc.addRow(newRow);
-//          rowValueList.remove(1);
-//          valueMap.remove(variableTwo);
-//        }
-//        rowValueList.clear();
-//        valueMap.clear();
-//      }
-//      tableListWithParents.add(tableFromFunc);
     }
     
     return tableListWithParents;
@@ -846,11 +831,11 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	
 	private void actionDiscrete() {
     if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.BOUND_DPOP)) {
-      dpopTableList.addAll(agent.getDpopDecisionTableList());
-      dpopTableList.addAll(agent.getDpopBoundRandomTableList());
+      dpopTableStringList.addAll(agent.getDpopDecisionTableList());
+      dpopTableStringList.addAll(agent.getDpopBoundRandomTableList());
     } 
     else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.LS_SDPOP) && isFirstTimeUTIL()) {
-      Table joinedDecisionTable = joinTableList(agent.getDpopDecisionTableList());
+      TableString joinedDecisionTable = joinTableListString(agent.getDpopDecisionTableList());
 
       agent.setStoredReuseTable(joinedDecisionTable);
     } 
@@ -865,7 +850,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
             .addAll(agent.computeActualDpopTableGivenRandomValues(currentTimeStep));
         agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
         
-        dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
+        dpopTableStringList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
       }
       else if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.R_LEARNING)) {
         // DPOP_UTIL will be called twice
@@ -882,21 +867,21 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
             .addAll(agent.computeActualDpopTableGivenRandomValues(currentTimeStep));
           agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList()); 
           
-          dpopTableList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
+          dpopTableStringList.addAll(agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep));
           // Add unary constraint table with the switching cost to the dpopTableList
           if (currentTimeStep > 0) {
-            Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(),
+            TableString switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(),
                 agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
                 agent.getChosenValueAtEachTimeStep(currentTimeStep - 1));
-            dpopTableList.add(switchingCostToPreviousSolution);
+            dpopTableStringList.add(switchingCostToPreviousSolution);
           }
         }
         // Applying R learning
         else {
           // Apply R learning with R values
           // The actual DPOP table has been added above
-          dpopTableList.addAll(agent.computeRLearningDpopTableGivenRandomValues(currentTimeStep));
-          dpopTableList.addAll(agent.getDpopDecisionTableList());
+          dpopTableStringList.addAll(agent.computeRLearningDpopTableGivenRandomValues(currentTimeStep));
+          dpopTableStringList.addAll(agent.getDpopDecisionTableList());
           // No need to add unary constraint since R-learning has taken into account the previous decision variable in its domain
         }
       }
@@ -907,23 +892,23 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
         agent.getActualDpopTableAcrossTimeStep().get(currentTimeStep).addAll(agent.getDpopDecisionTableList());
 
         double df = agent.getDiscountFactor();
-        dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(),
+        dpopTableStringList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(),
             currentTimeStep, df));
-        dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
+        dpopTableStringList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
             currentTimeStep, df));
 
         if (currentTimeStep > 0) {
-          Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(),
+          TableString switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(),
               agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
               agent.getChosenValueAtEachTimeStep(currentTimeStep - 1));
-          dpopTableList.add(switchingCostToPreviousSolution);
+          dpopTableStringList.add(switchingCostToPreviousSolution);
         }
       }
     } else {
       // For all other algorithms
       // Compute decision, random and switching cost tables
       // Add all of them to the dpopTableList
-      dpopTableList.addAll(computeDiscountedDpopAndSwitchingCostTables(agent.getDynamicType(),
+      dpopTableStringList.addAll(computeDiscountedDpopAndSwitchingCostTables(agent.getDynamicType(),
           agent.getPDDCOP_Algorithm(), currentTimeStep));
     }
 
@@ -957,7 +942,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	private void leafDoUtilProcess() {
 		agent.startSimulatedTiming();
 
-		Table combinedTable = null;
+		TableString combinedTable = null;
 		// Leafs behave the same even when in all DPOP runs
 		if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.LS_SDPOP)) {
 			if (!agent.isRecomputingDPOP_UTIL()) {
@@ -967,8 +952,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 			combinedTable = agent.computeDiscountedDecisionTable(agent.getStoredReuseTable(), currentTimeStep,
 					agent.getDiscountFactor());
 
-			combinedTable = joinTable(combinedTable,
-					joinTableList(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
+			combinedTable = joinTableString(combinedTable,
+					joinTableListString(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
 							currentTimeStep, agent.getDiscountFactor())));
 
 			// If not a rand table, no need to compute in later DPOP rounds
@@ -976,11 +961,11 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 				agent.setRecomputingDPOP_UTILToFalse();
 			}
 		} else {
-			combinedTable = joinTable(combinedTable, joinTableList(dpopTableList));
+			combinedTable = joinTableString(combinedTable, joinTableListString(dpopTableStringList));
 		}
 		agent.setAgentViewTable(combinedTable);
 
-		Table projectedTable = projectOperator(combinedTable, agent.getLocalName());
+		TableString projectedTable = projectOperatorString(combinedTable, agent.getLocalName());
 
 		agent.stopSimulatedTiming();
 
@@ -993,7 +978,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	 * @throws UnreadableException
 	 */
 	private void internalNodeDoUtilProcess() throws UnreadableException {
-		Table combinedTable = computeCombinedTableAtNonLeave();
+		TableString combinedTable = computeCombinedTableAtNonLeave();
 
 		// It means agents are not recomputing tables
 		if (combinedTable == null) {
@@ -1002,7 +987,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 		agent.setAgentViewTable(combinedTable);
 
-		Table projectedTable = projectOperator(combinedTable, agent.getLocalName());
+		TableString projectedTable = projectOperatorString(combinedTable, agent.getLocalName());
 
 		agent.stopSimulatedTiming();
 
@@ -1015,19 +1000,19 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	 * @return
 	 * @throws UnreadableException
 	 */
-	private Table computeCombinedTableAtNonLeave() throws UnreadableException {
-		Table combinedTable = null;
+	private TableString computeCombinedTableAtNonLeave() throws UnreadableException {
+		TableString combinedTable = null;
 
 		if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.LS_SDPOP) && isFirstTimeUTIL()) {
 			combinedTable = agent.getStoredReuseTable();
 
 			List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
 			// Separate children into children with decision and children with random
-			List<Table> decisionUtil = new ArrayList<>();
-			List<Table> randomUtil = new ArrayList<>();
+			List<TableString> decisionUtil = new ArrayList<>();
+			List<TableString> randomUtil = new ArrayList<>();
 			// Separate decision UTIL and random UTIL
 			for (ACLMessage msg : receivedUTILmsgList) {
-				Table utilTable = (Table) msg.getContentObject();
+				TableString utilTable = (TableString) msg.getContentObject();
 
 				if (utilTable.isRandTable()) {
 					randomUtil.add(utilTable);
@@ -1040,7 +1025,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 //      for (Table decisionTable : decisionUtil) {
 //        combinedTable = joinTable(combinedTable, decisionTable);
 //      }
-			combinedTable = joinTable(combinedTable, joinTableList(decisionUtil));
+			combinedTable = joinTableString(combinedTable, joinTableListString(decisionUtil));
 
 			agent.setStoredReuseTable(combinedTable);
 
@@ -1048,15 +1033,15 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 //      for (Table randomTable : randomUtil) {
 //        combinedTable = joinTable(combinedTable, randomTable);
 //      }
-			combinedTable = joinTable(combinedTable, joinTableList(randomUtil));
+			combinedTable = joinTableString(combinedTable, joinTableListString(randomUtil));
 
 			// Combine with local random constraint
 //      for (Table randomConstraint : agent.getDpopRandomTableList()) {
 //        combinedTable = joinTable(combinedTable,
 //            agent.computeDiscountedExpectedTable(randomConstraint, currentTimeStep, agent.getDiscountFactor()));
 //      }
-			combinedTable = joinTable(combinedTable,
-					joinTableList(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
+			combinedTable = joinTableString(combinedTable,
+					joinTableListString(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
 							currentTimeStep, agent.getDiscountFactor())));
 
 			if (!combinedTable.isRandTable()) {
@@ -1075,13 +1060,13 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 			combinedTable = agent.computeDiscountedDecisionTable(agent.getStoredReuseTable(), currentTimeStep,
 					agent.getDiscountFactor());
 			// Join with discounted random local constraints
-			for (Table localRandomConstraints : agent.getDpopRandomTableList()) {
-				Table expectedTable = agent.computeDiscountedExpectedTable(localRandomConstraints, currentTimeStep,
+			for (TableString localRandomConstraints : agent.getDpopRandomTableList()) {
+				TableString expectedTable = agent.computeDiscountedExpectedTable(localRandomConstraints, currentTimeStep,
 						agent.getDiscountFactor());
-				combinedTable = joinTable(combinedTable, expectedTable);
+				combinedTable = joinTableString(combinedTable, expectedTable);
 			}
 			// Join with UTIL which contains only random UTIL
-			combinedTable = joinTable(combinedTable, combineMessage(randomUtilMessages));
+			combinedTable = joinTableString(combinedTable, combineMessageTableString(randomUtilMessages));
 		}
 		// Not LS_SDPOP
 		else {
@@ -1089,10 +1074,10 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 			agent.startSimulatedTiming();
 
-			combinedTable = combineMessage(receivedUTILmsgList);
+			combinedTable = combineMessageTableString(receivedUTILmsgList);
 
-			for (Table pseudoParentTable : dpopTableList) {
-				combinedTable = joinTable(combinedTable, pseudoParentTable);
+			for (TableString pseudoParentTable : dpopTableStringList) {
+				combinedTable = joinTableString(combinedTable, pseudoParentTable);
 			}
 		}
 
@@ -1105,7 +1090,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	 * @throws UnreadableException
 	 */
 	private void rootDoUtilProcess() throws UnreadableException {
-		Table combinedTable = computeCombinedTableAtNonLeave();
+		TableString combinedTable = computeCombinedTableAtNonLeave();
 
 		// pick value with smallest utility
 		// since agent 0 is always at the beginning of the row formatted: agent0,
@@ -1116,7 +1101,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 		agent.print("Root has combinedTable=" + combinedTable);
 
-		for (Row row : combinedTable.getRowList()) {
+		for (RowString row : combinedTable.getRowList()) {
 			if (Double.compare(row.getUtility(), maxUtility) > 0) {
 				maxUtility = row.getUtility();
 				chosenValue = row.getValueAtPosition(0);
@@ -1152,57 +1137,57 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	 * @param timeStep
 	 * @return
 	 */
-	private List<Table> computeDiscountedDpopAndSwitchingCostTables(DynamicType dynamicType, PDDcopAlgorithm algorithm,
+	private List<TableString> computeDiscountedDpopAndSwitchingCostTables(DynamicType dynamicType, PDDcopAlgorithm algorithm,
 			int timeStep) {
-		List<Table> resultTableList = new ArrayList<>();
+		List<TableString> resultTableList = new ArrayList<>();
 
 		if (dynamicType == DynamicType.INFINITE_HORIZON) {
 			// When currentTimeStep == agent.getHorizon(), solve for the last time step
 			if (currentTimeStep == agent.getHorizon()) {
-				dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(),
+				dpopTableStringList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(),
 						agent.getHorizon(), 1D));
-				dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
+				dpopTableStringList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
 						agent.getHorizon(), 1D));
 			} else {
 				// Compute the switching cost constraint
 				// Collapse DCOPs from t = 0 to t = horizon - 1
 				if (algorithm == PDDcopAlgorithm.C_DCOP) {
-					dpopTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(),
+				  dpopTableStringList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(),
 							agent.getHorizon() - 1, 1D));
-					dpopTableList.addAll(agent.computeCollapsedRandomTableList(agent.getDpopRandomTableList(),
+				  dpopTableStringList.addAll(agent.computeCollapsedRandomTableList(agent.getDpopRandomTableList(),
 							agent.getHorizon() - 1, 1D));
-					dpopTableList.add(agent.computeCollapsedSwitchingCostTable(agent.getSelfDomain(),
+				  dpopTableStringList.add(agent.computeCollapsedSwitchingCostTable(agent.getSelfDomain(),
 							agent.getHorizon() - 1, 1D));
 				} else if (algorithm == PDDcopAlgorithm.FORWARD) {
-					dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(),
+				  dpopTableStringList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(),
 							currentTimeStep, 1D));
-					dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
+				  dpopTableStringList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
 							currentTimeStep, 1D));
 					if (currentTimeStep > 0) {
-						Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(),
+						TableString switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(),
 								agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
 								agent.getChosenValueAtEachTimeStep(currentTimeStep - 1));
-						dpopTableList.add(switchingCostToPreviousSolution);
+						dpopTableStringList.add(switchingCostToPreviousSolution);
 					}
 					// Also add switching cost table to the stationary solution found at horizon
 					if (currentTimeStep == agent.getHorizon() - 1) {
-						Table switchingCostToLastSolution = switchingCostGivenSolution(agent.getAgentID(),
+						TableString switchingCostToLastSolution = switchingCostGivenSolution(agent.getAgentID(),
 								agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
 								agent.getChosenValueAtEachTimeStep(agent.getHorizon()));
-						dpopTableList.add(switchingCostToLastSolution);
+						dpopTableStringList.add(switchingCostToLastSolution);
 					}
 				} else if (algorithm == PDDcopAlgorithm.BACKWARD) {
-					dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(),
+				  dpopTableStringList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(),
 							currentTimeStep, 1D));
-					dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
+				  dpopTableStringList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
 							currentTimeStep, 1D));
 					// If not at the horizon, add switching cost regarding the solution at timeStep
 					// + 1
 					if (currentTimeStep < agent.getHorizon()) {
-						Table switchingCostToLaterSolution = switchingCostGivenSolution(agent.getAgentID(),
+						TableString switchingCostToLaterSolution = switchingCostGivenSolution(agent.getAgentID(),
 								agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
 								agent.getChosenValueAtEachTimeStep(currentTimeStep + 1));
-						dpopTableList.add(switchingCostToLaterSolution);
+						dpopTableStringList.add(switchingCostToLaterSolution);
 					}
 				}
 			}
@@ -1210,26 +1195,26 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 			double df = agent.getDiscountFactor();
 
 			if (algorithm == PDDcopAlgorithm.C_DCOP) {
-				dpopTableList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(),
+			  dpopTableStringList.addAll(agent.computeCollapsedDecisionTableList(agent.getDpopDecisionTableList(),
 						agent.getHorizon(), df));
-				dpopTableList.addAll(
+			  dpopTableStringList.addAll(
 						agent.computeCollapsedRandomTableList(agent.getDpopRandomTableList(), agent.getHorizon(), df));
-				dpopTableList
+			  dpopTableStringList
 						.add(agent.computeCollapsedSwitchingCostTable(agent.getSelfDomain(), agent.getHorizon(), df));
 			} else {
-				dpopTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(),
+			  dpopTableStringList.addAll(agent.computeDiscountedDecisionTableList(agent.getDpopDecisionTableList(),
 						currentTimeStep, df));
-				dpopTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
+			  dpopTableStringList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getDpopRandomTableList(),
 						currentTimeStep, df));
 				if (algorithm == PDDcopAlgorithm.FORWARD) {
 					if (currentTimeStep > 0) {
-						dpopTableList.add(switchingCostGivenSolution(agent.getAgentID(),
+					  dpopTableStringList.add(switchingCostGivenSolution(agent.getAgentID(),
 								agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
 								agent.getChosenValueAtEachTimeStep(currentTimeStep - 1)));
 					}
 				} else if (algorithm == PDDcopAlgorithm.BACKWARD) {
 					if (currentTimeStep < agent.getHorizon()) {
-						dpopTableList.add(switchingCostGivenSolution(agent.getAgentID(),
+					  dpopTableStringList.add(switchingCostGivenSolution(agent.getAgentID(),
 								agent.getDecisionVariableDomainMap().get(agent.getAgentID()),
 								agent.getChosenValueAtEachTimeStep(currentTimeStep + 1)));
 					}
@@ -1270,7 +1255,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		return messageList;
 	}
 
-	private Table joinTable(Table table1, Table table2) {
+	private TableString joinTableString(TableString table1, TableString table2) {
 		if (table1 == null) {
 			return table2;
 		}
@@ -1295,10 +1280,10 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		List<String> joinedLabelTable1FirstThenTable2 = getJoinLabel(table1.getDecVarLabel(), table2.getDecVarLabel(),
 				indexContainedInCommonList2);
 
-		Table joinedTable = new Table(joinedLabelTable1FirstThenTable2, table1.isRandTable() || table2.isRandTable());
-		for (Row row1 : table1.getRowList()) {
-			for (Row row2 : table2.getRowList()) {
-				Row joinedRow = getJoinRow(row1, row2, indexContainedInCommonList1, indexContainedInCommonList2);
+		TableString joinedTable = new TableString(joinedLabelTable1FirstThenTable2, table1.isRandTable() || table2.isRandTable());
+		for (RowString row1 : table1.getRowList()) {
+			for (RowString row2 : table2.getRowList()) {
+				RowString joinedRow = getJoinRowString(row1, row2, indexContainedInCommonList1, indexContainedInCommonList2);
 				if (joinedRow != null) {
 					joinedTable.addRow(joinedRow);
 				}
@@ -1307,12 +1292,50 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 		return joinedTable;
 	}
+	
+	 private TableDouble joinTableDouble(TableDouble table1, TableDouble table2) {
+	    if (table1 == null) {
+	      return table2;
+	    }
+	    if (table2 == null) {
+	      return table1;
+	    }
 
-	private List<String> getCommonVariables(List<String> variableList1, List<String> variableList2) {
-		List<String> commonVariableList = new ArrayList<String>();
+	    // get commonVariables
+	    List<String> commonVariables = getCommonVariables(table1.getDecVarLabel(), table2.getDecVarLabel());
 
-		for (String variable1 : variableList1)
-			for (String variable2 : variableList2) {
+	    // create indexList1, indexList2
+	    // xet tung variable commonVariables
+	    // add index of that variable to the indexList
+	    List<Integer> indexContainedInCommonList1 = new ArrayList<Integer>();
+	    List<Integer> indexContainedInCommonList2 = new ArrayList<Integer>();
+	    for (String variable : commonVariables) {
+	      indexContainedInCommonList1.add(table1.getDecVarLabel().indexOf(variable));
+	      indexContainedInCommonList2.add(table2.getDecVarLabel().indexOf(variable));
+	    }
+	    // create returnTable
+	    // join label
+	    List<String> joinedLabelTable1FirstThenTable2 = getJoinLabel(table1.getDecVarLabel(), table2.getDecVarLabel(),
+	        indexContainedInCommonList2);
+
+	    TableDouble joinedTable = new TableDouble(joinedLabelTable1FirstThenTable2, table1.isRandTable() || table2.isRandTable());
+	    for (RowDouble row1 : table1.getRowList()) {
+	      for (RowDouble row2 : table2.getRowList()) {
+	        RowDouble joinedRow = getJoinRowDouble(row1, row2, indexContainedInCommonList1, indexContainedInCommonList2);
+	        if (joinedRow != null) {
+	          joinedTable.addRow(joinedRow);
+	        }
+	      }
+	    }
+
+	    return joinedTable;
+	  }
+
+	private <T> List<T> getCommonVariables(List<T> variableList1, List<T> variableList2) {
+		List<T> commonVariableList = new ArrayList<>();
+
+		for (T variable1 : variableList1)
+			for (T variable2 : variableList2) {
 				// check if equal agents, and if list contains agent or not
 				// if (variable1.equals(variable2) && isContainVariable(commonVariableList,
 				// variable1) == false)
@@ -1329,11 +1352,11 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	// for variable2 from label2
 	// if index not in indexContainedInCommonList2
 	// then add to joinedLabel
-	public List<String> getJoinLabel(List<String> label1, List<String> label2,
+	public <T> List<T> getJoinLabel(List<T> label1, List<T> label2,
 			List<Integer> indexContainedInCommonList2) {
 
-		List<String> joinedLabel = new ArrayList<String>();// (label1);
-		for (String variable1 : label1) {
+		List<T> joinedLabel = new ArrayList<>();// (label1);
+		for (T variable1 : label1) {
 			joinedLabel.add(variable1);
 		}
 
@@ -1345,8 +1368,37 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 		return joinedLabel;
 	}
+	
+	 public RowDouble getJoinRowDouble(RowDouble row1, RowDouble row2, List<Integer> indexList1, List<Integer> indexList2) {
+	    // check if same size
+	    if (indexList1.size() != indexList2.size()) {
+	      System.err.println("Different size from indexList: " + indexList1.size() + " " + indexList2.size());
+	      return null;
+	    }
 
-	public Row getJoinRow(Row row1, Row row2, List<Integer> indexList1, List<Integer> indexList2) {
+	    int listSize = indexList1.size();
+	    // check if same values
+	    for (int i = 0; i < listSize; i++) {
+	      if (row1.getValueList().get(indexList1.get(i))
+	          .equals(row2.getValueList().get(indexList2.get(i))) == false) {
+	        return null;
+	      }
+	    }
+
+	    // join two row
+	    List<Double> joinedValues = new ArrayList<>(row1.getValueList());// (row1.getValueList());
+
+	    for (int i = 0; i < row2.getValueList().size(); i++) {
+	      if (!indexList2.contains(i)) {
+	        joinedValues.add(row2.getValueList().get(i));
+	      }
+	    }
+
+	    RowDouble joinedRow = new RowDouble(joinedValues, row1.getUtility() + row2.getUtility());
+	    return joinedRow;
+	  }
+
+	public RowString getJoinRowString(RowString row1, RowString row2, List<Integer> indexList1, List<Integer> indexList2) {
 		// check if same size
 		if (indexList1.size() != indexList2.size()) {
 			System.err.println("Different size from indexList: " + indexList1.size() + " " + indexList2.size());
@@ -1371,9 +1423,69 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 			}
 		}
 
-		Row joinedRow = new Row(joinedValues, row1.getUtility() + row2.getUtility());
+		RowString joinedRow = new RowString(joinedValues, row1.getUtility() + row2.getUtility());
 		return joinedRow;
 	}
+	
+	 // create new TabelDPOP
+  // create new Label: eliminate variableToProject
+  // create new Table with -1 dimension
+  // create checkedList mark already picked tuples
+  // for each tuple1 from the table
+  // if index(tuple1) already in picked tuple => continue
+  // for each tuple2:tuple1->end from the table
+  // compare to the minimum , and update
+  // add to new Table
+  public TableDouble projectOperatorDouble(TableDouble table, String variableToProject) {
+    int indexEliminated = getIndexOfContainedVariable(table.getDecVarLabel(), variableToProject);
+
+    if (indexEliminated == -1) {
+      return null;
+    }
+
+    // create arrayIndex
+    List<Integer> arrayIndex = new ArrayList<Integer>();
+    for (int i = 0; i < table.getDecVarLabel().size(); i++) {
+      if (i != indexEliminated)
+        arrayIndex.add(i);
+    }
+
+    // create checkedList
+    List<Integer> checkedList = new ArrayList<Integer>();
+
+    // create projectedLabel
+    List<String> projectedLabel = createTupleFromList(table.getDecVarLabel(), arrayIndex);
+
+    // create projectedTable
+    TableDouble projectTable = new TableDouble(projectedLabel, table.isRandTable());
+    for (int i = 0; i < table.size(); i++) {
+      if (checkedList.contains(i) == true)
+        continue;
+      checkedList.add(i);
+      RowDouble row1 = table.getRowList().get(i);
+      List<Double> tuple1 = createTupleFromRowDouble(row1, arrayIndex);
+      double maxUtility = row1.getUtility();
+      List<Double> maxTuple = tuple1;
+
+      for (int j = i + 1; j < table.size(); j++) {
+        RowDouble row2 = table.getRowList().get(j);
+        List<Double> tuple2 = createTupleFromRowDouble(row2, arrayIndex);
+        double row2Utility = row2.getUtility();
+        if (isSameTupleDouble(tuple1, tuple2) == true) {
+          checkedList.add(j);
+          if (row2Utility > maxUtility) {
+            maxUtility = row2Utility;
+            maxTuple = tuple2;
+          }
+        }
+
+      }
+
+      projectTable.addRow(new RowDouble(maxTuple, maxUtility));
+    }
+
+    return projectTable;
+  }
 
 	// create new TabelDPOP
 	// create new Label: eliminate variableToProject
@@ -1384,7 +1496,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	// for each tuple2:tuple1->end from the table
 	// compare to the minimum , and update
 	// add to new Table
-	public Table projectOperator(Table table, String variableToProject) {
+	public TableString projectOperatorString(TableString table, String variableToProject) {
 		int indexEliminated = getIndexOfContainedVariable(table.getDecVarLabel(), variableToProject);
 
 		if (indexEliminated == -1) {
@@ -1405,21 +1517,21 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		List<String> projectedLabel = createTupleFromList(table.getDecVarLabel(), arrayIndex);
 
 		// create projectedTable
-		Table projectTable = new Table(projectedLabel, table.isRandTable());
+		TableString projectTable = new TableString(projectedLabel, table.isRandTable());
 		for (int i = 0; i < table.getRowCount(); i++) {
 			if (checkedList.contains(i) == true)
 				continue;
 			checkedList.add(i);
-			Row row1 = table.getRowList().get(i);
-			List<String> tuple1 = createTupleFromRow(row1, arrayIndex);
+			RowString row1 = table.getRowList().get(i);
+			List<String> tuple1 = createTupleFromRowString(row1, arrayIndex);
 			double maxUtility = row1.getUtility();
 			List<String> maxTuple = tuple1;
 
 			for (int j = i + 1; j < table.getRowCount(); j++) {
-				Row row2 = table.getRowList().get(j);
-				List<String> tuple2 = createTupleFromRow(row2, arrayIndex);
+				RowString row2 = table.getRowList().get(j);
+				List<String> tuple2 = createTupleFromRowString(row2, arrayIndex);
 				double row2Utility = row2.getUtility();
-				if (isSameTuple(tuple1, tuple2) == true) {
+				if (isSameTupleString(tuple1, tuple2) == true) {
 					checkedList.add(j);
 					if (row2Utility > maxUtility) {
 						maxUtility = row2Utility;
@@ -1429,7 +1541,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 			}
 
-			projectTable.addRow(new Row(maxTuple, maxUtility));
+			projectTable.addRow(new RowString(maxTuple, maxUtility));
 		}
 
 		return projectTable;
@@ -1452,12 +1564,22 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		}
 		return newTuple;
 	}
+	
+	 // create tuples from Row and arrayIndex
+  public List<Double> createTupleFromRowDouble(RowDouble row, List<Integer> arrayIndex) {
+    if (arrayIndex.size() >= row.getVariableCount()) {
+      return null;
+    }
+    List<Double> newTuple = new ArrayList<>();
+    for (Integer index : arrayIndex) {
+      newTuple.add(row.getValueAtPosition(index));
+    }
+    return newTuple;
+  }
 
 	// create tuples from Row and arrayIndex
-	public List<String> createTupleFromRow(Row row, List<Integer> arrayIndex) {
+	public List<String> createTupleFromRowString(RowString row, List<Integer> arrayIndex) {
 		if (arrayIndex.size() >= row.getVariableCount()) {
-//			System.err.println("Cannot create tuple with size: " + arrayIndex + " from Row size: " +
-//									row.variableCount);
 			return null;
 		}
 		List<String> newTuple = new ArrayList<String>();
@@ -1468,7 +1590,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	}
 
 	// check if two tuples has the same values
-	public boolean isSameTuple(List<String> tuple1, List<String> tuple2) {
+	public boolean isSameTupleString(List<String> tuple1, List<String> tuple2) {
 		if (tuple1.size() != tuple2.size()) {
 			System.err.println("Different size from two tuples: " + tuple1.size() + " and " + tuple2.size());
 			return false;
@@ -1481,33 +1603,75 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		}
 		return true;
 	}
+	
+	 // check if two tuples has the same values
+  public boolean isSameTupleDouble(List<Double> tuple1, List<Double> tuple2) {
+    if (tuple1.size() != tuple2.size()) {
+      System.err.println("Different size from two tuples: " + tuple1.size() + " and " + tuple2.size());
+      return false;
+    }
+    int size = tuple1.size();
+    for (int i = 0; i < size; i++) {
+      if (compare(tuple1.get(i), tuple2.get(i)) != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
 
 	// for each value of X
 	// for each message received from the children
 	// sum the utility that received from the children
-	Table combineMessage(List<ACLMessage> list) {
+	TableString combineMessageTableString(List<ACLMessage> list) {
 		if (list.isEmpty()) {
 			return null;
 		}
 
-		List<Table> listTable = new ArrayList<Table>();
+		List<TableString> listTable = new ArrayList<TableString>();
 		for (ACLMessage msg : list) {
 			try {
-				listTable.add((Table) msg.getContentObject());
+				listTable.add((TableString) msg.getContentObject());
 			} catch (UnreadableException e) {
 				e.printStackTrace();
 			}
 		}
 
 		int size = listTable.size();
-		Table table = listTable.get(0);
+		TableString table = listTable.get(0);
 
 		for (int i = 1; i < size; i++) {
-			table = joinTable(table, listTable.get(i));
+			table = joinTableString(table, listTable.get(i));
 		}
 
 		return table;
 	}
+	
+	 // for each value of X
+  // for each message received from the children
+  // sum the utility that received from the children
+  TableDouble combineMessageTableDouble(List<ACLMessage> list) {
+    if (list.isEmpty()) {
+      return null;
+    }
+
+    List<TableDouble> listTable = new ArrayList<>();
+    for (ACLMessage msg : list) {
+      try {
+        listTable.add((TableDouble) msg.getContentObject());
+      } catch (UnreadableException e) {
+        e.printStackTrace();
+      }
+    }
+
+    int size = listTable.size();
+    TableDouble table = listTable.get(0);
+
+    for (int i = 1; i < size; i++) {
+      table = joinTableDouble(table, listTable.get(i));
+    }
+
+    return table;
+  }
 
 	public void writeTimeToFile() {
 		if (!agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT)) {
@@ -1558,15 +1722,15 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	 * @param differentValue
 	 * @return
 	 */
-	private Table switchingCostGivenSolution(String agentIdentifier, List<String> valueList, String differentValue) {
+	private TableString switchingCostGivenSolution(String agentIdentifier, List<String> valueList, String differentValue) {
 		List<String> label = new ArrayList<>();
 		label.add(agentIdentifier);
-		Table unarySwitchingCostTable = new Table(label, DECISION_TABLE);
+		TableString unarySwitchingCostTable = new TableString(label, DECISION_TABLE);
 
 		for (String value : valueList) {
 			List<String> tableValueList = new ArrayList<>();
 			tableValueList.add(value);
-			Row row = new Row(tableValueList, -agent.switchingCostFunction(value, differentValue));
+			RowString row = new RowString(tableValueList, -agent.switchingCostFunction(value, differentValue));
 
 			unarySwitchingCostTable.addRow(row);
 		}
@@ -1591,7 +1755,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	 * @param tableList
 	 * @return
 	 */
-	public Table joinTableList(List<Table> tableList) {
+	public TableString joinTableListString(List<TableString> tableList) {
 		int size = tableList.size();
 
 		if (tableList.isEmpty()) {
@@ -1599,18 +1763,39 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		} else if (size == 1) {
 			return tableList.get(0);
 		} else if (size == 2) {
-			return joinTable(tableList.get(0), tableList.get(1));
+			return joinTableString(tableList.get(0), tableList.get(1));
 		} else {
-			return joinTable(joinTableList(tableList.subList(0, size / 2)),
-					joinTableList(tableList.subList(size / 2, size)));
+			return joinTableString(joinTableListString(tableList.subList(0, size / 2)),
+					joinTableListString(tableList.subList(size / 2, size)));
 		}
 	}
 	
-  private List<Table> createTableList(List<ACLMessage> receivedUTILmsgList) {
-    List<Table> tableList = new ArrayList<>();
+	 /**
+   * Improving speed and reducing memory when joining tables
+   * 
+   * @param tableList
+   * @return
+   */
+  public TableDouble joinTableListDouble(List<TableDouble> tableList) {
+    int size = tableList.size();
+
+    if (tableList.isEmpty()) {
+      return null;
+    } else if (size == 1) {
+      return tableList.get(0);
+    } else if (size == 2) {
+      return joinTableDouble(tableList.get(0), tableList.get(1));
+    } else {
+      return joinTableDouble(joinTableListDouble(tableList.subList(0, size / 2)),
+          joinTableListDouble(tableList.subList(size / 2, size)));
+    }
+  }
+	
+  private List<TableDouble> createTableList(List<ACLMessage> receivedUTILmsgList) {
+    List<TableDouble> tableList = new ArrayList<>();
     for (ACLMessage msg : receivedUTILmsgList) {
       try {
-        tableList.add((Table) msg.getContentObject());
+        tableList.add((TableDouble) msg.getContentObject());
       } catch (UnreadableException e) {
         e.printStackTrace();
       }
@@ -1626,7 +1811,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
    * @param tableList
    * @return the joined table after interpolation
    */
-  private Table interpolateAndJoinTable(List<Table> tableList, boolean isAddingPoints) {
+  private TableDouble interpolateAndJoinTable(List<TableDouble> tableList, boolean isAddingPoints) {
     // Find the common variables
     Set<String> commonVariables = new HashSet<>();
     
@@ -1641,16 +1826,16 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     /*
      * For each table, find all value combination of the common variables from other tables
      */
-    Map<Table, Set<Row>> interpolatedRowSetOfEachTable = new HashMap<>();
-    Map<String, Set<String>> valueFromAllTableMap = new HashMap<>();
+    Map<TableDouble, Set<RowDouble>> interpolatedRowSetOfEachTable = new HashMap<>();
+    Map<String, Set<Double>> valueFromAllTableMap = new HashMap<>();
     
     /*
      * Traverse every table => create the map <Agent, Set<Double>>
      */
     out.println("Agent " + agent.getLocalName() + " start creatings value map from All table");
-    for (Table utilTable : tableList) { 
+    for (TableDouble utilTable : tableList) { 
       for (String commonAgent : commonVariables) {
-        Set<String> valueSetOtherTableGivenAgent = utilTable.getValueSetOfGivenAgent(commonAgent, false);
+        Set<Double> valueSetOtherTableGivenAgent = utilTable.getValueSetOfGivenAgent(commonAgent, false);
         
         if (isAddingPoints == ADD_MORE_POINTS) {
           valueSetOtherTableGivenAgent.addAll(agent.getCurrentDiscreteValues(currentTimeStep));
@@ -1670,26 +1855,27 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
      * For each table => do the interpolation and add them to the list
      */
     out.println("Agent " + agent.getLocalName() + " start interpolating tables");
-    for (Table utilTable : tableList) {
+    for (TableDouble utilTable : tableList) {
       interpolatedRowSetOfEachTable.put(utilTable, utilTable.interpolateGivenValueSetMap(valueFromAllTableMap, 1));
     }
     out.println("Agent " + agent.getLocalName() + " finishes interpolating tables");
 
     
     // Add the interpolated row to the corresponding table
-    for (Entry<Table, Set<Row>> entry : interpolatedRowSetOfEachTable.entrySet()) {
-      entry.getKey().addRowSet(entry.getValue());
+    for (Entry<TableDouble, Set<RowDouble>> entry : interpolatedRowSetOfEachTable.entrySet()) {
+      entry.getKey().addRows(entry.getValue());
     }
     
     out.println("Agent " + agent.getLocalName() + " start joining tables");
     // Now joining all the tables
-    Table joinedTable = null;
-    for (Table table : interpolatedRowSetOfEachTable.keySet()) {
-      joinedTable = joinTable(joinedTable, table);
+    TableDouble joinedTable = null;
+    for (TableDouble table : interpolatedRowSetOfEachTable.keySet()) {
+      joinedTable = joinTableDouble(joinedTable, table);
     }
     out.println("Agent " + agent.getLocalName() + " finishes joining tables");
     
     return joinedTable;
+  
   }
   
   /*
@@ -1713,14 +1899,14 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
    * @param joinedTable
    * @return
    */
-  private Table addTheUtilityFunctionsToTheJoinedTable(Table joinedTable) {  
+  private TableDouble addTheUtilityFunctionsToTheJoinedTable(TableDouble joinedTable) {  
     for (Entry<String, PiecewiseMultivariateQuadFunction> entry : agent.getFunctionWithPParentMap().entrySet()) {
       String pParent = entry.getKey();
       PiecewiseMultivariateQuadFunction pFunction = entry.getValue();
       
       if (joinedTable.containsAgent(pParent)) {
-        for (Row row : joinedTable.getRowList()) {          
-          Map<String, String> valueMap = new HashMap<>();
+        for (RowDouble row : joinedTable.getRowList()) {          
+          Map<String, Double> valueMap = new HashMap<>();
           valueMap.put(pParent, row.getValueAtPosition(joinedTable.indexOf(pParent)));
           valueMap.put(agent.getLocalName(), row.getValueAtPosition(joinedTable.indexOf(agent.getLocalName())));
           row.setUtility(row.getUtility() + pFunction.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap));
@@ -1728,8 +1914,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       }
       // Unary switching cost constraint or expected table
       else if (pParent.equals(agent.getLocalName()) || pParent.contains(RANDOM_PREFIX)) {
-        for (Row row : joinedTable.getRowList()) {          
-          Map<String, String> valueMap = new HashMap<>();
+        for (RowDouble row : joinedTable.getRowList()) {          
+          Map<String, Double> valueMap = new HashMap<>();
           valueMap.put(agent.getLocalName(), row.getValueAtPosition(joinedTable.indexOf(agent.getLocalName())));
           row.setUtility(row.getUtility() + pFunction.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap));
         }
@@ -1737,20 +1923,20 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       // Doesn't contain the pParent
       // Then extend a new column to the end of the label and each row
       else {
-        Table newTable = new Table(joinedTable.getDecVarLabel());
+        TableDouble newTable = new TableDouble(joinedTable.getDecVarLabel());
         newTable.extendToTheEndOfLabel(pParent);
         
         // Add values for the new label of pParent
-        Set<String> pValueList = agent.getCurrentDiscreteValues(currentTimeStep);
+        Set<Double> pValueList = agent.getCurrentDiscreteValues(currentTimeStep);
         
-        for (String pValue : pValueList) {
-          for (Row row : joinedTable.getRowList()) {
-            Map<String, String> valueMap = new HashMap<>();
+        for (Double pValue : pValueList) {
+          for (RowDouble row : joinedTable.getRowList()) {
+            Map<String, Double> valueMap = new HashMap<>();
             valueMap.put(pParent, pValue);
             valueMap.put(agent.getLocalName(), row.getValueAtPosition(joinedTable.indexOf(agent.getLocalName())));
             double newUtility = row.getUtility() + pFunction.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap); 
             
-            Row newRow = new Row(row.getValueList(), newUtility);
+            RowDouble newRow = new RowDouble(row.getValueList(), newUtility);
             newRow.addValueToTheEnd(pValue);
             newTable.addRow(newRow);
           }
@@ -1770,21 +1956,21 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
    * @param productPPValues
    * @return
    */
-  private Table createUtilTableFromValueSet(Table agentViewTable, Set<List<String>> productPPValues) {
+  private TableDouble createUtilTableFromValueSet(TableDouble agentViewTable, Set<List<Double>> productPPValues) {
     //Now calculate the new UTIL table to send to parent
     List<String> label = agent.getParentAndPseudoStrList();
-    Table utilTable = new Table(label);
+    TableDouble utilTable = new TableDouble(label);
 
     // Interpolate the table to get values for each of the valueList
-    for (List<String> valueList : productPPValues) {     
-      Map<String, String> valueMap = new HashMap<>();
+    for (List<Double> valueList : productPPValues) {     
+      Map<String, Double> valueMap = new HashMap<>();
       for (int i = 0; i < valueList.size(); i++) {
-        valueMap.put(agent.getParentAndPseudoStrList().get(i), String.valueOf(valueList.get(i)));
+        valueMap.put(agent.getParentAndPseudoStrList().get(i), valueList.get(i));
       }
       
       double maxUtil = agentViewTable.maxArgmaxHybrid(valueMap, agent.getSelfInterval().getMidPointInHalfIntegerRanges())[0];
       
-      Row newRow = new Row(valueList, maxUtil);
+      RowDouble newRow = new RowDouble(valueList, maxUtil);
 
       // Add the utility of all functions to the row
       utilTable.addRow(newRow);
@@ -1792,8 +1978,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     return utilTable;
   }
   
-  private Set<List<String>> kmeanCluster(Set<List<String>> dataset, int numClusters) {
-    Set<List<String>> centroids = new HashSet<>();
+  private Set<List<Double>> kmeanCluster(Set<List<Double>> dataset, int numClusters) {
+    Set<List<Double>> centroids = new HashSet<>();
     SimpleKMeans kmean = new SimpleKMeans();
     
     ArrayList<Attribute> attritbuteList = new ArrayList<Attribute>();
@@ -1803,7 +1989,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     }
 
     Instances instances = new Instances("cluster", attritbuteList, dataset.size());
-    for (List<String> rawData : dataset) {
+    for (List<Double> rawData : dataset) {
       Instance pointInstance = new SparseInstance(1.0, rawData.stream().mapToDouble(Double::valueOf).toArray());
       instances.add(pointInstance);
     }
@@ -1816,9 +2002,9 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       
       for (Instance pointArray : centroidsInstance) {
         
-        List<String> centroidList = new ArrayList<>();
+        List<Double> centroidList = new ArrayList<>();
         for (double value : pointArray.toDoubleArray()) {
-          centroidList.add(String.valueOf(value));
+          centroidList.add(value);
         }
         centroids.add(centroidList);
       }

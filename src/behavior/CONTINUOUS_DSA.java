@@ -66,7 +66,7 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
     if (localSearchIteration == 0) {
       // Randomize initial values here
       Interval agentDomain = agent.getSelfInterval();
-      agent.setChosenValueAtEachTimeStep(currentTimeStep, agentDomain.randomString());
+      agent.setChosenDoubleValueAtEachTimeStep(currentTimeStep, agentDomain.randomDouble());
     }
     
     // send the current value to neighbors

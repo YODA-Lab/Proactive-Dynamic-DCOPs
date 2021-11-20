@@ -6,6 +6,7 @@ import static java.lang.Math.sqrt;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -22,38 +23,38 @@ import zexception.FunctionException;
  * @author khoihd
  *
  */
-public class Table implements Serializable {
-	
+public class TableDouble extends AbstractTable implements Serializable {
+
 	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -2675509097502238364L;
-	
-	private List<String> decVarLabel = new ArrayList<>();
+   * 
+   */
+  private static final long serialVersionUID = 7744720382630253811L;
+
+  private List<String> decVarLabel = new ArrayList<>();
 	
 	private List<String> randVarLabel = new ArrayList<>();
 	
-	private List<Row> rowList = new ArrayList<>();
+	private List<RowDouble> rowList = new ArrayList<>();
 	
-	private boolean isRandTable = false;
+	private boolean isRandTableDouble = false;
 
-	public Table(List<String> newLabel) {
-	  decVarLabel.addAll(newLabel);
-	}
-	
-	public Table(Table anotherTable) {
-	  this.decVarLabel.addAll(anotherTable.getDecVarLabel());	  
-	  this.randVarLabel.addAll(anotherTable.getRandVarLabel());
+	public TableDouble(TableDouble anotherTableDouble) {
+	  this.decVarLabel.addAll(anotherTableDouble.getDecVarLabel());	  
+	  this.randVarLabel.addAll(anotherTableDouble.getRandVarLabel());
 	  
-		for (Row row : anotherTable.getRowList()) {
-			this.rowList.add(new Row(row));
+		for (RowDouble row : anotherTableDouble.getRowList()) {
+			this.rowList.add(new RowDouble(row));
 		}
 		
-		isRandTable = anotherTable.isRandTable();
+		isRandTableDouble = anotherTableDouble.isRandTable();
 	}
 	
+	 public TableDouble(List<String> newLabel) {
+	   decVarLabel.addAll(newLabel);
+	  }
+	
 	public double getUtilityGivenDecValueList(List<String> decValueList) {
-		for (Row row : rowList) {
+		for (RowDouble row : rowList) {
 			if (row.getValueList().equals(decValueList)) {
 				return row.getUtility();
 			}
@@ -63,7 +64,7 @@ public class Table implements Serializable {
 	}
 	
 	public double getUtilityGivenDecAndRandValueList(List<String> decValueList, List<String> randValueList) {
-		for (Row row : rowList) {
+		for (RowDouble row : rowList) {
 			if (row.getValueList().equals(decValueList) && row.getRandomList().equals(randValueList)) {
 				return row.getUtility();
 			}
@@ -72,31 +73,27 @@ public class Table implements Serializable {
     return -Double.MAX_VALUE;
 	}
 	
-	public int size() {
-	  return rowList.size();
-	}
-	
 	 /**
 	 * @param newLabel
-	 * @param isRandTable
+	 * @param isRandTableDouble
 	 */
-	public Table(List<String> newLabel, boolean isRandTable) {
+	public TableDouble(List<String> newLabel, boolean isRandTableDouble) {
 	    this.decVarLabel.addAll(newLabel);
-	    this.isRandTable = isRandTable;
+	    this.isRandTableDouble = isRandTableDouble;
 	  }
 	
-	public Table(List<String> decVarList, List<String> randVarList, boolean isRandTable) {
+	public TableDouble(List<String> decVarList, List<String> randVarList, boolean isRandTableDouble) {
 		decVarLabel.addAll(decVarList);
 		randVarLabel.addAll(randVarList);
-		this.isRandTable = isRandTable;
+		this.isRandTableDouble = isRandTableDouble;
 	}
 	
-	public void addRow(Row newRow) {
-		rowList.add(newRow);
+	public void addRow(RowDouble newRowDouble) {
+		rowList.add(newRowDouble);
 	}
 	
-	public double getUtilityFromTableGivenDecAndRand(List<String> decValueList, List<String> randValueList) {
-	  for (Row row : rowList) {
+	public double getUtilityFromTableDoubleGivenDecAndRand(List<String> decValueList, List<String> randValueList) {
+	  for (RowDouble row : rowList) {
 	    if (row.getValueList().equals(decValueList) && row.getRandomList().equals(randValueList)) {
 	      return row.getUtility();
 	    }
@@ -105,31 +102,8 @@ public class Table implements Serializable {
 //	  return Double.NEGATIVE_INFINITY;
 	  return -Double.MAX_VALUE;
 	}
-	
-	 /**
-   * Return empty HashSet if the table doesn't contain the agent
-   * @param agent
-   * @param isThrowException
-   * @return
-   */
-  public Set<String> getValueSetOfGivenAgent(String agent, boolean isThrowException) {
-    if (!decVarLabel.contains(agent)) {
-      if (isThrowException)
-        throw new FunctionException("The table label " + decVarLabel + " doesn't contain the agent: " + agent);
-      else
-        return new HashSet<String>();
-    }
-    int index = decVarLabel.indexOf(agent);
-    
-    Set<String> valueSet = new HashSet<>();
-    for (Row row: rowList) {      
-        valueSet.add(row.getValueAtPosition(index));
-    }
-    
-    return valueSet;
-  }
 
-	public int getRowCount() {
+	public int size() {
 		return rowList.size();
 	}
 	
@@ -137,7 +111,7 @@ public class Table implements Serializable {
 		return decVarLabel.size();
 	}
 
-	public List<Row> getRowList() {
+	public List<RowDouble> getRowList() {
 		return rowList;
 	}
 
@@ -148,6 +122,10 @@ public class Table implements Serializable {
 	public List<String> getRandVarLabel() {
 		return randVarLabel;
 	}
+	
+  public void addRows(Collection<RowDouble> rows) {
+    rowList.addAll(rows);
+  }
 
   @Override
   public int hashCode() {
@@ -159,10 +137,10 @@ public class Table implements Serializable {
     if (this == obj) {
       return true;
     }
-    if (!(obj instanceof Table)) {
+    if (!(obj instanceof TableDouble)) {
       return false;
     }
-    Table other = (Table) obj;
+    TableDouble other = (TableDouble) obj;
     return Objects.equals(decVarLabel, other.decVarLabel) && Objects.equals(randVarLabel, other.randVarLabel)
         && Objects.equals(rowList, other.rowList);
   }
@@ -170,13 +148,13 @@ public class Table implements Serializable {
   @Override
   public String toString() {
     StringBuffer sb = new StringBuffer();
-    sb.append("Table: decVarLabel=");
+    sb.append("TableDouble: decVarLabel=");
     sb.append(decVarLabel);
     sb.append(", randVarLabel=");
     sb.append(randVarLabel);
-    sb.append(", isRandTable=");
-    sb.append(isRandTable + "\n");
-    for (Row row : rowList) {
+    sb.append(", isRandTableDouble=");
+    sb.append(isRandTableDouble + "\n");
+    for (RowDouble row : rowList) {
       sb.append(row + "\n");
     }
     sb.append("]\n");
@@ -185,11 +163,45 @@ public class Table implements Serializable {
   }
 
   public boolean isRandTable() {
-    return !randVarLabel.isEmpty() || isRandTable;
+    return !randVarLabel.isEmpty() || isRandTableDouble;
   }
 
-  public void setRandTable(boolean isRandTable) {
-    this.isRandTable = isRandTable;
+  public void setRandTableDouble(boolean isRandTableDouble) {
+    this.isRandTableDouble = isRandTableDouble;
+  }
+  
+  /**
+   * Return empty HashSet if the table doesn't contain the agent
+   * @param agent
+   * @param isThrowException
+   * @return
+   */
+  public Set<Double> getValueSetOfGivenAgent(String agent, boolean isThrowException) {
+    if (!decVarLabel.contains(agent)) {
+      if (isThrowException)
+        throw new FunctionException("The table label " + decVarLabel + " doesn't contain the agent: " + agent);
+      else
+        return new HashSet<Double>();
+    }
+    int index = decVarLabel.indexOf(agent);
+    
+    Set<Double> valueSet = new HashSet<>();
+    for (RowDouble row: rowList) {      
+        valueSet.add(row.getValueAtPosition(index));
+    }
+    return valueSet;
+  }
+  
+  public boolean containsAgent(String agent) {
+    return decVarLabel.contains(agent);
+  }
+  
+  public int indexOf(String agent) {
+    return decVarLabel.indexOf(agent);
+  }
+  
+  public void extendToTheEndOfLabel(String agent) {
+    decVarLabel.add(agent);
   }
   
   /**
@@ -203,7 +215,7 @@ public class Table implements Serializable {
    * @param 
    * @return
    */
-  public double[] maxArgmaxHybrid(Map<String, String> valueMapOfOtherVariables, Set<String> midPointInHalfIntegerRanges) {  
+  public double[] maxArgmaxHybrid(Map<String, Double> valueMapOfOtherVariables, Set<Double> midPointInHalfIntegerRanges) {
     double[] maxArgmax = new double[2];
     maxArgmax[0] = -Double.MAX_VALUE;
     maxArgmax[1] = -Double.MAX_VALUE;
@@ -218,7 +230,7 @@ public class Table implements Serializable {
     for (int i = 0; i < decVarLabel.size(); i++) {
       String tableAgent = decVarLabel.get(i);
       if (valueMapOfOtherVariables.containsKey(tableAgent)) {
-        pointOutsideTable.add(Double.valueOf(valueMapOfOtherVariables.get(tableAgent)));
+        pointOutsideTable.add(valueMapOfOtherVariables.get(tableAgent));
       } else {
         pointOutsideTable.add(0.0);
         missingIndex = i;
@@ -227,20 +239,18 @@ public class Table implements Serializable {
         
     List<Double> partialDistanceList = computePartialDistanceFromAllRow(pointOutsideTable, missingIndex);
     
-    Set<String> stepSizeAgentValue = new HashSet<>(midPointInHalfIntegerRanges);
+    Set<Double> stepSizeAgentValue = new HashSet<>(midPointInHalfIntegerRanges);
 
     // For each value, calculate the complete distance to every row, and get the utility of that row as 
 //    for (double value : agentValues) {
-    for (String valueStr : stepSizeAgentValue) {      
-      double value = Double.valueOf(valueStr);
-      
+    for (double value : stepSizeAgentValue) {      
       double weightedUtility = 0;
       double weightedSum = 0;
       for (int rowIndex = 0; rowIndex < rowList.size(); rowIndex++) {
-        Row row = rowList.get(rowIndex);
-        List<String> point = row.getValueList();
+        RowDouble row = rowList.get(rowIndex);
+        List<Double> point = row.getValueList();
         
-        double totalDistance = sqrt(pow(partialDistanceList.get(rowIndex), 2) + pow(value - Double.valueOf(point.get(missingIndex)), 2));
+        double totalDistance = sqrt(pow(partialDistanceList.get(rowIndex), 2) + pow(value - point.get(missingIndex), 2));
         weightedUtility += 1/totalDistance * row.getUtility();
         weightedSum += 1/totalDistance;
       }
@@ -265,7 +275,7 @@ public class Table implements Serializable {
   private List<Double> computePartialDistanceFromAllRow(List<Double> pointOutsideTable, int missingIndex) {
     List<Double> partialDistance = new ArrayList<>();
     
-    for (Row row : rowList) {
+    for (RowDouble row : rowList) {
       partialDistance.add(partialDistance(row.getValueList(), pointOutsideTable, missingIndex));
     }
     
@@ -279,31 +289,14 @@ public class Table implements Serializable {
    * @param missingIndex
    * @return
    */
-  private double partialDistance(List<String> valueList, List<Double> pointOutsideTable, int missingIndex) {
+  private double partialDistance(List<Double> valueList, List<Double> pointOutsideTable, int missingIndex) {
     double distance = 0;
     for (int i = 0; i < decVarLabel.size(); i++) {
       if (i != missingIndex) {
-        distance += pow(Double.valueOf(valueList.get(i))
-                        - pointOutsideTable.get(i), 2);
+        distance += pow(valueList.get(i) - pointOutsideTable.get(i), 2);
       }
     }
     return sqrt(distance);
-  }
-  
-  public boolean containsAgent(String agent) {
-    return decVarLabel.contains(agent);
-  }
-  
-  public int indexOf(String agent) {
-    return decVarLabel.indexOf(agent);
-  }
-  
-  public void extendToTheEndOfLabel(String agent) {
-    decVarLabel.add(agent);
-  }
-  
-  public void addRowSet(Set<Row> rows) {
-    rowList.addAll(rows);
   }
   
   /**
@@ -313,24 +306,24 @@ public class Table implements Serializable {
    * @param valueMap
    * @return
    */
-  public Set<Row> interpolateGivenValueSetMap(Map<String, Set<String>> valueMap, int stepSize) {
-    Set<Row> interpolatedRows = new HashSet<>();
+  public Set<RowDouble> interpolateGivenValueSetMap(Map<String, Set<Double>> valueMap, int stepSize) {
+    Set<RowDouble> interpolatedRows = new HashSet<>();
     
     // create all points to be interpolated
-    List<Set<String>> valueSetList = new ArrayList<>();
+    List<Set<Double>> valueSetList = new ArrayList<Set<Double>>();
     Map<String, Integer> agentPositionInTheValeSet = new HashMap<>();
     int position = 0;
     // The traversal order is the same as the variable ordering in the Cartesian product later
-    for (Entry<String, Set<String>> entry : valueMap.entrySet()) {
+    for (Entry<String, Set<Double>> entry : valueMap.entrySet()) {
       valueSetList.add(entry.getValue());
       agentPositionInTheValeSet.put(entry.getKey(), position);
       position++;
     }
-    Set<List<String>> productInterpolatedValues = Sets.cartesianProduct(valueSetList);
+    Set<List<Double>> productInterpolatedValues = Sets.cartesianProduct(valueSetList);
         
-    for (List<String> partialPoint : productInterpolatedValues) {
-      for (Row row : rowList) {
-        List<String> point = new ArrayList<>(row.getValueList());
+    for (List<Double> partialPoint : productInterpolatedValues) {
+      for (RowDouble row : rowList) {
+        List<Double> point = new ArrayList<>(row.getValueList());
 
         // replace the point at the position of the agent in the label with the value at the given position
         for (Entry<String, Integer> entry : agentPositionInTheValeSet.entrySet()) {
@@ -346,21 +339,17 @@ public class Table implements Serializable {
     return interpolatedRows;
   }
   
-  public int positionOfVariableInTheLabel(String agent) {
-    return decVarLabel.indexOf(agent);
-  }
-  
   /**
    * THIS FUNCTION IS UNIT-TESTED
    * Do the interpolation with the inverse weights.
    * @param interpolatedPoint
    * @return the row if the point needed to be interpolated is already in the table
    */
-  public Row inverseWeightedInterpolation(List<String> interpolatedPoint, int percentageOfTable) {
+  public RowDouble inverseWeightedInterpolation(List<Double> interpolatedPoint, int percentageOfTable) {
     List<Double> inverseWeights = new ArrayList<>();
     double interpolatedUtility = 0;
     for (int i = 0; i < this.rowList.size(); i+= percentageOfTable) {
-      Row row = this.rowList.get(i);
+      RowDouble row = this.rowList.get(i);
       
       double eucliDistance = euclidDistance(row.getValueList(), interpolatedPoint);
       
@@ -375,19 +364,19 @@ public class Table implements Serializable {
     }
             
     double sumOfWeights = inverseWeights.stream().mapToDouble(x -> x).sum();
-    return new Row(interpolatedPoint, interpolatedUtility / sumOfWeights);
+    return new RowDouble(interpolatedPoint, interpolatedUtility / sumOfWeights);
   }
   
-  private double euclidDistance(List<String> pointA, List<String> pointB) {    
+  private double euclidDistance(List<Double> pointA, List<Double> pointB) {    
     double distance = 0;
     for (int index = 0; index < pointA.size(); index++) {
-      double valueA = Double.valueOf(pointA.get(index));
-      double valueB = Double.valueOf(pointB.get(index));
-      
-//      distance += Math.pow(pointA.get(index) - pointB.get(index), 2);
-      distance += Math.pow(valueA - valueB, 2);
+      distance += Math.pow(pointA.get(index) - pointB.get(index), 2);
     }
     
     return Math.sqrt(distance);
+  }
+  
+  public int positionOfVariableInTheLabel(String agent) {
+    return decVarLabel.indexOf(agent);
   }
 }

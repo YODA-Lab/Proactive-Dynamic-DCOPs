@@ -1,8 +1,8 @@
 package behavior;
 
 import jade.core.behaviours.OneShotBehaviour;
-import table.Row;
-import table.Table;
+import table.RowString;
+import table.TableString;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,8 +57,8 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
    * @param timeStep
    * @return
    */
-  private List<Table> computeDiscountedMGMAndSwitchingCostTables(DynamicType dynamicType, PDDcopAlgorithm algorithm, int timeStep) {
-    List<Table> mgmTableList = new ArrayList<>();
+  private List<TableString> computeDiscountedMGMAndSwitchingCostTables(DynamicType dynamicType, PDDcopAlgorithm algorithm, int timeStep) {
+    List<TableString> mgmTableList = new ArrayList<>();
     
     if (dynamicType == DynamicType.INFINITE_HORIZON) {
       // When currentTimeStep == agent.getHorizon(), solve for the last time step
@@ -78,12 +78,12 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
           mgmTableList.addAll(agent.computeDiscountedDecisionTableList(agent.getRawDecisionTableList(), timeStep, 1D));
           mgmTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getRawRandomTableList(), timeStep, 1D));
           if (timeStep > 0) {
-            Table switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(timeStep - 1)); 
+            TableString switchingCostToPreviousSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(timeStep - 1)); 
             mgmTableList.add(switchingCostToPreviousSolution);
           }
           // Also add switching cost table to the stationary solution found at horizon
           if (timeStep == agent.getHorizon() - 1) {
-            Table switchingCostToLastSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(agent.getHorizon())); 
+            TableString switchingCostToLastSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(agent.getHorizon())); 
             mgmTableList.add(switchingCostToLastSolution);
           }
         }
@@ -92,7 +92,7 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
           mgmTableList.addAll(agent.computeDiscountedExpectedRandomTableList(agent.getRawRandomTableList(), timeStep, 1D));
           // If not at the horizon, add switching cost regarding the solution at timeStep + 1
           if (timeStep < agent.getHorizon()) {
-            Table switchingCostToLaterSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(timeStep + 1)); 
+            TableString switchingCostToLaterSolution = switchingCostGivenSolution(agent.getAgentID(), agent.getDecisionVariableDomainMap().get(agent.getAgentID()), agent.getChosenValueAtEachTimeStep(timeStep + 1)); 
             mgmTableList.add(switchingCostToLaterSolution);
           }
         }
@@ -157,22 +157,22 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
    * From DPOP random table list, return new tables with the corresponding picked random variables
    * @param timeStep
    */
-  private List<Table> computeActualTableGivenRandomValues(int timeStep) {
-    List<Table> tableList = new ArrayList<>();
+  private List<TableString> computeActualTableGivenRandomValues(int timeStep) {
+    List<TableString> tableList = new ArrayList<>();
     
     // traverse each random table
-    for (Table randTable : agent.getRawRandomTableList()) {
+    for (TableString randTable : agent.getRawRandomTableList()) {
       List<String> decLabel = randTable.getDecVarLabel();
       // at current time step, create a new table 
       // add the tuple with corresponding random values
 
-      Table newTable = new Table(decLabel, DECISION_TABLE);
+      TableString newTable = new TableString(decLabel, DECISION_TABLE);
       
       String simulatedRandomValues = agent.getPickedRandomAt(timeStep);
 
-      for (Row row : randTable.getRowList()) {
+      for (RowString row : randTable.getRowList()) {
         if (row.getRandomList().get(0).equals(simulatedRandomValues)) {
-          newTable.addRow(new Row(row.getValueList(), row.getUtility()));
+          newTable.addRow(new RowString(row.getValueList(), row.getUtility()));
         }
       }
       
@@ -189,15 +189,15 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
    * @param differentValue
    * @return
    */
-  private Table switchingCostGivenSolution(String agentIdentifier, List<String> valueList, String differentValue) {
+  private TableString switchingCostGivenSolution(String agentIdentifier, List<String> valueList, String differentValue) {
     List<String> label = new ArrayList<>();
     label.add(agentIdentifier);
-    Table unarySwitchingCostTable = new Table(label, DECISION_TABLE);
+    TableString unarySwitchingCostTable = new TableString(label, DECISION_TABLE);
     
     for (String value : valueList) {
       List<String> tableValueList = new ArrayList<>();
       tableValueList.add(value);
-      Row row = new Row(tableValueList, -agent.switchingCostFunction(value, differentValue));
+      RowString row = new RowString(tableValueList, -agent.switchingCostFunction(value, differentValue));
       
       unarySwitchingCostTable.addRow(row);
     }

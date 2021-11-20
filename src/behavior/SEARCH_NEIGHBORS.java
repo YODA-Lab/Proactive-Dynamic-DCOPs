@@ -1,6 +1,7 @@
 package behavior;
 
 import agent.AgentPDDCOP;
+import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
@@ -45,6 +46,17 @@ public class SEARCH_NEIGHBORS extends OneShotBehaviour implements MESSAGE_TYPE {
 				e.printStackTrace();
 			}
 		}
+		
+    // Add agents to AgentKeepMyFunctionAID and AgentNotOwningFunctionAID
+    if (agent.isRunningMaxsum()) {
+      for (AID agentID : agent.getNeighborAIDSet()) {
+        if (agent.getMSFunctionMapIOwn().keySet().contains(agentID.getLocalName())) {
+          agent.addAgentToFunctionIOwn(agentID);
+        } else {
+          agent.addAgentToFunctionOwnedByOther(agentID);
+        }
+      }
+    }   
 		
 		agent.print("Done looking for neighbors");
 	}

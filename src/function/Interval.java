@@ -156,19 +156,19 @@ public class Interval implements Serializable {
     return valueSet;
   }
   
-  public Set<String> getMidPointInIntegerRanges() {
+  public Set<Double> getMidPointInIntegerRanges() {
     return getMidPoints(getIncrementRange());
   }
   
-  public Set<String> getMidPointInHalfIntegerRanges() {
+  public Set<Double> getMidPointInHalfIntegerRanges() {
     return getMidPoints(getIncrementRange() * 2);
   }
   
-  public Set<String> getMidPointInQuarterIntegerRanges() {
+  public Set<Double> getMidPointInQuarterIntegerRanges() {
     return getMidPoints(getIncrementRange() * 4);
   }
   
-  public Set<String> getMidPointInEightIntegerRanges() {
+  public Set<Double> getMidPointInEightIntegerRanges() {
     return getMidPoints(getIncrementRange() * 8);
   }
   
@@ -184,22 +184,18 @@ public class Interval implements Serializable {
     return valueSet;
   }
   
-  public Set<String> getMidPoints(int numberOfValues) {
-    Set<String> valueSet = new HashSet<>();
+  public Set<Double> getMidPoints(int numberOfValues) {
+    Set<Double> valueSet = new HashSet<>();
     
     double increment = (upperBound - lowerBound) / numberOfValues;
     double currentLB = lowerBound;
     for (int i = 0; i < numberOfValues; i++) {
       double value = 0.5 * (currentLB * 2 + increment);
-      valueSet.add(String.valueOf(value));
+      valueSet.add(value);
       currentLB += increment;
     }
     
     return valueSet;
-  }
-  
-  public String randomString() {
-    return String.valueOf(randomDouble());
   }
   
   public double randomDouble() {

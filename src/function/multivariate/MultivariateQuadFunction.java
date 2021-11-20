@@ -617,10 +617,10 @@ public final class MultivariateQuadFunction implements Serializable {
 		return func;
 	}
 
-	public double evaluateToValueGivenValueMap(Map<String, String> valueMap) {
+	public double evaluateToValueGivenValueMap(Map<String, Double> valueMap) {
 		MultivariateQuadFunction func = new MultivariateQuadFunction(this);
 		int count = 1;
-		for (Map.Entry<String, String> entry : valueMap.entrySet()) {
+		for (Map.Entry<String, Double> entry : valueMap.entrySet()) {
 			if (count < valueMap.size()) {
 				func = func.evaluate(entry.getKey(), entry.getValue());
 			} else {

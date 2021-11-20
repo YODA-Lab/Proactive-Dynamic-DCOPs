@@ -9,21 +9,22 @@ import java.util.Objects;
  * @author khoihd
  *
  */
-public class Row implements Serializable {
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -7773374424812673056L;
+public class RowDouble extends AbstractRow implements Serializable {
 	
-	private List<String> valueList = new ArrayList<String>();
-	private List<String> randomList  = new ArrayList<String>();;
+	/**
+   * 
+   */
+  private static final long serialVersionUID = 8837176380653705108L;
+  private List<Double> valueList = new ArrayList<>();
+	private List<Double> randomList  = new ArrayList<>();;
+
 	private double utility;
 	
-	public Row() {
+	public RowDouble() {
 	  
 	}
 	
-	public Row(Row newRow) {
+	public RowDouble(RowDouble newRow) {
 		this.valueList.addAll(newRow.getValueList());
 		this.randomList.addAll(newRow.getRandomList());		
     this.utility = newRow.utility;
@@ -31,18 +32,18 @@ public class Row implements Serializable {
 	
 	//input: X1, X2, X3,...,Xn
 	//input utility
-	public Row(List<String> input, double utility) {
+	public RowDouble(List<Double> input, Double utility) {
 		this.valueList.addAll(input);
 		this.utility = utility;
 	}
 	
-	public Row(List<String> decisionVariableList, List<String> randVariableList, double utility) {
+	public RowDouble(List<Double> decisionVariableList, List<Double> randVariableList, double utility) {
 		this.valueList.addAll(decisionVariableList);
 		this.randomList.addAll(randVariableList);
 		this.utility = utility;
 	}
 	
-	public Row(List<String> decisionAndRandomList, int noDecision, double utility) {
+	public RowDouble(List<Double> decisionAndRandomList, int noDecision, double utility) {
 		for (int i = 0; i < noDecision; i++) {
 			this.valueList.add(decisionAndRandomList.get(i));
 		}
@@ -54,8 +55,8 @@ public class Row implements Serializable {
 		this.utility = utility;
 	}
 	
-	public String getValueAtPosition(int index) {
-		if (index < 0 || index >= valueList.size()) {return "";}
+	public double getValueAtPosition(int index) {
+		if (index < 0 || index >= valueList.size()) {return Double.MAX_VALUE;}
 	  
 		return valueList.get(index);
 	}
@@ -64,7 +65,7 @@ public class Row implements Serializable {
 		return valueList.size();
 	}
 
-	public List<String> getValueList() {
+	public List<Double> getValueList() {
 		return valueList;
 	}
 
@@ -72,7 +73,7 @@ public class Row implements Serializable {
 		return randomList.size();
 	}
 
-	public List<String> getRandomList() {
+	public List<Double> getRandomList() {
 		return randomList;
 	}
 
@@ -84,13 +85,13 @@ public class Row implements Serializable {
 		this.utility = utility;
 	}
 	
-	 public void addValueToTheEnd(String value) {
+	 public void addValueToTheEnd(double value) {
 	    valueList.add(value);
 	  }
 
   @Override
   public String toString() {
-    return "Row [valueList=" + valueList + ", randomList=" + randomList + ", utility=" + utility + "]";
+    return "RowDouble [valueList=" + valueList + ", randomList=" + randomList + ", utility=" + utility + "]";
   }
 
   @Override
@@ -100,13 +101,11 @@ public class Row implements Serializable {
 
   @Override
   public boolean equals(Object obj) {
-    if (this == obj) {
+    if (this == obj)
       return true;
-    }
-    if (!(obj instanceof Row)) {
+    if (!(obj instanceof RowDouble))
       return false;
-    }
-    Row other = (Row) obj;
+    RowDouble other = (RowDouble) obj;
     return Objects.equals(randomList, other.randomList)
         && Double.doubleToLongBits(utility) == Double.doubleToLongBits(other.utility)
         && Objects.equals(valueList, other.valueList);

@@ -7,7 +7,7 @@ import java.util.Map;
 import agent.AgentPDDCOP;
 import jade.core.behaviours.OneShotBehaviour;
 import table.AugmentedState;
-import table.Table;
+import table.TableString;
 
 public class R_LEARNING_UPDATE extends OneShotBehaviour {
 
@@ -65,7 +65,7 @@ public class R_LEARNING_UPDATE extends OneShotBehaviour {
 	}
 	
 	// Only apply to the unary constraint with the random variable
-	private double computeUtilityGivenCurrentState(String decisionValue, List<Table> tableList) {		
+	private double computeUtilityGivenCurrentState(String decisionValue, List<TableString> tableList) {		
 		String solutionPrev = agent.getChosenValueAtEachTimeStep(currentLearningTimeStep - 1);
 		
 		double switchCost = solutionPrev == null ? 0D : agent.switchingCostFunction(solutionPrev, decisionValue); 
@@ -73,7 +73,7 @@ public class R_LEARNING_UPDATE extends OneShotBehaviour {
 		List<String> valueList = new ArrayList<>();
 		valueList.add(decisionValue);
 		
-		for (Table table : agent.getActualDpopTableAcrossTimeStep().get(currentLearningTimeStep)) {
+		for (TableString table : agent.getActualDpopTableAcrossTimeStep().get(currentLearningTimeStep)) {
 			// Unary constraint after removing random state
 			if (table.getDecVarLabel().size() == 1) {
 				return table.getUtilityGivenDecValueList(valueList) - switchCost;

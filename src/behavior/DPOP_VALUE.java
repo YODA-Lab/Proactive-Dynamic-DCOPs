@@ -11,7 +11,7 @@ import java.util.Map.Entry;
 
 import agent.AgentPDDCOP;
 import agent.DcopConstants.PDDcopAlgorithm;
-import table.Row;
+import table.RowString;
 
 /**
  * @author khoihd REVIEWED <br>
@@ -87,10 +87,10 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 
 			int selfAgentIndex = agent.getAgentViewTable().getDecVarLabel().indexOf(agent.getAgentID());
 
-			Row chosenRow = new Row();
+			RowString chosenRow = new RowString();
 			double maxUtility = -Double.MAX_VALUE;
 
-			for (Row agentViewRow : agent.getAgentViewTable().getRowList()) {
+			for (RowString agentViewRow : agent.getAgentViewTable().getRowList()) {
 				boolean isMatch = true;
 
 				// check for each of index, get values and compared to the agentViewRow's values
