@@ -379,4 +379,53 @@ public class TableDouble extends AbstractTable implements Serializable {
   public int positionOfVariableInTheLabel(String agent) {
     return decVarLabel.indexOf(agent);
   }
+  
+  /*
+   * THIS FUNCTION IS REVIEWED
+   * Traverse each row of the table
+   *  Check if the row contain the valueMap
+   *  If yes, maintain the max utility and argmax
+   * End
+   * 
+   * If the tables doesn't contain the valueMapOfOtherVariables, it return -Double.MAX_VALUE
+   */
+  public double getArgmaxGivenVariableAndValueMap(String variableToGetArgmax, Map<String, Double> valueMapOfOtherVariables) {
+    Map<Integer, Double> varIndexValueMap = new HashMap<>();
+    for (Entry<String, Double> entry : valueMapOfOtherVariables.entrySet()) {
+      int position = positionOfVariableInTheLabel(entry.getKey());
+      
+      if (position != -1) {
+        varIndexValueMap.put(position, entry.getValue());
+      }
+    }
+    
+    double max = -Double.MAX_VALUE;
+    double argmax = -Double.MAX_VALUE;
+    for (RowDouble row : rowList) {
+      if (!checkIfListContainValueGivenPosition(row.getValueList(), varIndexValueMap)) {
+        continue;
+      }
+      
+      if (compare(row.getUtility(), max) > 0) {
+        max = row.getUtility();
+        argmax = row.getValueList().get(positionOfVariableInTheLabel(variableToGetArgmax));
+      }
+    }
+    
+    return argmax;
+  }
+  
+  /**
+   * Return false if the list doesn't contains all values with the corresponding position from the map
+   * @param list
+   * @param map
+   * @return
+   */
+  private boolean checkIfListContainValueGivenPosition(List<Double> list, Map<Integer, Double> map) { 
+    for (Entry<Integer, Double> entry : map.entrySet()) {
+      if (compare(list.get(entry.getKey()), entry.getValue()) != 0)
+        return false;
+    }
+    return true;
+  }
 }

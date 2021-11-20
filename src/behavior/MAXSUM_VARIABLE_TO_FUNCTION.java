@@ -4,7 +4,7 @@ import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import agent.ContinuousDcopAgent;
+import agent.AgentPDDCOP;
 import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
@@ -12,7 +12,9 @@ import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 import maxsum.MaxSumMessage;
 
-import static agent.DcopConstants.*;
+import agent.DcopConstants.DcopAlgorithm;
+import static agent.DcopConstants.VAR_TO_FUNC;
+import static agent.DcopConstants.GRADIENT_SCALING_FACTOR;
 
 /**
  * @author khoihd
@@ -25,11 +27,17 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
    */
   private static final long serialVersionUID = -6435195074924409292L;
   
-  private ContinuousDcopAgent agent;
+  private AgentPDDCOP agent;
   
-  public MAXSUM_VARIABLE_TO_FUNCTION(ContinuousDcopAgent agent) {
+  private final int currentTimeStep;
+  
+  private final int iteration;
+  
+  public MAXSUM_VARIABLE_TO_FUNCTION(AgentPDDCOP agent, int timeStep, int iteration) {
     super(agent);
     this.agent = agent;
+    this.currentTimeStep = timeStep;
+    this.iteration = iteration;
   }
 
   @Override
@@ -70,13 +78,13 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
     if (agent.getLsIteration() == 0) {
       agent.startSimulatedTiming();
       
-      MaxSumMessage msgVAR_TO_FUNC = new MaxSumMessage(agent.getCurrentValueSet());
-      msgVAR_TO_FUNC.setNewValueSet(agent.getCurrentValueSet());
+      MaxSumMessage msgVAR_TO_FUNC = new MaxSumMessage(agent.getCurrentDiscreteValues(currentTimeStep));
+      msgVAR_TO_FUNC.setNewValueSet(agent.getCurrentDiscreteValues(currentTimeStep));
       
-      agent.pauseSimulatedTiming();
+      agent.stopSimulatedTiming();
       
       for (AID receiver : agent.getFunctionOwnedByOther()) {
-        agent.sendObjectMessage(receiver, msgVAR_TO_FUNC, VAR_TO_FUNC, agent.getSimulatedTime());
+        agent.sendObjectMessageWithTime(receiver, msgVAR_TO_FUNC, VAR_TO_FUNC, agent.getSimulatedTime());
       }
       for (AID store_agent : agent.getFunctionIOwn()) {
         agent.getStored_VARIABLE_TO_FUNCTION().put(store_agent, msgVAR_TO_FUNC);
@@ -98,13 +106,13 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
       */
       agent.startSimulatedTiming();
       
-      MaxSumMessage msgVAR_TO_FUNC = new MaxSumMessage(agent.getCurrentValueSet());
+      MaxSumMessage msgVAR_TO_FUNC = new MaxSumMessage(agent.getCurrentDiscreteValues(currentTimeStep));
       
-      if (ContinuousDcopAgent.getAlgorithm() == HYBRID_MAXSUM) {
+      if (agent.getDcop_algorithm() == DcopAlgorithm.HYBRID_MAXSUM) {
         modifyMSValuesUsingGradient(); 
       }
       
-      agent.pauseSimulatedTiming();
+      agent.stopSimulatedTiming();
       
       for (AID neighbor : agent.getNeighborAIDSet()) {
         // process the function that is OWNED BY OTHER AGENTS
@@ -121,11 +129,11 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
           msgVAR_TO_FUNC = msgVAR_TO_FUNC.addAllMessages(agent.getStored_FUNCTION_TO_VARIABLE().values());
           msgVAR_TO_FUNC.updateAlphaAndValues();
           
-          msgVAR_TO_FUNC.setNewValueSet(agent.getCurrentValueSet());
+          msgVAR_TO_FUNC.setNewValueSet(agent.getCurrentDiscreteValues(currentTimeStep));
 
-          agent.pauseSimulatedTiming();
+          agent.stopSimulatedTiming();
 
-          agent.sendObjectMessage(neighbor, msgVAR_TO_FUNC, VAR_TO_FUNC, agent.getSimulatedTime());
+          agent.sendObjectMessageWithTime(neighbor, msgVAR_TO_FUNC, VAR_TO_FUNC, agent.getSimulatedTime());
         } 
         // process the function that I owned
         else if (agent.getFunctionIOwn().contains(neighbor)) {
@@ -141,11 +149,11 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
           }
           
           msgVAR_TO_FUNC.updateAlphaAndValues();
-          msgVAR_TO_FUNC.setNewValueSet(agent.getCurrentValueSet());
+          msgVAR_TO_FUNC.setNewValueSet(agent.getCurrentDiscreteValues(currentTimeStep));
           
           agent.getStored_VARIABLE_TO_FUNCTION().put(neighbor, msgVAR_TO_FUNC);
           
-          agent.pauseSimulatedTiming();
+          agent.stopSimulatedTiming();
         }
       }
     }
@@ -159,13 +167,13 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
    *  Add those messages up and modify the values accordingly
    */
   private void modifyMSValuesUsingGradient() { 
-    System.out.println("Before: " + agent.getCurrentValueSet());
+    System.out.println("Before: " + agent.getCurrentDiscreteValues(currentTimeStep));
     
-    double scalingFactor = ContinuousDcopAgent.GRADIENT_SCALING_FACTOR;
+    double scalingFactor = GRADIENT_SCALING_FACTOR;
     
     Set<Double> newValueSet = new HashSet<>();
     
-    for (Double oldValue : agent.getCurrentValueSet()) {
+    for (Double oldValue : agent.getCurrentDiscreteValues(currentTimeStep)) {
       double sumGradient = 0;
       for (AID neighbor : agent.getNeighborAIDSet()) {
         if (agent.getFunctionOwnedByOther().contains(neighbor)) {
@@ -179,16 +187,16 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
       double newValue = oldValue + scalingFactor * sumGradient;
       
       // Add new value only if it's in the interval
-      if (ContinuousDcopAgent.getGlobalInterval().contains(newValue)) {
+      if (agent.getSelfInterval().contains(newValue)) {
         newValueSet.add(newValue);
       } else {
         newValueSet.add(oldValue);
       }
     }
     
-    agent.setCurrentValueSet(newValueSet);
+    agent.setCurrentDiscreteValues(currentTimeStep, newValueSet);
            
-    System.out.println("After: " + agent.getCurrentValueSet());
+    System.out.println("After: " + agent.getCurrentDiscreteValues(currentTimeStep));
   }
 
   private void waiting_store_VAR_TO_FUNC_message_with_time(int msgCode) {

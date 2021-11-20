@@ -75,6 +75,8 @@ import behavior.R_LEARNING_UPDATE;
 import behavior.LS_RECEIVE_VALUE;
 import behavior.SEARCH_NEIGHBORS;
 import behavior.LS_SEND_IMPROVE;
+import behavior.MAXSUM_FUNCTION_TO_VARIABLE;
+import behavior.MAXSUM_VARIABLE_TO_FUNCTION;
 import table.AugmentedState;
 import table.RowString;
 import table.TableDouble;
@@ -510,9 +512,14 @@ public class AgentPDDCOP extends Agent {
             mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, timeStep, iteration));
             mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, timeStep, iteration));
           }
+        }        
+        else if (isRunningMaxsum()) {
+          for (int iteration = 0; iteration <= MAX_ITERATION; iteration++) {          
+            mainSequentialBehaviourList.addSubBehaviour(new MAXSUM_VARIABLE_TO_FUNCTION(this, timeStep, iteration));
+            mainSequentialBehaviourList.addSubBehaviour(new MAXSUM_FUNCTION_TO_VARIABLE(this, timeStep, iteration));
+          }
         }
       }
-    
     }
     else if (pddcop_algorithm == PDDcopAlgorithm.GRADIENT_RAND) {
       mainSequentialBehaviourList.addSubBehaviour(new LS_RAND_PICK_VALUE(this));
@@ -3532,6 +3539,11 @@ public class AgentPDDCOP extends Agent {
   public Set<Double> getCurrentDiscreteValues(int timeStep) {
     return currentDiscreteValuesMap.getOrDefault(timeStep, new HashSet<>());
   }
+  
+  public void setCurrentDiscreteValues(int timeStep, Set<Double> valueSet) {
+    currentDiscreteValuesMap.put(timeStep, valueSet);
+  }
+
 
   public int getGradientIteration() {
     return gradientIteration;

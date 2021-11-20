@@ -19,8 +19,8 @@ import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 import maxsum.MaxSumMessage;
-import table.RowString;
-import table.TableString;
+import table.RowDouble;
+import table.TableDouble;
 
 import static agent.DcopConstants.*;
 
@@ -40,10 +40,13 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
   
   private final int currentTimeStep;
   
-  public MAXSUM_FUNCTION_TO_VARIABLE(AgentPDDCOP agent, int timeStep) {
+  private final int iteration;
+  
+  public MAXSUM_FUNCTION_TO_VARIABLE(AgentPDDCOP agent, int timeStep, int iteration) {
     super(agent);
     this.agent = agent;
     this.currentTimeStep = timeStep;
+    this.iteration = iteration;
   }
 
   @Override
@@ -161,7 +164,7 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
     List<String> agentLabel = new ArrayList<>();
     agentLabel.add(agentToKeep);
     agentLabel.add(agentToProject);
-    TableString discretizedFunction = new TableString(agentLabel);
+    TableDouble discretizedFunction = new TableDouble(agentLabel);
 
     listOfValueSet.add(agentToKeepValueSet);
     listOfValueSet.add(agentToProjectValueSet);
@@ -169,29 +172,26 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
 
     // Creating the table by adding up the messages
     for (List<Double> listValueEntry : setOfScopeAgentValues) {
-      Map<String, String> mapValue = new HashMap<>();
+      Map<String, Double> mapValue = new HashMap<>();
       double agentToKeepValue = listValueEntry.get(0);
       double agentToProjectValue = listValueEntry.get(1);
 
-      mapValue.put(agentToKeep, String.valueOf(agentToKeepValue));
-      mapValue.put(agentToProject, String.valueOf(agentToProjectValue));
+      mapValue.put(agentToKeep, agentToKeepValue);
+      mapValue.put(agentToProject, agentToProjectValue);
 
       double evaluatedValue = function.getTheFirstFunction().evaluateToValueGivenValueMap(mapValue);
 //      evaluatedValue += var2FuncMsg.getValueUtilityMap().get(agentToKeepValue);
       evaluatedValue += var2FuncMsg.getValueUtilityMap().get(agentToProjectValue);
-      
-      List<String> listValueEntryStr = listValueEntry.stream().map(String::valueOf).collect(Collectors.toList());
-      
-      discretizedFunction.addRow(new RowString(listValueEntryStr, evaluatedValue));
+            
+      discretizedFunction.addRow(new RowDouble(listValueEntry, evaluatedValue));
     }
     // Project out the DCOP
-    TableString projectedTable = new DPOP_UTIL(agent, currentTimeStep).projectOperatorString(discretizedFunction, agentToProject);
+    TableDouble projectedTable = new DPOP_UTIL(agent, currentTimeStep).projectOperatorDouble(discretizedFunction, agentToProject);
 //    Map<Double, Double> argmaxes = behaviour.DPOP_UTIL.findTheArgmaxInHybridMaxSum(discretizedFunction, agentToProject, agentToProjectValueSet);
     
-    // Convert the Table to Map<Double, Double>
-    Map<String, Double> valueUtilMap = new HashMap<>();
+    Map<Double, Double> valueUtilMap = new HashMap<>();
     
-    for (RowString row : projectedTable.getRowList()) {
+    for (RowDouble row : projectedTable.getRowList()) {
       valueUtilMap.put(row.getValueAtPosition(0), row.getUtility());
     }
     
@@ -236,15 +236,12 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
         }
         agent.getReceived_FUNCTION_TO_VARIABLE().put(receivedMessage.getSender(), maxsumMsg);
         msgCount++;
-//      }
-//      else
-//        block();
     }
   }
   
-  private Double getCurrentValue() {
-    return Double.valueOf(agent.getChosenValueAtEachTimeStep(currentTimeStep));
-  }
+//  private Double getCurrentValue() {
+//    return agent.getChosenDoubleValueAtEachTimeStep(currentTimeStep);
+//  }
   
   private void setCurrentValue(double value) {
     agent.setChosenValueAtEachTimeStep(currentTimeStep, String.valueOf(value));
