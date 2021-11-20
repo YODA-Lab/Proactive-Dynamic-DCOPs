@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import agent.AgentPDDCOP;
+import static agent.DcopConstants.MAX_ITERATION;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
@@ -63,12 +64,12 @@ public class MGM_SEND_RECEIVE_UTIL extends OneShotBehaviour implements MESSAGE_T
     }
             
     // Last MGM time step
-    if (mgm_time_step == AgentPDDCOP.MAX_ITERATION && agent.isRoot()) {
+    if (mgm_time_step == MAX_ITERATION && agent.isRoot()) {
       // Compute the difference
-      for (int i = 0; i < AgentPDDCOP.MAX_ITERATION - 1; i++) {
+      for (int i = 0; i < MAX_ITERATION - 1; i++) {
         if (Double.compare(agent.getMGMQualityMap().get(i), agent.getMGMQualityMap().get(i + 1)) == 0) {
           agent.getMGMdifferenceRuntimeMap().put(pd_dcop_time_step,
-              agent.getMGMRuntimeMap().get(AgentPDDCOP.MAX_ITERATION) - agent.getMGMRuntimeMap().get(i));
+              agent.getMGMRuntimeMap().get(MAX_ITERATION) - agent.getMGMRuntimeMap().get(i));
           break;
         }
       }

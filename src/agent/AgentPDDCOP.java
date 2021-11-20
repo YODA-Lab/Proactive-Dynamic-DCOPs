@@ -5,14 +5,12 @@ import static java.lang.System.out;
 import static agent.DcopConstants.RANDOM_PREFIX;
 import static agent.DcopConstants.DEFAULT_BETA_SAMPLING_SEED;
 import static agent.DcopConstants.SAMPLING_STEPS;
-import static agent.DcopConstants.DcopAlgorithm.DPOP;
-import static agent.DcopConstants.DcopAlgorithm.MAXSUM;
-import static agent.DcopConstants.DcopAlgorithm.DISCRETE_DSA;
-import static agent.DcopConstants.DcopAlgorithm.CAC_MAXSUM;
-import static agent.DcopConstants.DcopAlgorithm.HYBRID_MAXSUM;
-import static agent.DcopConstants.DcopAlgorithm.CAC_DPOP;
-import static agent.DcopConstants.DcopAlgorithm.AC_DPOP;
-import static agent.DcopConstants.SwitchingType.LINEAR;
+import static agent.DcopConstants.INPUT_FOLDER;
+import static agent.DcopConstants.MAX_ITERATION;
+import static agent.DcopConstants.MARKOV_CONVERGENCE_TIME_STEP;
+import static agent.DcopConstants.NOT_TO_OPTIMIZE_INTERVAL;
+import static agent.DcopConstants.DECISION_TABLE;
+import static agent.DcopConstants.RANDOM_TABLE;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -55,6 +53,7 @@ import java.util.TreeSet;
 
 import behavior.SEND_RECEIVE_FINAL_UTIL;
 import behavior.AGENT_TERMINATE;
+import behavior.CONTINUOUS_DSA;
 import behavior.DPOP_UTIL;
 import behavior.DPOP_VALUE;
 import behavior.INIT_PROPAGATE_DPOP_VALUE;
@@ -127,18 +126,8 @@ import jade.lang.acl.ACLMessage;
 public class AgentPDDCOP extends Agent {
 
 	private static final long serialVersionUID = 2919994686894853596L;
-
-	public static final String INPUT_FOLDER = "input_files";
-	 public static final double GRADIENT_SCALING_FACTOR = Math.pow(10, -3);
-
-
-	public static final SwitchingType SWITCHING_TYPE = SwitchingType.CONSTANT;
-	public static final int MAX_ITERATION = 40;
-	public static final int MARKOV_CONVERGENCE_TIME_STEP = 40;
-	public static final boolean RANDOM_TABLE = true;
-	public static final boolean DECISION_TABLE = false;
-	public static final boolean NOT_TO_OPTIMIZE_INTERVAL = false;
-	public static final boolean TO_OPTIMIZE_INTERVAL = true;
+	
+  public static final SwitchingType SWITCHING_TYPE = SwitchingType.QUADRATIC;
 
 	/*
 	 * DCOP parameters To be read from arguments
@@ -326,9 +315,10 @@ public class AgentPDDCOP extends Agent {
 
   private Map<Integer, Set<String>> currentDiscreteValuesMap = new HashMap<>();
   
+  private int lsIteration = 0;
+  
   private final boolean isApprox = true; // Used in APPROX_DPOP
   private final int numberOfApproxAgents = 0; // Used in APPROX_DPOP
-  private static final SwitchingType switchingCostType = SwitchingType.QUADRATIC;
 
 	public AgentPDDCOP() {
 	}
@@ -504,7 +494,8 @@ public class AgentPDDCOP extends Agent {
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
         }
         else if (dcop_algorithm == DcopAlgorithm.CONTINUOUS_DSA) {
-          // TODO
+          mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, i));
+          mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, i));
         }
       }
     
@@ -807,7 +798,7 @@ public class AgentPDDCOP extends Agent {
 		}
 
 		if (dynamicType == DynamicType.INFINITE_HORIZON) {
-			computeExpectedProbabilityAtTimeStep(AgentPDDCOP.MARKOV_CONVERGENCE_TIME_STEP);
+			computeExpectedProbabilityAtTimeStep(MARKOV_CONVERGENCE_TIME_STEP);
 		}
 
 		return lastTimeStep;
@@ -2331,7 +2322,7 @@ public class AgentPDDCOP extends Agent {
 				similarTableList.add(computeDiscountedExpectedTable(randomTable, timeStep, discountFactor));
 			}
 
-			collapedDecistionTableList.add(computeCollapsedTableFromList(similarTableList, AgentPDDCOP.RANDOM_TABLE));
+			collapedDecistionTableList.add(computeCollapsedTableFromList(similarTableList, RANDOM_TABLE));
 		}
 
 		return collapedDecistionTableList;
@@ -2408,7 +2399,7 @@ public class AgentPDDCOP extends Agent {
 				similarTableList.add(computeDiscountedDecisionTable(decTable, timeStep, df));
 			}
 
-			collapedDecistionTableList.add(computeCollapsedTableFromList(similarTableList, AgentPDDCOP.DECISION_TABLE));
+			collapedDecistionTableList.add(computeCollapsedTableFromList(similarTableList, DECISION_TABLE));
 		}
 
 		return collapedDecistionTableList;
@@ -2426,7 +2417,7 @@ public class AgentPDDCOP extends Agent {
 		List<String> label = new ArrayList<>();
 		label.add(agentID);
 
-		Table collapsedSwitchingCostTable = new Table(label, AgentPDDCOP.DECISION_TABLE);
+		Table collapsedSwitchingCostTable = new Table(label, DECISION_TABLE);
 
 		List<Set<String>> domainSetList = new ArrayList<Set<String>>();
 		for (int timeIndex = 0; timeIndex <= lastTimeStep; timeIndex++) {
@@ -2965,7 +2956,7 @@ public class AgentPDDCOP extends Agent {
 			// at current time step, create a new table
 			// add the tuple with corresponding random values
 
-			Table newTable = new Table(decLabel, AgentPDDCOP.DECISION_TABLE);
+			Table newTable = new Table(decLabel, DECISION_TABLE);
 
 			String simulatedRandomValues = getPickedRandomAt(timeStep);
 
@@ -2997,7 +2988,7 @@ public class AgentPDDCOP extends Agent {
 			// at current time step, create a new table
 			// add the tuple with corresponding random values
 
-			Table newTable = new Table(decLabel, AgentPDDCOP.DECISION_TABLE);
+			Table newTable = new Table(decLabel, DECISION_TABLE);
 
 			String simulatedRandomValues = getPickedRandomAt(timeStep);
 
@@ -3492,12 +3483,12 @@ public class AgentPDDCOP extends Agent {
   }
   
   public boolean isRunningDiscreteAlg() {
-    return dcop_algorithm == DPOP || dcop_algorithm == MAXSUM || dcop_algorithm == DISCRETE_DSA;
+    return dcop_algorithm == DcopAlgorithm.DPOP || dcop_algorithm == DcopAlgorithm.MAXSUM || dcop_algorithm == DcopAlgorithm.DISCRETE_DSA;
   }
   
   public boolean isRunningHybridAlg() {
-    return dcop_algorithm == AC_DPOP || dcop_algorithm == CAC_DPOP 
-        || dcop_algorithm == HYBRID_MAXSUM || dcop_algorithm == CAC_MAXSUM;
+    return dcop_algorithm == DcopAlgorithm.AC_DPOP || dcop_algorithm == DcopAlgorithm.CAC_DPOP 
+        || dcop_algorithm == DcopAlgorithm.HYBRID_MAXSUM || dcop_algorithm == DcopAlgorithm.CAC_MAXSUM;
   }
 
   public Map<Integer, PiecewiseMultivariateQuadFunction> getDpopFunctionEachTimeStepMap() {
@@ -3561,6 +3552,36 @@ public class AgentPDDCOP extends Agent {
   }
   
   public boolean isClustering() {
-    return dcop_algorithm == CAC_DPOP || dcop_algorithm == CAC_MAXSUM;
+    return dcop_algorithm == DcopAlgorithm.CAC_DPOP || dcop_algorithm == DcopAlgorithm.CAC_MAXSUM;
+  }
+  
+  public int getLsIteration() {
+    return lsIteration;
+  }
+
+  public void setLsIteration(int lsIteration) {
+    this.lsIteration = lsIteration;
+  }
+
+  public void incrementLsIteration() {
+    this.lsIteration++;
+  }
+  
+  public void sendObjectMessageWithIteration(AID receiver, Object content, int msgCode, int iteration, long time) {
+    ACLMessage message = new ACLMessage(msgCode);
+    try {
+      message.setContentObject((Serializable) content);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    message.addReceiver(receiver);
+    message.setLanguage(String.valueOf(time));
+    message.setConversationId(String.valueOf(iteration));
+    send(message);
+  }
+  
+  public boolean isRunningDPOPFamily() {
+    return dcop_algorithm == DcopAlgorithm.EC_DPOP || dcop_algorithm == DcopAlgorithm.AC_DPOP 
+        || dcop_algorithm == DcopAlgorithm.CAC_DPOP || dcop_algorithm == DcopAlgorithm.APPROX_DPOP;
   }
 }

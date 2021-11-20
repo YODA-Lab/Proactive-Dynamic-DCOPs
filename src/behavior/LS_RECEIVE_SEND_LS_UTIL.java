@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import agent.AgentPDDCOP;
+import static agent.DcopConstants.MAX_ITERATION;
 import utilities.*;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
@@ -62,7 +63,7 @@ public class LS_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSAGE
 				
     agent.print("is done LS_RECEIVE_SEND_LS_UTIL at iteration: " + localTimeStep);
 		
-		if (localTimeStep == AgentPDDCOP.MAX_ITERATION && agent.isRoot()) {
+		if (localTimeStep == MAX_ITERATION && agent.isRoot()) {
 		  Utilities.writeLocalSearchResult(agent);
 		}
 	}

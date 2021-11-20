@@ -8,6 +8,7 @@ public interface DcopConstants {
   public static final boolean WAITING_FOR_MSG = true;
   public static final String RANDOM_PREFIX = "y";
   public static final int DEFAULT_BETA_SAMPLING_SEED = 1711;
+  public static final int RANDOM_SAMPLING_SEED = 1711;
   public static final int SAMPLING_STEPS = 1000;
   
   public static enum SwitchingCostFunctionType {
@@ -63,7 +64,7 @@ public interface DcopConstants {
   public static final boolean ADD_MORE_POINTS = true;
   public static final boolean NOT_ADD_POINTS = false;
   
-  public static final int MAX_ITERATION = 20;
+  public static final int MAX_ITERATION = 40;
 
   public static final int PSEUDOTREE = 0;
   public static final int PSEUDO_INFO = 1;
@@ -80,4 +81,13 @@ public interface DcopConstants {
   
   public static final int DONE_AT_LEAF = 1;
   public static final int DONE_AT_INTERNAL_NODE = 2;
+  
+  public static final String INPUT_FOLDER = "input_files";
+  public static final double GRADIENT_SCALING_FACTOR = Math.pow(10, -3);
+
+  public static final int MARKOV_CONVERGENCE_TIME_STEP = 40;
+  public static final boolean RANDOM_TABLE = true;
+  public static final boolean DECISION_TABLE = false;
+  
+  public static final double DSA_PROBABILITY = 0.6;
 }

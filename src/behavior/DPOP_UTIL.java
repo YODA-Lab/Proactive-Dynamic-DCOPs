@@ -6,6 +6,9 @@ import static agent.DcopConstants.DONE_AT_INTERNAL_NODE;
 import static agent.DcopConstants.DONE_AT_LEAF;
 import static agent.DcopConstants.NOT_ADD_POINTS;
 import static agent.DcopConstants.RANDOM_PREFIX;
+import static agent.DcopConstants.GRADIENT_SCALING_FACTOR;
+import static agent.DcopConstants.DECISION_TABLE;
+import static agent.DcopConstants.NOT_TO_OPTIMIZE_INTERVAL;
 import static java.lang.Double.compare;
 import static java.lang.System.out;
 import static java.nio.file.StandardOpenOption.APPEND;
@@ -724,7 +727,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
           double gradient = derivativePw.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap);
           
-          double movedPpValue = Double.valueOf(ppValueToMove) + AgentPDDCOP.GRADIENT_SCALING_FACTOR * gradient;
+          double movedPpValue = Double.valueOf(ppValueToMove) + GRADIENT_SCALING_FACTOR * gradient;
           String movedPpValueStr = String.valueOf(movedPpValue);
           
           if (agent.isPrinting()) {
@@ -1541,7 +1544,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	  intervalMap.put(agent.getLocalName(), agent.getSelfInterval());
 	  
 	  MultivariateQuadFunction func = MultivariateQuadFunction.switchingCostFunction(agentName, value, type);
-	  swFunction.addToFunctionMapWithInterval(func, intervalMap, AgentPDDCOP.NOT_TO_OPTIMIZE_INTERVAL);
+	  swFunction.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
 	  
 	  return swFunction;
 	}
@@ -1558,7 +1561,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	private Table switchingCostGivenSolution(String agentIdentifier, List<String> valueList, String differentValue) {
 		List<String> label = new ArrayList<>();
 		label.add(agentIdentifier);
-		Table unarySwitchingCostTable = new Table(label, AgentPDDCOP.DECISION_TABLE);
+		Table unarySwitchingCostTable = new Table(label, DECISION_TABLE);
 
 		for (String value : valueList) {
 			List<String> tableValueList = new ArrayList<>();
