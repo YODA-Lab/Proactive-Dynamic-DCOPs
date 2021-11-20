@@ -30,12 +30,15 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
   
   private final int currentTimeStep;
   
+  private final int localSearchIteration;
+  
   private Map<String, PiecewiseMultivariateQuadFunction> functionMap = new HashMap<>();
 
-  public CONTINUOUS_DSA(AgentPDDCOP agent, int timeStep) {
+  public CONTINUOUS_DSA(AgentPDDCOP agent, int timeStep, int iteration) {
     super(agent);
     this.agent = agent;
     this.currentTimeStep = timeStep;
+    this.localSearchIteration = iteration;
   }
 
   @Override
@@ -59,21 +62,22 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
       agent.print();
     }
     
-    
-    // Randomize initial values here
-    Interval agentDomain = agent.getSelfInterval();
-    agent.setChosenValueAtEachTimeStep(currentTimeStep, agentDomain.randomString());
+    // Initialize value for this time step if this is the first iteration
+    if (localSearchIteration == 0) {
+      // Randomize initial values here
+      Interval agentDomain = agent.getSelfInterval();
+      agent.setChosenValueAtEachTimeStep(currentTimeStep, agentDomain.randomString());
+    }
     
     // send the current value to neighbors
     for (AID neighborAID : agent.getNeighborAIDSet()) {
       agent.sendObjectMessageWithIteration(neighborAID, agent.getChosenValueAtEachTimeStep(currentTimeStep),
-          DSA_VALUE, agent.getLsIteration(), agent.getSimulatedTime());
+          DSA_VALUE, localSearchIteration, agent.getSimulatedTime());
     }
 
-    // initialization
-    PiecewiseMultivariateQuadFunction combinedFunction = new PiecewiseMultivariateQuadFunction(); // combinedFunction
+    PiecewiseMultivariateQuadFunction combinedFunction = new PiecewiseMultivariateQuadFunction();
 
-    Map<String, Double> neighborValueMap = waitingForMessageFromNeighborWithTime(DSA_VALUE, agent.getLsIteration());
+    Map<String, Double> neighborValueMap = waitingForMessageFromNeighborWithTime(DSA_VALUE, localSearchIteration);
     
     for (PiecewiseMultivariateQuadFunction function : functionMap.values()) {
       combinedFunction = combinedFunction.addPiecewiseFunction(function);
@@ -86,18 +90,16 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
     if (Double.compare(chosenValue, getCurrentValue()) != 0) {
       if (Double.compare(new Random().nextDouble(), DSA_PROBABILITY) <= 0) {
         setCurrentValue(chosenValue);
-        System.out.println("Iteration " + agent.getLsIteration() + " Agent " + agent.getLocalName() + " changes to a better value " + chosenValue);
+        System.out.println("Iteration " + localSearchIteration + " Agent " + agent.getLocalName() + " changes to a better value " + chosenValue);
       } else {
-        System.out.println("Iteration " + agent.getLsIteration() + " Agent " + agent.getLocalName() + " could change to a better value " + chosenValue
+        System.out.println("Iteration " + localSearchIteration + " Agent " + agent.getLocalName() + " could change to a better value " + chosenValue
             + ", but it decides to remain the value " + getCurrentValue());
       }
     } 
     // Can't find better value
     else {
-      System.out.println("Iteration " + agent.getLsIteration() + " Agent " + agent.getLocalName() + " doesn't find a better value and remains " + getCurrentValue());
-    }
-    
-    agent.incrementLsIteration();
+      System.out.println("Iteration " + localSearchIteration + " Agent " + agent.getLocalName() + " doesn't find a better value and remains " + getCurrentValue());
+    }    
   }
   
   private Double getCurrentValue() {
@@ -128,7 +130,7 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
             valueMap.put(sender, content);
           }
           
-          System.out.println("Iteration " + agent.getLsIteration() + " Agent " + agent.getLocalName() + " receives " + receivedMessage.getContentObject() + " from "
+          System.out.println("Iteration " + localSearchIteration + " Agent " + agent.getLocalName() + " receives " + receivedMessage.getContentObject() + " from "
               + receivedMessage.getSender().getLocalName());
 
         } catch (UnreadableException e) {

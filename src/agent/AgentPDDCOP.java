@@ -488,14 +488,16 @@ public class AgentPDDCOP extends Agent {
     mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
     
     if (pddcop_algorithm == PDDcopAlgorithm.FORWARD || pddcop_algorithm == PDDcopAlgorithm.GRADIENT) {
-      for (int i = 0; i <= horizon; i++) {
+      for (int timeStep = 0; timeStep <= horizon; timeStep++) {
         if (dcop_algorithm == DcopAlgorithm.DPOP) {
-          mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
-          mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, timeStep));
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, timeStep));
         }
         else if (dcop_algorithm == DcopAlgorithm.CONTINUOUS_DSA) {
-          mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, i));
-          mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, i));
+          for (int iteration = 0; iteration <= MAX_ITERATION; iteration++) {          
+            mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, timeStep, iteration));
+            mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, timeStep, iteration));
+          }
         }
       }
     
@@ -504,18 +506,16 @@ public class AgentPDDCOP extends Agent {
       mainSequentialBehaviourList.addSubBehaviour(new LS_RAND_PICK_VALUE(this));
     }
     else if (pddcop_algorithm == PDDcopAlgorithm.BACKWARD) {
-      for (int i = horizon; i >= 0; i--) {
+      for (int timeStep = horizon; timeStep >= 0; timeStep--) {
         if (dcop_algorithm == DcopAlgorithm.DPOP) {
-          mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, i));
-          mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, i));
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, timeStep));
+          mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, timeStep));
         } 
         else if (dcop_algorithm == DcopAlgorithm.CONTINUOUS_DSA) {
           // TODO
         }
       }
     }
-    
-    
 
 	  return mainSequentialBehaviourList;
 	}
