@@ -5,6 +5,7 @@ import static agent.DcopConstants.ADD_MORE_POINTS;
 import static agent.DcopConstants.DONE_AT_INTERNAL_NODE;
 import static agent.DcopConstants.DONE_AT_LEAF;
 import static agent.DcopConstants.NOT_ADD_POINTS;
+import static agent.DcopConstants.RANDOM_PREFIX;
 import static java.lang.Double.compare;
 import static java.lang.System.out;
 import static java.nio.file.StandardOpenOption.APPEND;
@@ -120,37 +121,32 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	  }
 	}
 	
-	private void actionContinuous() {
+	private void actionContinuous() {	  
 	  dpopFunctionMap.putAll(agent.getFunctionWithPParentMap());
-	  
-	  // Expected function is stored with random variable as key
-	  // Switching cost function is stored with self variable as key
-	  
 	  // Compute expected function if any and add the expected function to the dpopFuncionList
 	  if (agent.hasRandomFunction()) {
 	    computeExpectedFunctionCurrentTimeStep(currentTimeStep);
 	    dpopFunctionMap.put(agent.getRandomVariable(), agent.getExpectedFunction(currentTimeStep));
 	  }
 	  
-	  // TODO: Reviewing actions of AC_DPOP and CAC_DPOP
-	  // Make sure the expected table and the switching cost table is handled correctly
-	  if (agent.getDcop_algorithm() == DcopAlgorithm.AC_DPOP || agent.getDcop_algorithm() == DcopAlgorithm.CAC_DPOP) {
-	    // Doing this way will add random and switching cost table to the list
-	    List<Table> tableListFromFunction = createDCOPTableFromFunction(dpopFunctionMap.values(), currentTimeStep);
-      dpopTableList.addAll(tableListFromFunction);
-    }
-	  
 	  // Add switching cost function / constraint to the appropriate map or list
 	  if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.FORWARD) {
-	    if (agent.getDcop_algorithm() == DcopAlgorithm.EC_DPOP) {
-	      addSwitchingCostFunction(currentTimeStep - 1);
-	    }
+      addSwitchingCostFunction(currentTimeStep - 1);
 	  }
 	  else if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.BACKWARD) {
-      if (agent.getDcop_algorithm() == DcopAlgorithm.EC_DPOP) {
-        addSwitchingCostFunction(currentTimeStep + 1);
-      }
-	  }	  
+      addSwitchingCostFunction(currentTimeStep + 1);
+	  }
+	  // Do not add switching cost function to LS when running EC, AC or CAC-DPOP
+	  else if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.LS_SDPOP) {
+	    agent.print();
+	  }
+	  
+	  // Convert function to table for DPOP
+    if (agent.getDcop_algorithm() == DcopAlgorithm.DPOP) {
+      // Doing this way will add random and switching cost table to the list
+      List<Table> tableListFromFunction = createDCOPTableFromFunction(dpopFunctionMap.values(), currentTimeStep);
+      dpopTableList.addAll(tableListFromFunction);
+    }
 	  
     if (agent.getDcop_algorithm() == DcopAlgorithm.DPOP) {
       doUtil_TABLE();
@@ -306,6 +302,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
         valueMapOfOtherVariables.put(pAgent, pValue);
       }
       
+      // Expected function and switching cost function is already integrated into the sumFunction
       PiecewiseMultivariateQuadFunction unaryFunction = sumFunction.evaluateToUnaryFunction(valueMapOfOtherVariables);
       
       double max = -Double.MAX_VALUE;
@@ -321,7 +318,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       utilTable.addRow(new Row(valueList, max));
     }
     
-//    agent.setSimulatedTime(agent.getSimulatedTime() + agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
     agent.stopSimulatedTiming();
     
     System.out.println("Agent " + agent.getLocalName() + " send utilTable size " + utilTable.size() + " to agent " + agent.getParentAID().getLocalName());
@@ -469,7 +465,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     
     out.println("Agent " + agent.getLocalName() + " starts adding functions to the table");
 
-    // TODO: Add the switching cost function to this table
     joinedTable = addTheUtilityFunctionsToTheJoinedTable(joinedTable);
     out.println("Agent " + agent.getLocalName() + " finishes adding functions to the table size " + joinedTable.size());
 
@@ -599,6 +594,9 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     
     // Interpolate points and join all the tables
     Table joinedTable = interpolateAndJoinTable(tableList, ADD_MORE_POINTS);
+    
+    // Might need to add expected table and unary constraint table
+    joinedTable = addTheUtilityFunctionsToTheJoinedTable(joinedTable);
         
     double maxUtility = -Double.MAX_VALUE;
     
@@ -679,7 +677,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
           Map<String, String> valueMapOfOtherVariables = new HashMap<>();
           if (flag == DONE_AT_LEAF) {
             valueMapOfOtherVariables.put(ppAgentToMove, ppValueToMove);
-          } else if (flag == DONE_AT_INTERNAL_NODE) {
+          } 
+          else if (flag == DONE_AT_INTERNAL_NODE) {
             for (int ppIndex = 0; ppIndex < agent.getParentAndPseudoStrList().size(); ppIndex++) {
               String ppAgent = agent.getParentAndPseudoStrList().get(ppIndex);
               String ppValue = valueList.get(ppIndex);
@@ -689,7 +688,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
           }
           
           double argMax = -Double.MAX_VALUE;
-          // Finding the arg_max of multivariate agent view function seems wrong
+
           if (flag == DONE_AT_LEAF) {
 //            PiecewiseMultivariateQuadFunction unaryFunction = agent.getAgentViewFunction().evaluateToUnaryFunction(valueMapOfOtherVariables);
             PiecewiseMultivariateQuadFunction unaryFunction = functionWithPP.evaluateToUnaryFunction(valueMapOfOtherVariables);
@@ -710,8 +709,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
               System.out.println("Max of the function: " + max);
               System.out.println("Argmax of the function: " + argMax);
             }
-            
-          } else if (flag == DONE_AT_INTERNAL_NODE){            
+          }
+          else if (flag == DONE_AT_INTERNAL_NODE) {            
             argMax = agent.getAgentViewTable().maxArgmaxHybrid(valueMapOfOtherVariables, agent.getSelfInterval().getMidPointInHalfIntegerRanges())[1];
             
             if (agent.isPrinting()) {
@@ -1712,13 +1711,22 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
    * @return
    */
   private Table addTheUtilityFunctionsToTheJoinedTable(Table joinedTable) {  
-    for (String pParent : agent.getParentAndPseudoStrList()) {
-      PiecewiseMultivariateQuadFunction pFunction = dpopFunctionMap.get(pParent);
-      // If containing pParent, update the utility 
+    for (Entry<String, PiecewiseMultivariateQuadFunction> entry : agent.getFunctionWithPParentMap().entrySet()) {
+      String pParent = entry.getKey();
+      PiecewiseMultivariateQuadFunction pFunction = entry.getValue();
+      
       if (joinedTable.containsAgent(pParent)) {
-        for (Row row : joinedTable.getRowList()) {
+        for (Row row : joinedTable.getRowList()) {          
           Map<String, String> valueMap = new HashMap<>();
           valueMap.put(pParent, row.getValueAtPosition(joinedTable.indexOf(pParent)));
+          valueMap.put(agent.getLocalName(), row.getValueAtPosition(joinedTable.indexOf(agent.getLocalName())));
+          row.setUtility(row.getUtility() + pFunction.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap));
+        }
+      }
+      // Unary switching cost constraint or expected table
+      else if (pParent.equals(agent.getLocalName()) || pParent.contains(RANDOM_PREFIX)) {
+        for (Row row : joinedTable.getRowList()) {          
+          Map<String, String> valueMap = new HashMap<>();
           valueMap.put(agent.getLocalName(), row.getValueAtPosition(joinedTable.indexOf(agent.getLocalName())));
           row.setUtility(row.getUtility() + pFunction.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap));
         }
@@ -1747,6 +1755,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
         joinedTable = newTable;
       }
     }
+    
     return joinedTable;
   
   }
