@@ -130,7 +130,7 @@ public class AgentPDDCOP extends Agent {
 
 	private static final long serialVersionUID = 2919994686894853596L;
 	
-  public static final SwitchingType SWITCHING_TYPE = SwitchingType.QUADRATIC;
+  public final SwitchingType SWITCHING_TYPE = SwitchingType.QUADRATIC;
 
 	/*
 	 * DCOP parameters To be read from arguments
@@ -3681,6 +3681,34 @@ public class AgentPDDCOP extends Agent {
 
   public void setAgentViewTableDouble(TableDouble agentViewTableDouble) {
     this.agentViewTableDouble = agentViewTableDouble;
+  }
+  
+  /**
+   * @param timeStep
+   * @param pddcop_alg
+   * @param type
+   * @return null if the recomputed timeStep with pddcop_alg is < 0 or > h
+   */
+  public PiecewiseMultivariateQuadFunction computeSwitchingCostFunction(int timeStep, PDDcopAlgorithm pddcop_alg, SwitchingType type) {
+    // FORWARD: get the value in timeStep - 1
+    // BACKWARD: get the value in the timeStep + 1
+
+    int adjustedTimeStep = -1;
+    adjustedTimeStep = pddcop_alg == PDDcopAlgorithm.FORWARD ? timeStep - 1 : timeStep + 1;
+    if (adjustedTimeStep < 0 || adjustedTimeStep > horizon) {
+      return null;
+    }
+    
+    double value = chosenDoubleValueAtEachTSMap.get(adjustedTimeStep);
+    
+    PiecewiseMultivariateQuadFunction swFunction = new PiecewiseMultivariateQuadFunction();
+    Map<String, Interval> intervalMap = new HashMap<>();
+    intervalMap.put(getLocalName(), getSelfInterval());
+    
+    MultivariateQuadFunction func = MultivariateQuadFunction.switchingCostFunction(getLocalName(), value, type);
+    swFunction.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
+    
+    return swFunction;
   }
 
 }

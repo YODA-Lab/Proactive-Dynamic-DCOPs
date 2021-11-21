@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import function.multivariate.PiecewiseMultivariateQuadFunction;
+
 import static java.lang.Double.*;
 
 public class MaxSumMessage implements Serializable {
@@ -52,6 +54,26 @@ public class MaxSumMessage implements Serializable {
     return resultMsg;
   }
   
+  public MaxSumMessage addFunction(PiecewiseMultivariateQuadFunction function, String evaluatingAgent) {
+    if (function == null) {
+      return new MaxSumMessage(this);
+    }
+    
+    MaxSumMessage resultMsg = new MaxSumMessage(this);
+    for (Entry<Double, Double> entry : resultMsg.getValueUtilityMap().entrySet()) {
+      double key = entry.getKey();
+      double value = entry.getValue();
+      
+      Map<String, Double> valueMap = new HashMap<>();
+      valueMap.put(evaluatingAgent, key);
+      
+      double functionEvaluation = function.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap);
+      
+      entry.setValue(value + functionEvaluation);
+    }
+    return resultMsg;
+  }
+  
   public MaxSumMessage addAllMessages(Collection<MaxSumMessage> msgSet) {
     MaxSumMessage resultMsg = new MaxSumMessage(this);
     for (MaxSumMessage msg : msgSet) {
@@ -76,7 +98,7 @@ public class MaxSumMessage implements Serializable {
   public void updateAlphaAndValues() {
     int size = valueUtilityMap.size();
     double alpha = -valueUtilityMap.values().stream().mapToDouble(value -> value.doubleValue()).sum() / size;
-    for (Map.Entry<Double, Double> entry : valueUtilityMap.entrySet()) {
+    for (Entry<Double, Double> entry : valueUtilityMap.entrySet()) {
       entry.setValue(entry.getValue() + alpha);
     }
   }

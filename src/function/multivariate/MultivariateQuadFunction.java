@@ -53,9 +53,7 @@ public final class MultivariateQuadFunction implements Serializable {
 		coefficients.put("", "", 0.0);
 	}
 	
-	public static MultivariateQuadFunction switchingCostFunction(String selfAgent, String valueStr, SwitchingType type) {
-	  double value = Double.valueOf(valueStr);
-	  
+	public static MultivariateQuadFunction switchingCostFunction(String selfAgent, double value, SwitchingType type) {	  
 	  MultivariateQuadFunction swFunc = new MultivariateQuadFunction();
 	  
 	  // (x - value)^2 = x^2 - 2 * value + value^2

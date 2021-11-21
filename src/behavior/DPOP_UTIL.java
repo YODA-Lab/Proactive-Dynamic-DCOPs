@@ -8,7 +8,6 @@ import static agent.DcopConstants.NOT_ADD_POINTS;
 import static agent.DcopConstants.RANDOM_PREFIX;
 import static agent.DcopConstants.GRADIENT_SCALING_FACTOR;
 import static agent.DcopConstants.DECISION_TABLE;
-import static agent.DcopConstants.NOT_TO_OPTIMIZE_INTERVAL;
 import static java.lang.Double.compare;
 import static java.lang.System.out;
 import static java.nio.file.StandardOpenOption.APPEND;
@@ -46,7 +45,6 @@ import java.util.HashSet;
 
 import agent.AgentPDDCOP;
 import agent.DcopConstants.PDDcopAlgorithm;
-import agent.DcopConstants.SwitchingType;
 import function.Interval;
 import function.multivariate.MultivariateQuadFunction;
 import function.multivariate.PiecewiseMultivariateQuadFunction;
@@ -136,17 +134,10 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	    dpopFunctionMap.put(agent.getRandomVariable(), agent.getExpectedFunction(currentTimeStep));
 	  }
 	  
-	  // Add switching cost function / constraint to the appropriate map or list
-	  if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.FORWARD) {
-      addSwitchingCostFunction(currentTimeStep - 1);
-	  }
-	  else if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.BACKWARD) {
-      addSwitchingCostFunction(currentTimeStep + 1);
-	  }
-	  // Do not add switching cost function to LS when running EC, AC or CAC-DPOP
-	  else if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.LS_SDPOP) {
-	    agent.print();
-	  }
+	  PiecewiseMultivariateQuadFunction swFunc = agent.computeSwitchingCostFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+    if (swFunc != null) {
+      dpopFunctionMap.put(agent.getLocalName(), swFunc);
+    }
 	  
 	  // Convert function to table for DPOP
     if (agent.getDcop_algorithm() == DcopAlgorithm.DPOP) {
@@ -164,16 +155,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     }
 	}
 	
-  private void addSwitchingCostFunction(int timeStep) {
-    if (timeStep < 0 || timeStep > agent.getHorizon()) {
-      return ;
-    }
-    
-    String prevValue = agent.getChosenValueAtEachTimeStep(timeStep);
-    PiecewiseMultivariateQuadFunction swFunc = switchingCostFunctionGivenSolution(agent.getLocalName(), prevValue, AgentPDDCOP.SWITCHING_TYPE);
-    dpopFunctionMap.put(agent.getLocalName(), swFunc);
-  }
-
   private void doUtil_TABLE() {
     if (agent.isLeaf())
       leaf_TABLE();
@@ -1700,17 +1681,6 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		} catch (IOException x) {
 			System.err.println(x);
 		}
-	}
-	
-	private PiecewiseMultivariateQuadFunction switchingCostFunctionGivenSolution(String agentName, String value, SwitchingType type) {
-	  PiecewiseMultivariateQuadFunction swFunction = new PiecewiseMultivariateQuadFunction();
-	  Map<String, Interval> intervalMap = new HashMap<>();
-	  intervalMap.put(agent.getLocalName(), agent.getSelfInterval());
-	  
-	  MultivariateQuadFunction func = MultivariateQuadFunction.switchingCostFunction(agentName, value, type);
-	  swFunction.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
-	  
-	  return swFunction;
 	}
 
 	/**

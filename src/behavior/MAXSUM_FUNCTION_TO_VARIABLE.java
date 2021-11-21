@@ -97,11 +97,9 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
     waiting_store_FUNC_TO_VAR_message_with_time(FUNC_TO_VAR);
     
     double bestValue = calculateTheBestValue();
-    System.out.println("Agent " + agent.getLocalName() + " at iteration " + agent.getLsIteration() + " choose the best value: " + bestValue);
+    System.out.println("Agent " + agent.getLocalName() + " at iteration " + iteration + " choose the best value: " + bestValue);
     
     setCurrentValue(bestValue);
-    
-    agent.incrementLsIteration();
   }
   
   /**
@@ -115,6 +113,15 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
     
     for (AID functionAgent : agent.getFunctionIOwn()) {
       msg = msg.addMessage(agent.getStored_FUNCTION_TO_VARIABLE().get(functionAgent));
+    }
+    
+    // Add switching cost function
+    PiecewiseMultivariateQuadFunction swFunc = agent.computeSwitchingCostFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+    msg = msg.addFunction(swFunc, agent.getLocalName());
+    
+    // Add expected function
+    if (agent.hasRandomFunction()) {
+      msg = msg.addFunction(agent.getExpectedFunction(currentTimeStep), agent.getLocalName());
     }
     
     return msg.getBestValue();
@@ -239,11 +246,7 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
     }
   }
   
-//  private Double getCurrentValue() {
-//    return agent.getChosenDoubleValueAtEachTimeStep(currentTimeStep);
-//  }
-  
   private void setCurrentValue(double value) {
-    agent.setChosenValueAtEachTimeStep(currentTimeStep, String.valueOf(value));
+    agent.setChosenDoubleValueAtEachTimeStep(currentTimeStep, value);
   }
 }

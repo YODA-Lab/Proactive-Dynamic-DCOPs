@@ -75,7 +75,7 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
     
     // Initialize the message to 0 for all agent in agentKeepMyFunctionAIDSet
     // Set newValues same to old values at the first iteration
-    if (agent.getLsIteration() == 0) {
+    if (iteration == 0) {
       agent.startSimulatedTiming();
       
       MaxSumMessage msgVAR_TO_FUNC = new MaxSumMessage(agent.getCurrentDiscreteValues(currentTimeStep));
@@ -157,9 +157,7 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
         }
       }
     }
-    waiting_store_VAR_TO_FUNC_message_with_time(VAR_TO_FUNC);
-    
-//    agent.resetFunc2VarMessageMap();
+    waiting_store_VAR_TO_FUNC_message_with_time(VAR_TO_FUNC);    
   }
 
   /**
@@ -206,26 +204,22 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
     while (msgCount < agent.getFunctionIOwn().size()) {
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
-      
-//      if (receivedMessage != null) {
-        MaxSumMessage maxsumMsg = null;
-        try {
-          maxsumMsg = (MaxSumMessage) receivedMessage.getContentObject();
-          
-          long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
-          if (timeFromReceiveMessage > agent.getSimulatedTime() + agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime()) {
-            agent.setSimulatedTime(timeFromReceiveMessage);
-          } else {
-            agent.setSimulatedTime(agent.getSimulatedTime() + agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
-          }
-        } catch (UnreadableException e) {
-          e.printStackTrace();
+
+      MaxSumMessage maxsumMsg = null;
+      try {
+        maxsumMsg = (MaxSumMessage) receivedMessage.getContentObject();
+        
+        long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
+        if (timeFromReceiveMessage > agent.getSimulatedTime() + agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime()) {
+          agent.setSimulatedTime(timeFromReceiveMessage);
+        } else {
+          agent.setSimulatedTime(agent.getSimulatedTime() + agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
         }
-        agent.getReceived_VARIABLE_TO_FUNCTION().put(receivedMessage.getSender(), maxsumMsg);
-        msgCount++;
-//      }
-//      else
-//        block();
+      } catch (UnreadableException e) {
+        e.printStackTrace();
+      }
+      agent.getReceived_VARIABLE_TO_FUNCTION().put(receivedMessage.getSender(), maxsumMsg);
+      msgCount++;
     }
   }
 }
