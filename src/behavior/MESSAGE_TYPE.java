@@ -24,6 +24,11 @@ public interface MESSAGE_TYPE {
 	public static final int MGM_VALUE = 14;
 	public static final int MGM_IMPROVE = 15;
 	public static final int MGM_UTIL = 16;
+	public static final int GD_VALUE = 17;
+	public static final int GD_IMPROVE = 18;
+	public static final int GD_UTL = 19;
+	public static final int FINAL_UTIL_CONTINOUS = 20;
+  public static final int FINAL_VALUE_CONTINUOU = 21;
 	
 	public static final Map<Integer, String> msgTypes = createMap();
 	
@@ -45,6 +50,11 @@ public interface MESSAGE_TYPE {
       myMap.put(MGM_VALUE, "MGM_VALUE");
       myMap.put(MGM_IMPROVE, "MGM_IMPROVE");
       myMap.put(MGM_UTIL, "MGM_UTIL");
+      myMap.put(GD_VALUE, "GD_VALUE");
+      myMap.put(GD_IMPROVE, "GD_IMPROVE");
+      myMap.put(GD_UTL, "GD_UTL");
+      myMap.put(FINAL_UTIL_CONTINOUS, "FINAL_UTIL_CONTINOUS");
+      myMap.put(FINAL_VALUE_CONTINUOU, "FINAL_VALUE_CONTINUOU");
       
 	    return myMap;
 	}

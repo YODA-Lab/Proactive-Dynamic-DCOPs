@@ -176,6 +176,10 @@ public final class PiecewiseMultivariateQuadFunction implements Serializable {
    */
   public PiecewiseMultivariateQuadFunction addPiecewiseFunction(PiecewiseMultivariateQuadFunction pmqFunc) {
     if (this.isEmpty()) return pmqFunc;
+
+    if (pmqFunc == null) {
+      return this;
+    }
     
     PiecewiseMultivariateQuadFunction addedPwFunction = new PiecewiseMultivariateQuadFunction();
 

@@ -51,10 +51,15 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import behavior.SEND_RECEIVE_FINAL_UTIL;
+import behavior.SEND_RECEIVE_FINAL_UTIL_CONTINUOUS;
 import behavior.AGENT_TERMINATE;
 import behavior.CONTINUOUS_DSA;
 import behavior.DPOP_UTIL;
 import behavior.DPOP_VALUE;
+import behavior.GD_RAND_PICK_VALUE;
+import behavior.GD_RECEIVE_SEND_LS_UTIL;
+import behavior.GD_SEND_RECEIVE_IMPROVE;
+import behavior.GD_SEND_RECEIVE_VALUE;
 import behavior.INIT_PROPAGATE_DPOP_VALUE;
 import behavior.INIT_RECEIVE_DPOP_VALUE;
 import behavior.INIT_RECEIVE_SEND_LS_UTIL;
@@ -68,6 +73,7 @@ import behavior.PSEUDOTREE_GENERATION;
 import behavior.LS_RAND_PICK_VALUE;
 import behavior.LS_RECEIVE_IMPROVE;
 import behavior.SEND_RECEIVE_FINAL_VALUE;
+import behavior.SEND_RECEIVE_FINAL_VALUE_CONTINUOUS;
 import function.Interval;
 import function.multivariate.MultivariateQuadFunction;
 import function.multivariate.PiecewiseMultivariateQuadFunction;
@@ -196,14 +202,14 @@ public class AgentPDDCOP extends Agent {
 
 	private List<String> decisionVariableList = new ArrayList<>();
 //	private List<String> selfVariableList = new ArrayList<>();
-	private HashMap<String, List<String>> decisionVariableDomainMap = new HashMap<>();
-	private HashMap<String, Interval> decisionVariableIntervalMap = new HashMap<>();
-	private HashMap<String, List<String>> selfRandomVariableDomainMap = new HashMap<>();
-	private HashMap<String, Interval> randomVariableIntervalMap = new HashMap<>();
+	private Map<String, List<String>> decisionVariableDomainMap = new HashMap<>();
+	private Map<String, Interval> decisionVariableIntervalMap = new HashMap<>();
+	private Map<String, List<String>> selfRandomVariableDomainMap = new HashMap<>();
+	private Map<String, Interval> randomVariableIntervalMap = new HashMap<>();
 	// map TS -> constraint table list (if local_search)
 	// map TS -> 1 collapsed table list (if collapsed dpop)
-	private HashMap<Integer, List<TableString>> discountedExpectedTableEachTSMap = new HashMap<>();
-	private HashMap<String, double[][]> probabilityAtEachTimeStepMap = new HashMap<>();
+	private Map<Integer, List<TableString>> discountedExpectedTableEachTSMap = new HashMap<>();
+	private Map<String, double[][]> probabilityAtEachTimeStepMap = new HashMap<>();
 
 	// VALUE phase
 	private Map<String, String> valuesToSendInVALUEPhase = new HashMap<>();
@@ -333,6 +339,10 @@ public class AgentPDDCOP extends Agent {
   private Map<AID, MaxSumMessage> received_VARIABLE_TO_FUNCTION = new HashMap<>();
   private Map<AID, MaxSumMessage> stored_FUNCTION_TO_VARIABLE = new HashMap<>();
   private Map<AID, MaxSumMessage> stored_VARIABLE_TO_FUNCTION = new HashMap<>();
+  private Map<String, HashMap<Integer, Double>> agentViewDoubleEachTimeStepMap = new HashMap<>();
+  
+  private Map<Integer, Double> localSearchMaximumGain = new HashMap<>();
+  private Map<Integer, Double> localSearchArgmax = new HashMap<>();
 
 	public AgentPDDCOP() {
 	}
@@ -489,8 +499,10 @@ public class AgentPDDCOP extends Agent {
 	// TODO: To be completed
 	private SequentialBehaviour computeBehaviorContinuous() {
     // Simulate the random variable values and compute the mean
+	  // This step is necessary for *all* algorithms
     samplingAndComputeMean();
         
+    // Discretize the domains for every time step
     for (int timeStep = 0; timeStep <= horizon; timeStep ++) {
       currentDiscreteValuesMap.put(timeStep, decisionVariableIntervalMap.get(getLocalName()).getMidPoints(numberOfPoints));
     }
@@ -499,7 +511,6 @@ public class AgentPDDCOP extends Agent {
 	  
 	  mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
 	  mainSequentialBehaviourList.addSubBehaviour(new PSEUDOTREE_GENERATION(this));
-    mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
     
     if (pddcop_algorithm == PDDcopAlgorithm.FORWARD || pddcop_algorithm == PDDcopAlgorithm.GRADIENT) {
       for (int timeStep = 0; timeStep <= horizon; timeStep++) {
@@ -519,10 +530,10 @@ public class AgentPDDCOP extends Agent {
             mainSequentialBehaviourList.addSubBehaviour(new MAXSUM_FUNCTION_TO_VARIABLE(this, timeStep, iteration));
           }
         }
+        else if (dcop_algorithm == DcopAlgorithm.RANDOMIZE) {
+          mainSequentialBehaviourList.addSubBehaviour(new GD_RAND_PICK_VALUE(this));
+        }
       }
-    }
-    else if (pddcop_algorithm == PDDcopAlgorithm.GRADIENT_RAND) {
-      mainSequentialBehaviourList.addSubBehaviour(new LS_RAND_PICK_VALUE(this));
     }
     else if (pddcop_algorithm == PDDcopAlgorithm.BACKWARD) {
       for (int timeStep = horizon; timeStep >= 0; timeStep--) {
@@ -531,10 +542,33 @@ public class AgentPDDCOP extends Agent {
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, timeStep));
         } 
         else if (dcop_algorithm == DcopAlgorithm.CONTINUOUS_DSA) {
-          // TODO
+          for (int iteration = 0; iteration <= MAX_ITERATION; iteration++) {          
+            mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, timeStep, iteration));
+            mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, timeStep, iteration));
+          }
+        }        
+        else if (isRunningMaxsum()) {
+          for (int iteration = 0; iteration <= MAX_ITERATION; iteration++) {          
+            mainSequentialBehaviourList.addSubBehaviour(new MAXSUM_VARIABLE_TO_FUNCTION(this, timeStep, iteration));
+            mainSequentialBehaviourList.addSubBehaviour(new MAXSUM_FUNCTION_TO_VARIABLE(this, timeStep, iteration));
+          }
         }
       }
     }
+    
+    if (pddcop_algorithm == PDDcopAlgorithm.GRADIENT) {
+      mainSequentialBehaviourList.addSubBehaviour(new GD_SEND_RECEIVE_VALUE(this, gradientIteration));
+      
+      for (int iteration = 0; iteration < MAX_ITERATION; iteration++) {
+        mainSequentialBehaviourList.addSubBehaviour(new GD_SEND_RECEIVE_IMPROVE(this, gradientIteration));
+        mainSequentialBehaviourList.addSubBehaviour(new GD_RECEIVE_SEND_LS_UTIL(this, gradientIteration));
+      }
+    }
+    
+    mainSequentialBehaviourList.addSubBehaviour(new SEND_RECEIVE_FINAL_VALUE_CONTINUOUS(this));
+    mainSequentialBehaviourList.addSubBehaviour(new SEND_RECEIVE_FINAL_UTIL_CONTINUOUS(this));
+    
+    mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
 
 	  return mainSequentialBehaviourList;
 	}
@@ -669,8 +703,7 @@ public class AgentPDDCOP extends Agent {
         mainSequentialBehaviourList.addSubBehaviour(new LS_SEND_IMPROVE(this, theLastTimeStep, localTS));
         mainSequentialBehaviourList.addSubBehaviour(new LS_RECEIVE_IMPROVE(this, theLastTimeStep, localTS));
         mainSequentialBehaviourList.addSubBehaviour(new LS_RECEIVE_VALUE(this, theLastTimeStep, localTS));
-        mainSequentialBehaviourList
-            .addSubBehaviour(new LS_RECEIVE_SEND_LS_UTIL(this, theLastTimeStep, localTS));
+        mainSequentialBehaviourList.addSubBehaviour(new LS_RECEIVE_SEND_LS_UTIL(this, theLastTimeStep, localTS));
       }
     }
 
@@ -2002,6 +2035,41 @@ public class AgentPDDCOP extends Agent {
 
 		return sumUtility;
 	}
+	
+	 /**
+   * REVIEWED <br>
+   * 
+   * Get utility with parents and pseudoparents, then add its switching cost
+   * 
+   * @param timeSteps
+   * @return
+   */
+  public double utilityLSWithParentAndPseudoAndUnaryContinuous() {
+    double sumUtility = 0;
+
+    for (int ts = 0; ts <= horizon; ts++) {
+      for (Entry<String, PiecewiseMultivariateQuadFunction> functionEntry : functionWithPParentMap.entrySet()) {
+        String ppParent = functionEntry.getKey();
+        PiecewiseMultivariateQuadFunction function = functionEntry.getValue();
+        
+        Map<String, Double> domainMap = new HashMap<>();
+        domainMap.put(getLocalName(), chosenDoubleValueAtEachTSMap.get(ts));
+        domainMap.put(ppParent, agentViewDoubleEachTimeStepMap.get(ppParent).get(ts));
+
+        sumUtility += Math.pow(discountFactor, ts) * function.getTheFirstFunction().evaluateToValueGivenValueMap(domainMap);
+      }
+      
+      if (hasRandomFunction()) {
+        PiecewiseMultivariateQuadFunction expectedFunction = expectedFunctionMap.get(ts);
+        Map<String, Double> domainMap = new HashMap<>();
+        domainMap.put(getLocalName(), chosenDoubleValueAtEachTSMap.get(ts));
+        
+        sumUtility += Math.pow(discountFactor, ts) * expectedFunction.getTheFirstFunction().evaluateToValueGivenValueMap(domainMap);
+      }
+    }
+
+    return sumUtility;
+  }
 
 	public List<String> getSelfDomain() {
 		return decisionVariableDomainMap.get(agentID);
@@ -2029,6 +2097,33 @@ public class AgentPDDCOP extends Agent {
 
 		return switchingCost;
 	}
+	
+	 /**
+   * REVIEWED <br>
+   * 
+   * Return switching cost in positive values
+   * 
+   * @return
+   */
+  public double computeSwitchingCostAllTimeStepContinuous() {
+    double switchingCost = 0;
+
+    if (chosenDoubleValueAtEachTSMap.size() == 1) {
+      return Double.MAX_VALUE;
+    }
+
+    // Compute switching costs from the first time step to the horizon
+    for (int timeStep = 0; timeStep < horizon; timeStep++) {
+      double valueCurrentTimeStep = chosenDoubleValueAtEachTSMap.get(timeStep);
+      double valueNextTimeStep = chosenDoubleValueAtEachTSMap.get(timeStep + 1);
+      
+      double switchCost = SWITCHING_TYPE == SwitchingType.QUADRATIC ? Math.pow(valueCurrentTimeStep - valueNextTimeStep, 2) : 0;
+      
+      switchingCost += Math.pow(discountFactor, timeStep) * switchCost;
+    }
+
+    return switchingCost;
+  }
 
 	/**
 	 * Return switching cost in 0 or negative value <br>
@@ -2569,7 +2664,7 @@ public class AgentPDDCOP extends Agent {
 		this.currentStartTime = currentStartTime;
 	}
 
-	public HashMap<String, List<String>> getDecisionVariableDomainMap() {
+	public Map<String, List<String>> getDecisionVariableDomainMap() {
 		return decisionVariableDomainMap;
 	}
 
@@ -2605,7 +2700,7 @@ public class AgentPDDCOP extends Agent {
 		this.simulatedTime += time;
 	}
 
-	public HashMap<Integer, List<TableString>> getDiscountedExpectedTableEachTSMap() {
+	public Map<Integer, List<TableString>> getDiscountedExpectedTableEachTSMap() {
 		return discountedExpectedTableEachTSMap;
 	}
 
@@ -2867,11 +2962,11 @@ public class AgentPDDCOP extends Agent {
 		return discountFactor;
 	}
 
-	public HashMap<String, List<String>> getSelfRandomVariableDomainMap() {
+	public Map<String, List<String>> getSelfRandomVariableDomainMap() {
 		return selfRandomVariableDomainMap;
 	}
 
-	public HashMap<String, double[][]> getProbabilityAtEachTimeStepMap() {
+	public Map<String, double[][]> getProbabilityAtEachTimeStepMap() {
 		return probabilityAtEachTimeStepMap;
 	}
 
@@ -3420,7 +3515,7 @@ public class AgentPDDCOP extends Agent {
     this.constraintInfoMap = constraintInfoMap;
   }
 
-	public HashMap<String, Interval> getDecisionVariableIntervalMap() {
+	public Map<String, Interval> getDecisionVariableIntervalMap() {
 		return decisionVariableIntervalMap;
 	}
 
@@ -3428,7 +3523,7 @@ public class AgentPDDCOP extends Agent {
 		this.decisionVariableIntervalMap = decisionVariableIntervalMap;
 	}
 
-	public HashMap<String, Interval> getSelfRandomVariableIntervalMap() {
+	public Map<String, Interval> getSelfRandomVariableIntervalMap() {
 		return randomVariableIntervalMap;
 	}
 
@@ -3709,6 +3804,72 @@ public class AgentPDDCOP extends Agent {
     swFunction.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
     
     return swFunction;
+  }
+
+  public Map<String, HashMap<Integer, Double>> getAgentViewDoubleEachTimeStepMap() {
+    return agentViewDoubleEachTimeStepMap;
+  }
+
+  public void setAgentViewDoubleEachTimeStepMap(Map<String, HashMap<Integer, Double>> agentViewDoubleEachTimeStepMap) {
+    this.agentViewDoubleEachTimeStepMap = agentViewDoubleEachTimeStepMap;
+  }
+  
+  public PiecewiseMultivariateQuadFunction computeSumLocalFunction(int timeStep) {
+    PiecewiseMultivariateQuadFunction sumFunction = new PiecewiseMultivariateQuadFunction();
+    for (PiecewiseMultivariateQuadFunction func : neighborFunctionMap.values()) {
+      sumFunction.addPiecewiseFunction(func);
+    }
+    
+    if (hasRandomFunction()) {
+      sumFunction.addPiecewiseFunction(expectedFunctionMap.get(timeStep));
+    }
+    
+    PiecewiseMultivariateQuadFunction switchingCostFuncPrev = computeSwitchingCostFunction(timeStep, PDDcopAlgorithm.FORWARD, SWITCHING_TYPE);
+    PiecewiseMultivariateQuadFunction switchingCostFuncLater = computeSwitchingCostFunction(timeStep, PDDcopAlgorithm.BACKWARD, SWITCHING_TYPE);
+    
+    sumFunction.addPiecewiseFunction(switchingCostFuncPrev);
+    sumFunction.addPiecewiseFunction(switchingCostFuncLater);
+    
+    Map<String, Double> evaluatingDomain = new HashMap<>();
+    
+    for (String neighbor : neighborStrSet) {
+      evaluatingDomain.put(neighbor, agentViewDoubleEachTimeStepMap.get(neighbor).get(timeStep)); 
+    }
+    
+    
+    return sumFunction.evaluateToUnaryFunction(evaluatingDomain);
+  }
+  
+  /**
+   * REVIEWED
+   * 
+   * @param lastTimeStep
+   */
+  public void computeMaximumGainEveryTimeStep() {
+    for (int timeStep = 0; timeStep <= horizon; timeStep++) {
+      Map<String, Double> selfValue = new HashMap<>();
+      selfValue.put(getLocalName(), chosenDoubleValueAtEachTSMap.get(timeStep));
+      
+      // Compute current utility
+      PiecewiseMultivariateQuadFunction sumLocalFunction = computeSumLocalFunction(timeStep);  
+      double currentQuality = sumLocalFunction.getTheFirstFunction().evaluateToValueGivenValueMap(selfValue);
+      
+      Map<String, Interval> selfInterval = new HashMap<>();
+      selfInterval.put(getLocalName(), getSelfInterval());
+      
+      double[] maxArgMax = sumLocalFunction.getTheFirstFunction().getMaxAndArgMax(selfInterval);
+      
+      localSearchMaximumGain.put(timeStep, maxArgMax[0] - currentQuality);
+      localSearchArgmax.put(timeStep, maxArgMax[1]);
+    }
+  }
+
+  public Map<Integer, Double> getLocalSearchMaximumGain() {
+    return localSearchMaximumGain;
+  }
+
+  public Map<Integer, Double> getLocalSearchArgmax() {
+    return localSearchArgmax;
   }
 
 }

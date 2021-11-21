@@ -32,12 +32,11 @@ public interface DcopConstants {
      * variables
      */
     BOUND_DPOP,
-    GRADIENT,
-    GRADIENT_RAND
+    GRADIENT
   }
 
   public static enum DcopAlgorithm {
-    DPOP, MGM, MAXSUM, HYBRID_MAXSUM, CAC_MAXSUM, EC_DPOP, AC_DPOP, CAC_DPOP, DISCRETE_DSA, CONTINUOUS_DSA,
+    DPOP, MGM, MAXSUM, HYBRID_MAXSUM, CAC_MAXSUM, EC_DPOP, AC_DPOP, CAC_DPOP, DISCRETE_DSA, CONTINUOUS_DSA, RANDOMIZE,
     /**
      * Not sure why I implemented this algorithm. Not in use now
      */
