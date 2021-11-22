@@ -18,6 +18,8 @@ public class Interval implements Serializable {
   private double upperBound;
 
   public Interval() {
+    lowerBound = 0;
+    upperBound = 0;
   }
 
   /**
@@ -199,5 +201,9 @@ public class Interval implements Serializable {
   
   public double randomDouble(Random randomGenerator) {
     return lowerBound + randomGenerator.nextDouble() * (upperBound - lowerBound);
+  }
+  
+  public boolean isEmpty() {
+    return compare(lowerBound, 0D) == 0 && compare(upperBound, 0D) == 0;
   }
 }

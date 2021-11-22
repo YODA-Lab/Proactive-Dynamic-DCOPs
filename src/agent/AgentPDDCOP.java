@@ -311,8 +311,8 @@ public class AgentPDDCOP extends Agent {
 	public int decisionDomain;
 	public int randomDomain;
 	
-	private BetaDistribution initialDistribution = new BetaDistribution(0, 0);
-	private TransitionFamilyDistribution transitionDistributionFamily = TransitionFamilyDistribution.of();
+	private Map<String, BetaDistribution> initialDistributionMap = new HashMap<>();
+	private Map<String, TransitionFamilyDistribution> transitionDistributionFamilyMap = new HashMap<>();
   private Map<String, Set<String>> neighborSetMap = new HashMap<>();
   private Map<Integer, Double> meanAtEveryTimeStep = new HashMap<>(); // Assume that each agent has at most one random variable
   
@@ -470,8 +470,8 @@ public class AgentPDDCOP extends Agent {
 		  print("randomVariableIntervalMap=" + randomVariableIntervalMap);
 		  print("functionMap=" + neighborFunctionMap);
 		  print("neighborSetMap=" + neighborSetMap);
-		  print("initialDistribution=" + initialDistribution.toString());
-		  print("transitionDistributionFamily=" + transitionDistributionFamily);
+		  print("initialDistributionMap=" + initialDistributionMap);
+		  print("transitionDistributionFamily=" + transitionDistributionFamilyMap);
 		}
 
 		SequentialBehaviour mainSequentialBehaviourList = isDiscrete() ? computeBehaviorDiscrete() : computeBehaviorContinuous();
@@ -480,8 +480,15 @@ public class AgentPDDCOP extends Agent {
 	
 	 // Welford's online algorithm for running mean
   private void samplingAndComputeMean() {
+    String randVar = getSelfRanomVariable();
+    
+    // Do nothing if not having random variable
+    if (!randomVariableIntervalMap.containsKey(randVar)) {
+      return ;
+    }
+    
     for (int samplingIteration = 1; samplingIteration <= SAMPLING_STEPS; samplingIteration++) {
-      BetaDistribution currentDistribution = initialDistribution;
+      BetaDistribution currentDistribution = initialDistributionMap.get(randVar);
 
       for (int timeStep = 0; timeStep <= horizon; timeStep++) {
         double currentMean = meanAtEveryTimeStep.getOrDefault(timeStep, 0D);
@@ -491,7 +498,7 @@ public class AgentPDDCOP extends Agent {
         meanAtEveryTimeStep.put(timeStep, updatedMean);
 
         // Compute the Beta distribution for the next time step
-        currentDistribution = transitionDistributionFamily.computeBetaDistribution(sample);
+        currentDistribution = transitionDistributionFamilyMap.get(randVar).computeBetaDistribution(sample);
       }
     }
   }
@@ -1378,16 +1385,16 @@ public class AgentPDDCOP extends Agent {
   private void parseInputFileContinuous(String inputFileName) {
     int maxNumberOfNeighbors = Integer.MIN_VALUE;
 
-    final String DECISION_VARIABLE = "decision";
-    final String RANDOM_VARIABLE = "random";
+    final String DECISION_VARIABLE = "decision_";
+    final String RANDOM_VARIABLE = "random_";
     final String FUNCTION = "function";
 
-    final String TRANS_FUNC_PREFIX = "transition";
-    final String INIT_PROB_PREFIX = "initial_distribution";
-    final String NEIGHBOR_SET = "neighbor_set";
+    final String INIT_PROB_PREFIX = "initial_distribution_";
+    final String TRANS_FUNC_PREFIX = "transition_";
+    final String NEIGHBOR_SET = "neighbor_set_";
 
     try (BufferedReader br = new BufferedReader(new FileReader(System.getProperty("user.dir") + "/" + inputFileName))) {
-      List<String> lineWithSemiColonList = new ArrayList<String>();
+      List<String> lineListWithoutSemicolon = new ArrayList<String>();
 
       String line = br.readLine();
       while (line != null) {
@@ -1403,67 +1410,65 @@ public class AgentPDDCOP extends Agent {
           } while (line.endsWith(";") == false);
         }
 
-//				line = line.replace(" ","");
         line = line.replace(";", "");
-        lineWithSemiColonList.add(line);
+        lineListWithoutSemicolon.add(line);
         line = br.readLine();
       }
 
       // Process line by line;
-      for (String lineWithSemiColon : lineWithSemiColonList) {
-        String nameMzn = lineWithSemiColon.split("=")[0];
-        String valueMzn = lineWithSemiColon.split("=")[1];
+      for (String lineWithoutSemicolon : lineListWithoutSemicolon) {
+        String leftHandSide = lineWithoutSemicolon.split("=")[0];
+        String rightHandSide = lineWithoutSemicolon.split("=")[1];
 
         /** DECISION_VARIABLE */
         // read decision variable domain
-        if (nameMzn.contains(DECISION_VARIABLE)) {
+        if (leftHandSide.contains(DECISION_VARIABLE)) {
           // process name
-          String decisionVariable = nameMzn.replace(DECISION_VARIABLE + "_", "");
+          String decisionVariable = leftHandSide.replace(DECISION_VARIABLE, "");
 
           // process values
-          valueMzn = valueMzn.replace("[", "");
-          valueMzn = valueMzn.replace("]", "");
-          double lowerBound = Double.valueOf(valueMzn.split(",")[0]);
-          double upperBound = Double.valueOf(valueMzn.split(",")[1]);
+          rightHandSide = rightHandSide.replace("[", "");
+          rightHandSide = rightHandSide.replace("]", "");
+          double lowerBound = Double.valueOf(rightHandSide.split(",")[0]);
+          double upperBound = Double.valueOf(rightHandSide.split(",")[1]);
           decisionVariableList.add(decisionVariable);
           decisionVariableIntervalMap.put(decisionVariable, new Interval(lowerBound, upperBound));
         }
-        if (nameMzn.contains(RANDOM_VARIABLE)) {
+        else if (leftHandSide.contains(RANDOM_VARIABLE)) {
           // process name
-          String decisionVariable = nameMzn.replace(RANDOM_VARIABLE + "_", "");
+          String randomVariable = leftHandSide.replace(RANDOM_VARIABLE, "");
 
           // process values
-          valueMzn = valueMzn.replace("[", "");
-          valueMzn = valueMzn.replace("]", "");
-          double lowerBound = Double.valueOf(valueMzn.split(",")[0]);
-          double upperBound = Double.valueOf(valueMzn.split(",")[1]);
-          decisionVariableList.add(decisionVariable);
-          randomVariableIntervalMap.put(decisionVariable, new Interval(lowerBound, upperBound));
-        }
+          rightHandSide = rightHandSide.replace("[", "").replace("]", "");
+          double lowerBound = Double.valueOf(rightHandSide.split(",")[0]);
+          double upperBound = Double.valueOf(rightHandSide.split(",")[1]);
 
+          randomVariableIntervalMap.put(randomVariable, new Interval(lowerBound, upperBound));
+        }
         /** FUNCTION */
         // function(x3,x1)=9.386x3^2 -5.77744x3 -3.91612x1^2 -6.10079x1 -6.70358x3x1
         // 7.41036;
         // BinaryFunction func = new BinaryFunction(-1, 20, -3, 40, -2, 6)
         // Double.valueOf(idStr), 1.0);
-        if (nameMzn.startsWith(FUNCTION)) {
+        else if (leftHandSide.startsWith(FUNCTION)) {
           // x1^ and x10^
-          if (!valueMzn.contains(getLocalName() + "^"))
+          // Only read the function associated with self variable
+          if (!rightHandSide.contains(getLocalName() + "^"))
             continue;
 
-          String functionHead = nameMzn.replace(FUNCTION + "(", "").replace(")", "");
+          String functionHead = leftHandSide.replace(FUNCTION + "(", "").replace(")", "");
           String[] scope = functionHead.split(",");
 //          String selfAgent = "x" + agentID;
           String neighborAgent = scope[0].equals(getLocalName()) ? scope[1] : scope[0];
           
-          String[] termStrList = valueMzn.split(" ");
+          String[] termStrList = rightHandSide.split(" ");
           String[] functionParamters = parseFunction(termStrList, getLocalName(), neighborAgent);
 
           print("functionParamters=" + Arrays.deepToString(functionParamters));
 
           MultivariateQuadFunction func = new MultivariateQuadFunction(functionParamters, getLocalName(), neighborAgent);
 
-          // Adding the new neighbor to neighborStrSet
+          // Adding the new neighbor to neighborStrSet if this is not a random variable
           if (!neighborAgent.contains(RANDOM_PREFIX)) {
             neighborStrSet.add(neighborAgent);
           }
@@ -1478,63 +1483,49 @@ public class AgentPDDCOP extends Agent {
           } else {
             intervalMap.put(neighborAgent, randomVariableIntervalMap.get(neighborAgent));
           }
-          
 
           pwFunc.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
           neighborFunctionMap.put(neighborAgent, pwFunc);
 
-          // Own the function
-          if (isRunningMaxsum() && (neighborAgent.contains(RANDOM_PREFIX)
-              || getLocalName().compareTo(neighborAgent) < 0)) {
+          // Set the functions that I own for all binary functions
+          if (isRunningMaxsum() && 
+                (neighborAgent.contains(RANDOM_PREFIX) || getLocalName().compareTo(neighborAgent) < 0)) {
             // add the function to Maxsum function map
             // add the neighbor to external-var-agent-set
             MSFunctionMapIOwn.put(neighborAgent, pwFunc);
           }
         }
-
-        if (nameMzn.contains(INIT_PROB_PREFIX)) {
-          nameMzn = nameMzn.replace(INIT_PROB_PREFIX + "_y", "");
-
-          // Read variable with agentID only
-          if (!nameMzn.equals(agentID)) {
-            continue;
-          }
+        else if (leftHandSide.contains(INIT_PROB_PREFIX)) {
+          String randomVariable = leftHandSide.replace(INIT_PROB_PREFIX, "");
 
           // process values
-          valueMzn = valueMzn.replace("[", "");
-          valueMzn = valueMzn.replace("]", "");
+          rightHandSide = rightHandSide.replace("[", "");
+          rightHandSide = rightHandSide.replace("]", "");
           
           // alpha=1.2,beta=3.4565
-          double alpha = Double.valueOf(valueMzn.split(",")[0].replace("alpha:", ""));
-          double beta = Double.valueOf(valueMzn.split(",")[1].replace("beta:", ""));
+          double alpha = Double.valueOf(rightHandSide.split(",")[0].replace("alpha:", ""));
+          double beta = Double.valueOf(rightHandSide.split(",")[1].replace("beta:", ""));
 
           RandomGenerator rg = new Well19937c(DEFAULT_BETA_SAMPLING_SEED);
-          setInitialDistribution(new BetaDistribution(rg, alpha, beta));
+          initialDistributionMap.put(randomVariable, new BetaDistribution(rg, alpha, beta));
         }
-
-        if (nameMzn.contains(TRANS_FUNC_PREFIX)) {
-          nameMzn = nameMzn.replace(TRANS_FUNC_PREFIX + "_y", "");
-
-          // Read variable with agentID only
-          if (!nameMzn.equals(agentID)) {
-            continue;
-          }
+        else if (leftHandSide.contains(TRANS_FUNC_PREFIX)) {
+          String randomVariable = leftHandSide.replace(TRANS_FUNC_PREFIX, "");
 
           // process values
-          valueMzn = valueMzn.replace("[", "");
-          valueMzn = valueMzn.replace("]", "");
+          rightHandSide = rightHandSide.replace("[", "");
+          rightHandSide = rightHandSide.replace("]", "");
 
           // alpha=1.2
-          double alpha = Double.valueOf(valueMzn.replace("alpha:", ""));
-          setTransitionDistribution(TransitionFamilyDistribution.of(alpha));
+          double alpha = Double.valueOf(rightHandSide.replace("alpha:", ""));
+          transitionDistributionFamilyMap.put(randomVariable, TransitionFamilyDistribution.of(alpha));
         }
-
-        if (nameMzn.startsWith(NEIGHBOR_SET)) {
-          String agent = nameMzn.replace(NEIGHBOR_SET + "_", "");
+        else if (leftHandSide.startsWith(NEIGHBOR_SET)) {
+          String agent = leftHandSide.replace(NEIGHBOR_SET, "");
           // neighbor_set_x1=x11 x3 y1
           // x1: x11 x3 y1
           // x11 x3 y1
-          String neighborSetStr = valueMzn;
+          String neighborSetStr = rightHandSide;
           // Do not consider random variable
           // neighbor set: y1: x1 ;
           if (!agent.contains(RANDOM_PREFIX)) {
@@ -1891,6 +1882,14 @@ public class AgentPDDCOP extends Agent {
 	
 	// 9.386x3^2 -5.77744x3 -3.91612x1^2 -6.10079x1 -6.70358x3x1 7.41036
 	// 9.386x3^2 -5.77744x3 -3.91612y3^2 -6.10079y3 -6.70358x3y3 7.41036
+	/**
+	 * THIS FUNCTION HAS BEEN TESTED BY PRINTING OUT <br>
+	 * Note do not change String[] to Double[] since the array also contains the name of neighborAgent <br>
+	 * @param termArray
+	 * @param selfAgent
+	 * @param neighborAgent
+	 * @return
+	 */
 	public String[] parseFunction(String[] termArray, String selfAgent, String neighborAgent) {
 	  boolean hasRandom = neighborAgent.contains(RANDOM_PREFIX);
 	  
@@ -3530,22 +3529,6 @@ public class AgentPDDCOP extends Agent {
 	public void setSelfRandomVariableIntervalMap(HashMap<String, Interval> selfRandomVariableIntervalMap) {
 		this.randomVariableIntervalMap = selfRandomVariableIntervalMap;
 	}
-
-  public TransitionFamilyDistribution getTransitionDistribution() {
-    return transitionDistributionFamily;
-  }
-
-  public void setTransitionDistribution(TransitionFamilyDistribution transitionDistribution) {
-    this.transitionDistributionFamily = transitionDistribution;
-  }
-
-  public BetaDistribution getInitialDistribution() {
-    return initialDistribution;
-  }
-
-  public void setInitialDistribution(BetaDistribution initialDistribution) {
-    this.initialDistribution = initialDistribution;
-  }
   
   public boolean isContinuous() {
     return dcopType == DcopType.CONTINUOUS;
@@ -3870,6 +3853,10 @@ public class AgentPDDCOP extends Agent {
 
   public Map<Integer, Double> getLocalSearchArgmax() {
     return localSearchArgmax;
+  }
+  
+  public String getSelfRanomVariable() {
+    return getLocalName().replace("x", "y");
   }
 
 }

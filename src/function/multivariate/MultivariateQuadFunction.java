@@ -28,7 +28,6 @@ import static java.lang.Double.*;
 import static agent.DcopConstants.*;
 
 /**
- * This is the list of function that needs to be tested: ADD, EVALUATE, PROJECT
  * 
  * @author khoihd
  */
@@ -47,7 +46,6 @@ public final class MultivariateQuadFunction implements Serializable {
 	/**
 	 * Constructor with no parameter <br>
 	 * Initialize the constant coefficient to 0.0
-	 * 
 	 */
 	public MultivariateQuadFunction() {
 		coefficients.put("", "", 0.0);
