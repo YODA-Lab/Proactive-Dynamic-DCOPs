@@ -1,7 +1,6 @@
 package function;
 
 import static java.lang.Double.*;
-import static agent.DcopConstants.RANDOM_SAMPLING_SEED;
 
 import java.io.Serializable;
 import java.util.*;
@@ -198,8 +197,7 @@ public class Interval implements Serializable {
     return valueSet;
   }
   
-  public double randomDouble() {
-    Random rdn = new Random(RANDOM_SAMPLING_SEED);
-    return lowerBound + rdn.nextDouble() * (upperBound - lowerBound);
+  public double randomDouble(Random randomGenerator) {
+    return lowerBound + randomGenerator.nextDouble() * (upperBound - lowerBound);
   }
 }

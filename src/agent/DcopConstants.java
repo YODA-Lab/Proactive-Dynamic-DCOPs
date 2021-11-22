@@ -8,7 +8,6 @@ public interface DcopConstants {
   public static final boolean WAITING_FOR_MSG = true;
   public static final String RANDOM_PREFIX = "y";
   public static final int DEFAULT_BETA_SAMPLING_SEED = 1711;
-  public static final int RANDOM_SAMPLING_SEED = 1711;
   public static final int SAMPLING_STEPS = 1000;
   
   public static enum SwitchingCostFunctionType {

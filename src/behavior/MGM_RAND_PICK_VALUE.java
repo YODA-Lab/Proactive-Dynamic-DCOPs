@@ -37,7 +37,7 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
     
     List<String> domain = agent.getSelfDomain();
     
-    agent.getChosenValueAtEachTSMap().put(currentTimeStep, domain.get(agent.getRandom().nextInt(domain.size())));
+    agent.getChosenValueAtEachTSMap().put(currentTimeStep, domain.get(agent.getRandomGenerator().nextInt(domain.size())));
     
     agent.print("choose random value at time step " + currentTimeStep + ": " + agent.getChosenValueAtEachTSMap().get(currentTimeStep));
     

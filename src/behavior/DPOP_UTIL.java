@@ -1099,7 +1099,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 		// Randomize DPOP solutions for the first time step before solving
 		if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT) && currentTimeStep == 0) {
-			int randomIndex = agent.getRandom().nextInt(agent.getSelfDomain().size());
+			int randomIndex = agent.getRandomGenerator().nextInt(agent.getSelfDomain().size());
 			agent.getChosenValueAtEachTSMap().put(-1, agent.getSelfDomain().get(randomIndex));
 		}
 

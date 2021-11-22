@@ -284,7 +284,7 @@ public class AgentPDDCOP extends Agent {
 	private String solutionForNextState;
 	private double alpha_r = 0.05;
 	private double beta_r = 0.5;
-	private int rLearningIteration;
+	private int rLearningIteration; // The number of iterations used for R-LEARNING
 	private boolean isApplyingRLearning = true;
 	
 
@@ -400,7 +400,7 @@ public class AgentPDDCOP extends Agent {
 		discountFactor = Double.valueOf((String) args[5]);
 		dynamicType = DynamicType.valueOf((String) args[6]);
 		heuristicWeight = Double.valueOf((String) args[7]);
-		rLearningIteration = Integer.valueOf((String) args[8]);
+		rLearningIteration = Integer.valueOf((String) args[8]); // The number of iterations used for R-LEARNING
     gradientIteration = Integer.valueOf((String) args[9]);
     numberOfPoints = Integer.valueOf((String) args[10]);
 		dcopType = DcopType.valueOf((String) args[11]);
@@ -3265,7 +3265,7 @@ public class AgentPDDCOP extends Agent {
 		onlineSolvingTime.put(timeStep, onlineSolvingTimes);
 	}
 
-	public Random getRandom() {
+	public Random getRandomGenerator() {
 		return rdn;
 	}
 
