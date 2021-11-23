@@ -3,7 +3,7 @@ package agent;
 import static java.lang.System.out;
 import static agent.DcopConstants.RANDOM_PREFIX;
 import static agent.DcopConstants.DEFAULT_BETA_SAMPLING_SEED;
-import static agent.DcopConstants.SAMPLING_STEPS;
+import static agent.DcopConstants.SAMPLING_ITERATION;
 import static agent.DcopConstants.INPUT_FOLDER;
 import static agent.DcopConstants.MAX_ITERATION;
 import static agent.DcopConstants.MARKOV_CONVERGENCE_TIME_STEP;
@@ -478,7 +478,9 @@ public class AgentPDDCOP extends Agent {
 		addBehaviour(mainSequentialBehaviourList);
 	}
 	
-	 // Welford's online algorithm for running mean
+  /**
+   *  Naive sampling and use Welford's online algorithm to compute running mean
+   */
   private void samplingAndComputeMean() {
     String randVar = getSelfRanomVariable();
     
@@ -487,13 +489,14 @@ public class AgentPDDCOP extends Agent {
       return ;
     }
     
-    for (int samplingIteration = 1; samplingIteration <= SAMPLING_STEPS; samplingIteration++) {
+    for (int samplingIteration = 1; samplingIteration <= SAMPLING_ITERATION; samplingIteration++) {
       BetaDistribution currentDistribution = initialDistributionMap.get(randVar);
 
       for (int timeStep = 0; timeStep <= horizon; timeStep++) {
         double currentMean = meanAtEveryTimeStep.getOrDefault(timeStep, 0D);
         double sample = currentDistribution.sample();
         
+        // ((n-1) * m_{n-1} + x_n) / n
         double updatedMean = ((samplingIteration - 1) * currentMean + sample) / samplingIteration;
         meanAtEveryTimeStep.put(timeStep, updatedMean);
 
@@ -503,7 +506,7 @@ public class AgentPDDCOP extends Agent {
     }
   }
 	
-	// TODO: To be completed
+	// TODO: To be reviewed
 	private SequentialBehaviour computeBehaviorContinuous() {
     // Simulate the random variable values and compute the mean
 	  // This step is necessary for *all* algorithms
@@ -518,17 +521,15 @@ public class AgentPDDCOP extends Agent {
 	  
 	  mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
 	  mainSequentialBehaviourList.addSubBehaviour(new PSEUDOTREE_GENERATION(this));
-    mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
     
     if (pddcop_algorithm == PDDcopAlgorithm.FORWARD || pddcop_algorithm == PDDcopAlgorithm.GRADIENT) {
       for (int timeStep = 0; timeStep <= horizon; timeStep++) {
-        if (dcop_algorithm == DcopAlgorithm.DPOP) {
+        if (isRuningDPOPFamily()) {
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, timeStep));
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, timeStep));
         }
         else if (dcop_algorithm == DcopAlgorithm.CONTINUOUS_DSA) {
           for (int iteration = 0; iteration <= MAX_ITERATION; iteration++) {          
-            mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, timeStep, iteration));
             mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, timeStep, iteration));
           }
         }        
@@ -539,19 +540,18 @@ public class AgentPDDCOP extends Agent {
           }
         }
         else if (dcop_algorithm == DcopAlgorithm.RANDOMIZE) {
-          mainSequentialBehaviourList.addSubBehaviour(new GD_RAND_PICK_VALUE(this));
+          mainSequentialBehaviourList.addSubBehaviour(new GD_RAND_PICK_VALUE(this, timeStep));
         }
       }
     }
     else if (pddcop_algorithm == PDDcopAlgorithm.BACKWARD) {
       for (int timeStep = horizon; timeStep >= 0; timeStep--) {
-        if (dcop_algorithm == DcopAlgorithm.DPOP) {
+        if (isRunningDPOPFamily()) {
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, timeStep));
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, timeStep));
         } 
         else if (dcop_algorithm == DcopAlgorithm.CONTINUOUS_DSA) {
           for (int iteration = 0; iteration <= MAX_ITERATION; iteration++) {          
-            mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, timeStep, iteration));
             mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, timeStep, iteration));
           }
         }        
@@ -564,6 +564,7 @@ public class AgentPDDCOP extends Agent {
       }
     }
     
+    // Additional behaviors for GRADIENT to search for better solution 
     if (pddcop_algorithm == PDDcopAlgorithm.GRADIENT) {
       mainSequentialBehaviourList.addSubBehaviour(new GD_SEND_RECEIVE_VALUE(this, gradientIteration));
       
@@ -573,6 +574,7 @@ public class AgentPDDCOP extends Agent {
       }
     }
     
+    // All algorithms are evaluated by the same FINAL VALUE and UTIL behaviors
     mainSequentialBehaviourList.addSubBehaviour(new SEND_RECEIVE_FINAL_VALUE_CONTINUOUS(this));
     mainSequentialBehaviourList.addSubBehaviour(new SEND_RECEIVE_FINAL_UTIL_CONTINUOUS(this));
     
@@ -1383,6 +1385,10 @@ public class AgentPDDCOP extends Agent {
 		print();
 	}
 	
+  /**
+   * THIS METHOD HAS BEEN REIVEWED AND TESTED
+   * @param inputFileName
+   */
   private void parseInputFileContinuous(String inputFileName) {
     int maxNumberOfNeighbors = Integer.MIN_VALUE;
 
@@ -3558,6 +3564,11 @@ public class AgentPDDCOP extends Agent {
   public boolean isRunningContinousDpop() {
     return dcop_algorithm == DcopAlgorithm.EC_DPOP || dcop_algorithm == DcopAlgorithm.AC_DPOP ||
         dcop_algorithm == DcopAlgorithm.CAC_DPOP;
+  }
+  
+  public boolean isRuningDPOPFamily() {
+    return dcop_algorithm == DcopAlgorithm.EC_DPOP || dcop_algorithm == DcopAlgorithm.AC_DPOP ||
+        dcop_algorithm == DcopAlgorithm.CAC_DPOP || dcop_algorithm == DcopAlgorithm.DPOP || dcop_algorithm == DcopAlgorithm.APPROX_DPOP; 
   }
 
   public Map<Integer, PiecewiseMultivariateQuadFunction> getExpectedFunctionMap() {
