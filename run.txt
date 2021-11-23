@@ -1,0 +1,1 @@
+java -jar ND-DCOP-1.0-jar-with-dependencies.jar FORWARD MGM random_x12_y12_dx10_dy10/instance_0_x12_y12_dx10_dy10.dzn 10 0 0.9 FINITE_HORIZON 0.6 100 1000 5 CONTINUOUS

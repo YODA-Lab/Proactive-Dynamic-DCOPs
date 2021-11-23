@@ -163,7 +163,8 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
   		agent.getDpopRandomTableList()
   				.addAll(agent.getTableWithoutChildrenAndPseudochilren(agent.getRawRandomTableList()));
 		}
-		else if (agent.isContinuous()) {	    
+		else if (agent.isContinuous()) {
+		  // Not taking into account the expected function and switching cost function
 	    for (Entry<String, PiecewiseMultivariateQuadFunction> entry : agent.getNeighborFunctionMap().entrySet()) {
 	      String neighbor = entry.getKey();
 	      PiecewiseMultivariateQuadFunction constraint = entry.getValue();
@@ -172,8 +173,6 @@ public class PSEUDOTREE_GENERATION extends OneShotBehaviour implements MESSAGE_T
 	        agent.setFunctionWithPParentMap(neighbor, constraint);
 	      }
 	    }
-	    
-	    
 		}
 	}
 }

@@ -158,8 +158,8 @@ public final class PiecewiseMultivariateQuadFunction implements Serializable {
   public static Set<String> commonVarSet(PiecewiseMultivariateQuadFunction function1,
     PiecewiseMultivariateQuadFunction function2) {    
     // Get common variable set
-    Set<String> commonVarSet = new HashSet<>(function1.getVariableSet());
-    commonVarSet.retainAll(function2.getVariableSet());
+    Set<String> commonVarSet = new HashSet<>(function1.getVariableList());
+    commonVarSet.retainAll(function2.getVariableList());
 
     return commonVarSet;
   }
@@ -361,12 +361,12 @@ public final class PiecewiseMultivariateQuadFunction implements Serializable {
     return functionMap;
   }
   
-  public Set<String> getVariableSet() {    
-    return getTheFirstFunction().getVariableSet();
+  public List<String> getVariableList() {    
+    return getTheFirstFunction().getVariableList();
   }
   
-  public Set<String> getOtherVariableSet(String agent) {
-    Set<String> otherVariableSet = new HashSet<>(getVariableSet());
+  public List<String> getOtherVariableSet(String agent) {
+    List<String> otherVariableSet = new ArrayList<>(getVariableList());
     otherVariableSet.remove(agent);
     return otherVariableSet;
   }

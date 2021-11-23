@@ -116,7 +116,7 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
     }
     
     // Add switching cost function
-    PiecewiseMultivariateQuadFunction swFunc = agent.computeSwitchingCostFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+    PiecewiseMultivariateQuadFunction swFunc = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
     msg = msg.addFunction(swFunc, agent.getLocalName());
     
     // Add expected function

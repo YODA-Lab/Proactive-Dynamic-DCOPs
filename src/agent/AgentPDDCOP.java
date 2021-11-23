@@ -506,7 +506,10 @@ public class AgentPDDCOP extends Agent {
     }
   }
 	
-	// TODO: To be reviewed
+	/**
+	 * THIS METHOD HAS BEEN REVIEWED
+	 * @return
+	 */
 	private SequentialBehaviour computeBehaviorContinuous() {
     // Simulate the random variable values and compute the mean
 	  // This step is necessary for *all* algorithms
@@ -1493,8 +1496,8 @@ public class AgentPDDCOP extends Agent {
 
           pwFunc.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
           neighborFunctionMap.put(neighborAgent, pwFunc);
-
-          // Set the functions that I own for all binary functions
+          
+          // Set the functions that I own. Functions are binary
           if (isRunningMaxsum() && 
                 (neighborAgent.contains(RANDOM_PREFIX) || getLocalName().compareTo(neighborAgent) < 0)) {
             // add the function to Maxsum function map
@@ -1554,6 +1557,8 @@ public class AgentPDDCOP extends Agent {
           }
         }
       }
+      
+      print("MSFunctionMapIOwn=" + MSFunctionMapIOwn);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -3585,6 +3590,10 @@ public class AgentPDDCOP extends Agent {
     return null;
   }
   
+  /**
+   * Check if neighborFunctionMap has any random variable key
+   * @return
+   */
   public boolean hasRandomFunction() {
     return getRandomVariable() != null;
   }
@@ -3643,6 +3652,12 @@ public class AgentPDDCOP extends Agent {
     return neighborFunctionMap;
   }
 
+  /**
+   * Mapping: pParent -> function (non-discounted) <br>
+   * Also contains: selfAgent -> function, if there is unary constraint
+   * This mapping doesn't contain expected and switching cost function <br>
+   * @return
+   */
   public Map<String, PiecewiseMultivariateQuadFunction> getFunctionWithPParentMap() {
     return functionWithPParentMap;
   }
@@ -3779,12 +3794,22 @@ public class AgentPDDCOP extends Agent {
    * @param type
    * @return null if the recomputed timeStep with pddcop_alg is < 0 or > h
    */
-  public PiecewiseMultivariateQuadFunction computeSwitchingCostFunction(int timeStep, PDDcopAlgorithm pddcop_alg, SwitchingType type) {
+  public PiecewiseMultivariateQuadFunction computeSwitchingCostDiscountedFunction(int timeStep, PDDcopAlgorithm pddcop_alg, SwitchingType type) {
     // FORWARD: get the value in timeStep - 1
     // BACKWARD: get the value in the timeStep + 1
 
     int adjustedTimeStep = -1;
-    adjustedTimeStep = pddcop_alg == PDDcopAlgorithm.FORWARD ? timeStep - 1 : timeStep + 1;
+    double adjustedDiscounted = 0;
+    
+    if (pddcop_alg == PDDcopAlgorithm.FORWARD) {
+      adjustedTimeStep = timeStep - 1;
+      adjustedDiscounted = 1 / discountFactor;
+    }
+    else if (pddcop_alg == PDDcopAlgorithm.BACKWARD) {
+      adjustedTimeStep = timeStep + 1;
+      adjustedDiscounted = 1;
+    }
+    
     if (adjustedTimeStep < 0 || adjustedTimeStep > horizon) {
       return null;
     }
@@ -3795,7 +3820,7 @@ public class AgentPDDCOP extends Agent {
     Map<String, Interval> intervalMap = new HashMap<>();
     intervalMap.put(getLocalName(), getSelfInterval());
     
-    MultivariateQuadFunction func = MultivariateQuadFunction.switchingCostFunction(getLocalName(), value, type);
+    MultivariateQuadFunction func = MultivariateQuadFunction.switchingCostDiscountedFunction(getLocalName(), value, adjustedDiscounted, type);
     swFunction.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
     
     return swFunction;
@@ -3819,8 +3844,8 @@ public class AgentPDDCOP extends Agent {
       sumFunction.addPiecewiseFunction(expectedFunctionMap.get(timeStep));
     }
     
-    PiecewiseMultivariateQuadFunction switchingCostFuncPrev = computeSwitchingCostFunction(timeStep, PDDcopAlgorithm.FORWARD, SWITCHING_TYPE);
-    PiecewiseMultivariateQuadFunction switchingCostFuncLater = computeSwitchingCostFunction(timeStep, PDDcopAlgorithm.BACKWARD, SWITCHING_TYPE);
+    PiecewiseMultivariateQuadFunction switchingCostFuncPrev = computeSwitchingCostDiscountedFunction(timeStep, PDDcopAlgorithm.FORWARD, SWITCHING_TYPE);
+    PiecewiseMultivariateQuadFunction switchingCostFuncLater = computeSwitchingCostDiscountedFunction(timeStep, PDDcopAlgorithm.BACKWARD, SWITCHING_TYPE);
     
     sumFunction.addPiecewiseFunction(switchingCostFuncPrev);
     sumFunction.addPiecewiseFunction(switchingCostFuncLater);

@@ -51,15 +51,24 @@ public final class MultivariateQuadFunction implements Serializable {
 		coefficients.put("", "", 0.0);
 	}
 	
-	public static MultivariateQuadFunction switchingCostFunction(String selfAgent, double value, SwitchingType type) {	  
+	/**
+	 * @param selfAgent
+	 * @param value
+	 * @param discounted
+	 * @param type
+	 * @return
+	 */
+	public static MultivariateQuadFunction switchingCostDiscountedFunction(String selfAgent, double value, double discounted, SwitchingType type) {	  
 	  MultivariateQuadFunction swFunc = new MultivariateQuadFunction();
 	  
 	  // (x - value)^2 = x^2 - 2 * value + value^2
 	  if (type == SwitchingType.QUADRATIC) {
-	    swFunc.addOrUpdate(selfAgent, selfAgent, 1D);
-	    swFunc.addOrUpdate(selfAgent, "", -2 * value);
-	    swFunc.addOrUpdate("", "",  value * value);
+	    swFunc.addOrUpdate(selfAgent, selfAgent, 1D * discounted);
+	    swFunc.addOrUpdate(selfAgent, "", -2 * value * discounted);
+	    swFunc.addOrUpdate("", "",  value * value * discounted);
 	  }
+	  
+	  swFunc.setOwner(selfAgent);
 	  
 	  return swFunc;
 	}
@@ -201,7 +210,7 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * @return
 	 */
 	public MultivariateQuadFunction evaluate(final String variable, final double value) {
-		if (!getVariableSet().contains(variable)) {
+		if (!getVariableList().contains(variable)) {
 			throw new FunctionException("The function doesn't contain the variable that needed to be evaluated "
 					+ variable + " " + critFuncIntervalMap);
 		}
@@ -624,6 +633,7 @@ public final class MultivariateQuadFunction implements Serializable {
 			}
 			count++;
 		}
+		
 		return Double.MAX_VALUE;
 	}
 	
@@ -632,8 +642,8 @@ public final class MultivariateQuadFunction implements Serializable {
 	}
 
 	/**
-	 * Evaluate this unary function. The number of variables is checked if 1 This
-	 * function is already TESTED
+	 * Evaluate this unary function. The number of variables is checked if 1 
+	 * This function is already TESTED
 	 * 
 	 * @param variable
 	 * @param value
@@ -667,9 +677,9 @@ public final class MultivariateQuadFunction implements Serializable {
 							+ critFuncIntervalMap);
 		}
 
-		if (!getVariableSet().contains(owner)) {
+		if (!getVariableList().contains(owner)) {
 			throw new FunctionException("Owner, which is the only variable left, is not contained in variable list: "
-					+ getVariableSet() + " and the owner " + owner);
+					+ getVariableList() + " and the owner " + owner);
 		}
 
 		double LB = intervalMap.get(owner).getLowerBound();
@@ -765,7 +775,7 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * @return the number of variables
 	 */
 	public int getNumberOfVariable() {
-		return getVariableSet().size();
+		return getVariableList().size();
 	}
 
 	/**
@@ -773,17 +783,17 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * 
 	 * @return the set of variables through intervals.keySet()
 	 */
-	public Set<String> getVariableSet() {
-		Set<String> varSet = new HashSet<>();
-		varSet.add(owner);
-		if (otherVariable.contains("x")) {
-		  varSet.add(otherVariable);
+	public List<String> getVariableList() {
+		List<String> varList = new ArrayList<>();
+		varList.add(owner);
+		if (otherVariable.contains("x") || !otherVariable.isEmpty()) {
+		  varList.add(otherVariable);
 		}
 //		varSet.addAll(coefficients.columnKeySet());
 //		varSet.addAll(coefficients.rowKeySet());
 //		varSet.remove("");
 
-		return varSet;
+		return varList;
 	}
 
 	/**

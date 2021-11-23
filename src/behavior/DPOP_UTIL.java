@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 import com.google.common.collect.Lists;
@@ -126,15 +125,17 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 	  }
 	}
 	
-	private void actionContinuous() {	  
+	private void actionContinuous() {
+	  // Note: regular and expected function are non-discounted (since solving each time step is done independently).
 	  dpopFunctionMap.putAll(agent.getFunctionWithPParentMap());
+
 	  // Compute expected function if any and add the expected function to the dpopFuncionList
 	  if (agent.hasRandomFunction()) {
 	    computeExpectedFunctionCurrentTimeStep(currentTimeStep);
 	    dpopFunctionMap.put(agent.getRandomVariable(), agent.getExpectedFunction(currentTimeStep));
 	  }
 	  
-	  PiecewiseMultivariateQuadFunction swFunc = agent.computeSwitchingCostFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+	  PiecewiseMultivariateQuadFunction swFunc = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
     if (swFunc != null) {
       dpopFunctionMap.put(agent.getLocalName(), swFunc);
     }
@@ -204,12 +205,13 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());
   }
   
-  /*
+  /**
+   * THIS FUNCTION HAS BEEN REVIEWED
    */
   public void leaf_FUNC() { 
     agent.startSimulatedTiming();
   
-    out.println("LEAF " + agent.getLocalName() + " is running");
+    agent.print("LEAF is running");
     
     PiecewiseMultivariateQuadFunction combinedFunction = new PiecewiseMultivariateQuadFunction();
 
@@ -238,6 +240,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     } catch (IOException e) {
       e.printStackTrace();
     }
+    
+    agent.print("LEAF is done");
   }
   
   /*
@@ -345,13 +349,26 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
   }
   
   private void internalNode_FUNC() {
-    out.println("INTERNAL node " + agent.getLocalName() + " is running");
-
-    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+    agent.print("INTERNAL node is running");
     
     agent.startSimulatedTiming();
     
-    System.out.println("Agent " + agent.getLocalName() + " has received all UTIL messages");
+    agent.print("INTERNAL node STARTS adding functions from dpopFunctionMap");
+    
+    PiecewiseMultivariateQuadFunction sumFunction = new PiecewiseMultivariateQuadFunction();
+    for (PiecewiseMultivariateQuadFunction pseudoParentFunction : dpopFunctionMap.values()) {
+      sumFunction = sumFunction.addPiecewiseFunction(pseudoParentFunction);
+    }
+    
+    agent.print("INTERNAL node is DONE adding functions from dpopFunctionMap");
+    
+    agent.stopSimulatedTiming();
+    
+    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+    
+    agent.startSimulatedTiming();
+        
+    agent.print("INTERNAL node has received all UTIL messages");
     
     // UnaryPiecewiseFunction
     // PiecewiseMultivariateQuadFunction combinedFunctionMessage =
@@ -365,14 +382,11 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
       e1.printStackTrace();
     }
 
-    System.out.println(
-        "Agent " + agent.getLocalName() + " Internal node functions counts before joining rewards " + combinedFunctionMessage.size());
+    agent.print("INTERNAL node functions counts before joining rewards " + combinedFunctionMessage.size());
+    
+    combinedFunctionMessage = combinedFunctionMessage.addPiecewiseFunction(sumFunction);
 
-    for (PiecewiseMultivariateQuadFunction pseudoParentFunction : dpopFunctionMap.values()) {
-      combinedFunctionMessage = combinedFunctionMessage.addPiecewiseFunction(pseudoParentFunction);
-    }
-
-    out.println("Agent " + agent.getLocalName() + " Internal node number of combined function: "
+    agent.print("INTERNAL node number of combined function: "
         + combinedFunctionMessage.getFunctionMap().size());
 
     combinedFunctionMessage.setOwner(agent.getLocalName());
@@ -381,18 +395,20 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
     PiecewiseMultivariateQuadFunction projectedFunction = null;
 
-    out.println("Agent " + agent.getLocalName() + " Internal node number of combined function: "
-        + combinedFunctionMessage.getFunctionMap().size());
+    agent.print("INTERNAL node number of combined function: " + combinedFunctionMessage.getFunctionMap().size());
 
+    agent.print("INTERNAL node STARTS projecting functions");
+    
     if (agent.getDcop_algorithm() == DcopAlgorithm.APPROX_DPOP) {
       projectedFunction = combinedFunctionMessage.approxProject(agent.getNumberOfPoints(), agent.getLocalName(),
           agent.getNumberOfApproxAgents(), agent.isApprox());
     } else if (agent.getDcop_algorithm() == DcopAlgorithm.EC_DPOP) {
       projectedFunction = combinedFunctionMessage.analyticalProject();
     }
+    
+    agent.print("INTERNAL node is DONE projecting functions");
 
-    out.println("Agent " + agent.getLocalName() + " Internal node number of projected function: "
-        + projectedFunction.getFunctionMap().size());
+    agent.print("INTERNAL node number of projected function: " + projectedFunction.getFunctionMap().size());
 
     agent.stopSimulatedTiming();
 
@@ -478,12 +494,28 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
   }
   
   public void root_FUNC() {
-    out.println("ROOT node " + agent.getLocalName() + " is running");
+    agent.startSimulatedTiming();
+    
+    agent.print("ROOT node is running");
+    
+    agent.print("ROOT node STARTS adding functions from dpopFunctionMap");
+    
+    PiecewiseMultivariateQuadFunction sumFunction = new PiecewiseMultivariateQuadFunction();
+    
+    for (PiecewiseMultivariateQuadFunction pseudoParentFunction : dpopFunctionMap.values()) {
+      sumFunction = sumFunction.addPiecewiseFunction(pseudoParentFunction);
+    }
+    
+    agent.print("ROOT node IS DONE adding functions from dpopFunctionMap");
+    
+    agent.stopSimulatedTiming();
 
     List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
     
     // Start of processing time
     agent.startSimulatedTiming();
+    
+    agent.print("ROOT node STARTS adding functions with functions from message");
     
     PiecewiseMultivariateQuadFunction combinedFunctionMessage = null;
     try {
@@ -493,18 +525,18 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     } catch (IOException e) {
       e.printStackTrace();
     }
-
-    for (PiecewiseMultivariateQuadFunction pseudoParentFunction : dpopFunctionMap.values()) {
-      combinedFunctionMessage = combinedFunctionMessage.addPiecewiseFunction(pseudoParentFunction);
-    }
+    
+    combinedFunctionMessage = combinedFunctionMessage.addPiecewiseFunction(sumFunction);
 
     combinedFunctionMessage.setOwner(agent.getAgentID());
+    
+    agent.print("ROOT node STARTS adding functions with functions from message");
+    
+    agent.print("ROOT has final function before computing max and argmax: " + combinedFunctionMessage);
 
     // choose the maximum
     double argmax = -Double.MAX_VALUE;
     double max = -Double.MAX_VALUE;
-
-    // out.println("Root Combined function: " + combinedFunctionMessage);
 
     for (Entry<MultivariateQuadFunction, Set<Map<String, Interval>>> functionEntry : combinedFunctionMessage.getFunctionMap()
         .entrySet()) {
@@ -521,10 +553,8 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     
     agent.setChosenValueAtEachTimeStep(currentTimeStep, String.valueOf(argmax));
 
-    out.println("MAX VALUE IS " + max);
-    out.println("ARGMAX VALUE IS " + argmax);
-
-//    agent.setSimulatedTime(agent.getSimulatedTime() + agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
+    agent.print("MAX VALUE IS " + max);
+    agent.print("ARGMAX VALUE IS " + argmax);
     
     agent.stopSimulatedTiming();
   }
@@ -762,14 +792,14 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
   
 	
   /**
-   * Create the DCOP tables from agent.getCurrentDiscreteValues(currentTimeStep);
+   * THIS FUNCTION HAS BEEN REVIEWED
    */
   public List<TableDouble> createDCOPTableFromFunction(Collection<PiecewiseMultivariateQuadFunction> functionList, int timeStep) {
     List<TableDouble> tableListWithParents = new ArrayList<>();
     for (PiecewiseMultivariateQuadFunction pwFunction : functionList) {
-      MultivariateQuadFunction func = pwFunction.getTheFirstFunction(); // there is only one function in pw at this time
+      MultivariateQuadFunction func = pwFunction.getTheFirstFunction(); // there is only one function in piecewise at this time
 
-      List<String> varListLabel = func.getVariableSet().stream().collect(Collectors.toList());
+      List<String> varListLabel = new ArrayList<>(func.getVariableList());
       TableDouble tableFromFunc = new TableDouble(varListLabel);
 
       List<List<Double>> valueSetList = new ArrayList<>();
@@ -799,10 +829,11 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
    */
   private void computeExpectedFunctionCurrentTimeStep(int timeStep) {
     String randomVariable = agent.getRandomVariable(); 
+
     if (randomVariable != null) {
-      PiecewiseMultivariateQuadFunction randomFunction = agent.getNeighborFunctionMap().get(randomVariable);
-      
       Map<String, Double> randomValueMap = new HashMap<>();
+      
+      PiecewiseMultivariateQuadFunction randomFunction = agent.getNeighborFunctionMap().get(randomVariable);
       double distributionMean = agent.getMeanAtEveryTimeStep().get(timeStep);
       randomValueMap.put(randomVariable, distributionMean);
 
@@ -1220,16 +1251,13 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 			ACLMessage receivedMessage = myAgent.blockingReceive(template);
 
 			agent.stopSimulatedTiming();
-//	      if (receivedMessage != null) {
+
 			long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
 
 			if (timeFromReceiveMessage > agent.getSimulatedTime()) {
 				agent.setSimulatedTime(timeFromReceiveMessage);
 			}
 			messageList.add(receivedMessage);
-//	      }
-//	      else
-//	        block();
 		}
 
 		agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());

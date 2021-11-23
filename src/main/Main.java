@@ -27,7 +27,7 @@ public class Main {
     rt.setCloseVM(true);
     Profile p = new ProfileImpl();
     p.setParameter(Profile.MAIN_HOST, "localhost");
-    p.setParameter(Profile.GUI, "true");
+    p.setParameter(Profile.GUI, "false");
     ContainerController cc = rt.createMainContainer(p);
     for (int i = 1; i <= agentCount; i++) {
       AgentController ac;

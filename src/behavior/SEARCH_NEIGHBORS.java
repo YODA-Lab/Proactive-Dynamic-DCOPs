@@ -56,7 +56,11 @@ public class SEARCH_NEIGHBORS extends OneShotBehaviour implements MESSAGE_TYPE {
           agent.addAgentToFunctionOwnedByOther(agentID);
         }
       }
-    }   
+    }
+    
+    agent.print("getMSFunctionMapIOwn=" + agent.getMSFunctionMapIOwn());
+    agent.print("agentToFunctionIOwn=" + agent.getFunctionIOwn());
+    agent.print("getFunctionOwnedByOther=" + agent.getFunctionOwnedByOther());
 		
 		agent.print("Done looking for neighbors");
 	}

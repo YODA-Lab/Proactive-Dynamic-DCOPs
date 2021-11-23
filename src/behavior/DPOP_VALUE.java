@@ -25,10 +25,12 @@ import table.RowString;
  *         the children PRINT_OUT the picked value STOP
  */
 public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
+	/**
+   * 
+   */
+  private static final long serialVersionUID = -1272666821422854692L;
 
-	private static final long serialVersionUID = 4288241761322913640L;
-
-	AgentPDDCOP agent;
+  AgentPDDCOP agent;
 
 	private int currentTimeStep;
 
