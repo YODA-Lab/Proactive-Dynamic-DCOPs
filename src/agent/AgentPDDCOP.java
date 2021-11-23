@@ -518,6 +518,7 @@ public class AgentPDDCOP extends Agent {
 	  
 	  mainSequentialBehaviourList.addSubBehaviour(new SEARCH_NEIGHBORS(this));
 	  mainSequentialBehaviourList.addSubBehaviour(new PSEUDOTREE_GENERATION(this));
+    mainSequentialBehaviourList.addSubBehaviour(new AGENT_TERMINATE(this));
     
     if (pddcop_algorithm == PDDcopAlgorithm.FORWARD || pddcop_algorithm == PDDcopAlgorithm.GRADIENT) {
       for (int timeStep = 0; timeStep <= horizon; timeStep++) {

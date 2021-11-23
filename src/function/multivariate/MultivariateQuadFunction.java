@@ -828,7 +828,7 @@ public final class MultivariateQuadFunction implements Serializable {
 		sb.append(coefficients);
 		sb.append(", Owner = ");
 		sb.append(owner);
-		sb.append(", Interval = ");
+		sb.append(", critFuncIntervalMap = ");
 		sb.append(critFuncIntervalMap + "]");
 		return sb.toString();
 	}
