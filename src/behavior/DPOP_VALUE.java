@@ -7,10 +7,16 @@ import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.Map.Entry;
 
 import agent.AgentPDDCOP;
+import agent.DcopConstants.DcopAlgorithm;
 import agent.DcopConstants.PDDcopAlgorithm;
+import function.Interval;
+import function.multivariate.MultivariateQuadFunction;
+import function.multivariate.PiecewiseMultivariateQuadFunction;
 import table.RowString;
 
 /**
@@ -40,107 +46,14 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 		this.currentTimeStep = currentTimeStep;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public void action() {
-		// VALUE might be called multiple times
-		agent.getValuesToSendInVALUEPhase().clear();
-
-		if (agent.isRoot()) {
-			if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DCOP)) {
-				agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getCDPOP_value());
-			} else {
-				agent.addValuesToSendInValuePhase(agent.getAgentID(),
-						agent.getChosenValueAtEachTimeStep(currentTimeStep));
-			}
-
-			for (AID childrenAgentAID : agent.getChildrenAIDSet()) {
-				agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE,
-						agent.getSimulatedTime());
-			}
-		} else {
-			// leaf or internal nodes
-			ACLMessage receivedMessage = waitingForMessageFromParent(DPOP_VALUE);
-			agent.startSimulatedTiming();
-
-			HashMap<Integer, String> variableAgentViewIndexValueMap = new HashMap<Integer, String>();
-			HashMap<String, String> valuesFromParent = new HashMap<String, String>();
-			try {
-				valuesFromParent = (HashMap<String, String>) receivedMessage.getContentObject();
-			} catch (UnreadableException e) {
-				e.printStackTrace();
-			}
-
-			for (Entry<String, String> valuesEntry : valuesFromParent.entrySet()) {
-				String agentKey = valuesEntry.getKey();
-				String agentValue = valuesEntry.getValue();
-
-				int positionInAgentView = agent.getAgentViewTable().getDecVarLabel().indexOf(agentKey);
-
-				// not in agentView
-				if (positionInAgentView == -1) {
-					continue;
-				}
-				// if exist this agent in agent view, add to values to send
-				agent.addValuesToSendInValuePhase(agentKey, agentValue);
-
-				variableAgentViewIndexValueMap.put(positionInAgentView, agentValue);
-			}
-
-			int selfAgentIndex = agent.getAgentViewTable().getDecVarLabel().indexOf(agent.getAgentID());
-
-			RowString chosenRow = new RowString();
-			double maxUtility = -Double.MAX_VALUE;
-
-			for (RowString agentViewRow : agent.getAgentViewTable().getRowList()) {
-				boolean isMatch = true;
-
-				// check for each of index, get values and compared to the agentViewRow's values
-				// if one of the values is not match, set flag to false and skip to the next row
-				for (Entry<Integer, String> valuePositionEntry : variableAgentViewIndexValueMap.entrySet()) {
-					int position = valuePositionEntry.getKey();
-					String value = valuePositionEntry.getValue();
-
-					// this row does not match the values
-					if (!agentViewRow.getValueAtPosition(position).equals(value)) {
-						isMatch = false;
-						break;
-					}
-				}
-
-				// Only compare if this row matches the value
-				if (isMatch && Double.compare(agentViewRow.getUtility(), maxUtility) > 0) {
-					maxUtility = agentViewRow.getUtility();
-					chosenRow = agentViewRow;
-				}
-			}
-
-			String chosenValue = chosenRow.getValueAtPosition(selfAgentIndex);
-
-			agent.storeDpopSolution(chosenValue, currentTimeStep);
-			// Set random solution for REACT algorithm
-			if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT) && currentTimeStep == 0) {
-				int randomIndex = agent.getRandomGenerator().nextInt(agent.getSelfDomain().size());
-				agent.getChosenValueAtEachTSMap().put(-1, agent.getSelfDomain().get(randomIndex));
-			}
-
-			agent.addValuesToSendInValuePhase(agent.getAgentID(), chosenValue);
-
-			agent.stopSimulatedTiming();
-
-			if (!agent.isLeaf()) {
-//				if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DCOP)) {
-//					agent.print("Chosen value is " + chosenValue);
-//				}
-
-				for (AID children : agent.getChildrenAIDSet()) {
-					agent.sendObjectMessageWithTime(children, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE,
-							agent.getSimulatedTime());
-				}
-			}
-		}
-
-		agent.print("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap().values());
+	  if (agent.isDiscrete()) {
+	    action_discrete();
+	  }
+	  else {
+	    action_continuous();
+	  }
 	}
 
 //	private List<ACLMessage> waitingForMessageFromPseudoParent(int msgCode) {
@@ -158,7 +71,271 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 //		return messageList;
 //	}
 
-	private ACLMessage waitingForMessageFromParent(int msgCode) {
+  private void action_continuous() {
+    agent.getDoubleValuesToSendInVALUEPhase().clear();
+    
+    // Root do the same thing for all algorithms
+    if (agent.isRoot()) {
+      rootSendChosenValueWithTime(currentTimeStep);
+      return ;
+    }
+    
+    nonRootChooseAndSendValue(currentTimeStep);
+  }
+  
+  /**
+   * Send value to the children. The value is already chosen in the UTIL phase. <br> 
+   * The simulated processing time is ignore here because of lightweight operations.
+   */
+  private void rootSendChosenValueWithTime(int timeStep) {    
+    agent.print("Choose value " + getValue(timeStep));
+
+    agent.addDoubleValuesToSendInVALUEPhase(agent.getLocalName(), getValue(timeStep));
+    
+    for (AID childrenAgentAID : agent.getChildrenAIDSet()) {
+      agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE, agent.getSimulatedTime());
+    }
+  }
+  
+  private double getValue(int timeStep) {
+    return agent.getChosenDoubleValueAtEachTimeStep(timeStep);
+  }
+  
+  /**
+   * Non-root agent chooses and sends value to its children
+   */
+  private void nonRootChooseAndSendValue(int timeStep) {
+    Map<String, Double> valuesFromParent = waitingForValuesFromParentWithTime(DPOP_VALUE);
+    
+    agent.startSimulatedTiming();
+    
+    // Only choose value if running DPOP-like algorithm
+    if (agent.getDcop_algorithm() == DcopAlgorithm.DPOP) {
+      agent.setChosenDoubleValueAtEachTimeStep(timeStep, chooseValue_TABLE(valuesFromParent));
+    } 
+    else if (agent.getDcop_algorithm() == DcopAlgorithm.EC_DPOP) {
+      agent.setChosenDoubleValueAtEachTimeStep(timeStep, chooseValue_FUNCTION(valuesFromParent));
+    } 
+    else if (agent.getDcop_algorithm() == DcopAlgorithm.AC_DPOP || agent.getDcop_algorithm() == DcopAlgorithm.CAC_DPOP) {
+      agent.setChosenDoubleValueAtEachTimeStep(timeStep, chooseValue_HYBRID(valuesFromParent));
+    }    
+    
+    agent.addDoubleValuesToSendInVALUEPhase(agent.getLocalName(), getValue(timeStep));
+    agent.getDoubleValuesToSendInVALUEPhase().putAll(valuesFromParent);
+        
+    agent.stopSimulatedTiming();
+    
+    if (agent.isLeaf() == false) {      
+      for (AID children : agent.getChildrenAIDSet()) {
+        agent.sendObjectMessageWithTime(children, agent.getDoubleValuesToSendInVALUEPhase(), DPOP_VALUE, agent.getSimulatedTime());
+      }
+    } 
+  }
+  
+  /**
+   * This function has been REVIEWED
+   * Choose value from the agent view table
+   * The agent view table surely has the values from the parent
+   * @param valuesFromParent
+   * @return
+   */
+  private double chooseValue_TABLE(Map<String, Double> valuesFromParent) {
+    return agent.getAgentViewTableDouble().getArgmaxGivenVariableAndValueMap(agent.getLocalName(), valuesFromParent);
+  }
+
+  private double chooseValue_HYBRID(Map<String, Double> valuesFromParent) {
+    if (agent.isLeaf()) {
+      return leafValue_HYBRID(valuesFromParent);
+    }
+    else {
+      return nonLeafValue_HYBRID(valuesFromParent);
+    }
+  }
+  
+  /**
+   * This is called by a non-leaf agent in the HYBRID DPOP
+   * IN VALUE phase, the agent will find max and arg_max with finer granularity
+   * @param valuesFromParent
+   * @return
+   */
+  private double nonLeafValue_HYBRID(Map<String, Double> valuesFromParent) {
+    return agent.getAgentViewTableDouble().maxArgmaxHybrid(valuesFromParent, agent.getSelfInterval().getMidPointInHalfIntegerRanges() )[1];
+  }
+  
+  /**
+   * Call the chooseValue_FUNCTION(valuesFromParent)
+   * @param valuesFromParent
+   * @return
+   */
+  private double leafValue_HYBRID(Map<String, Double> valuesFromParent) {
+    return chooseValue_FUNCTION(valuesFromParent);
+  }
+  
+  /**
+   * This function has been REVIEWED
+   * @param valuesFromParent
+   * @return
+   */
+  private double chooseValue_FUNCTION(Map<String, Double> valuesFromParent) {
+    Map<String, Double> valueMapOfOtherVariables = new HashMap<>();
+    
+    PiecewiseMultivariateQuadFunction agentViewFunction = agent.getAgentViewFunction();
+    
+    for (String agent : agent.getParentAndPseudoStrList()) {
+      double value = valuesFromParent.get(agent);
+      valueMapOfOtherVariables.put(agent, value);
+    }
+    
+    agentViewFunction = agentViewFunction.evaluateToUnaryFunction(valueMapOfOtherVariables);
+    
+    double currentChosenValue = -Double.MAX_VALUE;
+    double currentMax = -Double.MAX_VALUE;
+    
+    for (Entry<MultivariateQuadFunction, Set<Map<String, Interval>>> entry : agentViewFunction.getFunctionMap().entrySet()) {
+      MultivariateQuadFunction function = entry.getKey();
+      Set<Map<String, Interval>> intervalSet = entry.getValue();
+      
+      for (Map<String, Interval> interval : intervalSet) {
+        double[] maxArgmax = function.getMaxAndArgMax(interval);
+              
+        if (Double.compare(maxArgmax[0], currentMax) > 0) {
+          currentMax = maxArgmax[0];
+          currentChosenValue = maxArgmax[1];
+        }
+      }
+    }
+    
+    return currentChosenValue;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Double> waitingForValuesFromParentWithTime(int msgCode) {
+    agent.startSimulatedTiming();    
+    
+    ACLMessage receivedMessage = null;
+    Map<String, Double> valuesFromParent = new HashMap<String, Double>();
+
+    while (true) {
+      MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
+      receivedMessage = myAgent.blockingReceive(template);
+
+      long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
+        if (timeFromReceiveMessage > agent.getSimulatedTime() + agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime()) {
+          agent.setSimulatedTime(timeFromReceiveMessage);
+        } else {
+          agent.setSimulatedTime(agent.getSimulatedTime() + agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
+        }
+        
+        break;
+    }
+        
+    try {
+      valuesFromParent = (Map<String, Double>) receivedMessage.getContentObject();
+    } catch (UnreadableException e) {
+      e.printStackTrace();
+    }
+    
+    return valuesFromParent;
+  }
+
+  @SuppressWarnings("unchecked")
+  private void action_discrete() {
+    // VALUE might be called multiple times
+    agent.getValuesToSendInVALUEPhase().clear();
+
+    if (agent.isRoot()) {
+      if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DCOP)) {
+        agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getCDPOP_value());
+      } else {
+        agent.addValuesToSendInValuePhase(agent.getAgentID(), agent.getChosenValueAtEachTimeStep(currentTimeStep));
+      }
+
+      for (AID childrenAgentAID : agent.getChildrenAIDSet()) {
+        agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE,
+            agent.getSimulatedTime());
+      }
+    } else {
+      // leaf or internal nodes
+      ACLMessage receivedMessage = waitingForMessageFromParent(DPOP_VALUE);
+      agent.startSimulatedTiming();
+
+      HashMap<Integer, String> variableAgentViewIndexValueMap = new HashMap<Integer, String>();
+      HashMap<String, String> valuesFromParent = new HashMap<String, String>();
+      try {
+        valuesFromParent = (HashMap<String, String>) receivedMessage.getContentObject();
+      } catch (UnreadableException e) {
+        e.printStackTrace();
+      }
+
+      for (Entry<String, String> valuesEntry : valuesFromParent.entrySet()) {
+        String agentKey = valuesEntry.getKey();
+        String agentValue = valuesEntry.getValue();
+
+        int positionInAgentView = agent.getAgentViewTable().getDecVarLabel().indexOf(agentKey);
+
+        // not in agentView
+        if (positionInAgentView == -1) {
+          continue;
+        }
+        // if exist this agent in agent view, add to values to send
+        agent.addValuesToSendInValuePhase(agentKey, agentValue);
+
+        variableAgentViewIndexValueMap.put(positionInAgentView, agentValue);
+      }
+
+      int selfAgentIndex = agent.getAgentViewTable().getDecVarLabel().indexOf(agent.getAgentID());
+
+      RowString chosenRow = new RowString();
+      double maxUtility = -Double.MAX_VALUE;
+
+      for (RowString agentViewRow : agent.getAgentViewTable().getRowList()) {
+        boolean isMatch = true;
+
+        // check for each of index, get values and compared to the agentViewRow's values
+        // if one of the values is not match, set flag to false and skip to the next row
+        for (Entry<Integer, String> valuePositionEntry : variableAgentViewIndexValueMap.entrySet()) {
+          int position = valuePositionEntry.getKey();
+          String value = valuePositionEntry.getValue();
+
+          // this row does not match the values
+          if (!agentViewRow.getValueAtPosition(position).equals(value)) {
+            isMatch = false;
+            break;
+          }
+        }
+
+        // Only compare if this row matches the value
+        if (isMatch && Double.compare(agentViewRow.getUtility(), maxUtility) > 0) {
+          maxUtility = agentViewRow.getUtility();
+          chosenRow = agentViewRow;
+        }
+      }
+
+      String chosenValue = chosenRow.getValueAtPosition(selfAgentIndex);
+
+      agent.storeDpopSolution(chosenValue, currentTimeStep);
+      // Set random solution for REACT algorithm
+      if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.REACT) && currentTimeStep == 0) {
+        int randomIndex = agent.getRandomGenerator().nextInt(agent.getSelfDomain().size());
+        agent.getChosenValueAtEachTSMap().put(-1, agent.getSelfDomain().get(randomIndex));
+      }
+
+      agent.addValuesToSendInValuePhase(agent.getAgentID(), chosenValue);
+
+      agent.stopSimulatedTiming();
+
+      if (!agent.isLeaf()) {
+        for (AID children : agent.getChildrenAIDSet()) {
+          agent.sendObjectMessageWithTime(children, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE,
+              agent.getSimulatedTime());
+        }
+      }
+    }
+
+    agent.print("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap().values());
+  }
+
+  private ACLMessage waitingForMessageFromParent(int msgCode) {
 		ACLMessage receivedMessage = null;
 
 		while (true) {
@@ -168,17 +345,12 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 			receivedMessage = myAgent.blockingReceive(template);
 
 			agent.stopSimulatedTiming();
-//      if (receivedMessage != null) {
 			long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
 			if (timeFromReceiveMessage > agent.getSimulatedTime()) {
 				agent.setSimulatedTime(timeFromReceiveMessage);
 			}
 
 			break;
-//      } 
-//      else {
-//        block();
-//      }
 		}
 
 		agent.addupSimulatedTime(AgentPDDCOP.getDelayMessageTime());

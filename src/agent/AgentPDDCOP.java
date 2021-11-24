@@ -213,6 +213,7 @@ public class AgentPDDCOP extends Agent {
 
 	// VALUE phase
 	private Map<String, String> valuesToSendInVALUEPhase = new HashMap<>();
+	private Map<String, Double> doubleValuesToSendInVALUEPhase = new HashMap<>();
 
 	// used for LOCAL SEARCH
 	private Map<Integer, String> chosenValueAtEachTSMap = new HashMap<>();
@@ -2802,6 +2803,10 @@ public class AgentPDDCOP extends Agent {
 	public void addValuesToSendInValuePhase(String agent, String value) {
 		this.valuesToSendInVALUEPhase.put(agent, value);
 	}
+	
+	 public void addDoubleValuesToSendInVALUEPhase(String agent, double value) {
+	    this.doubleValuesToSendInVALUEPhase.put(agent, value);
+	  }
 
 	public Map<Integer, String> getPickedRandomMap() {
 		return pickedRandomMap;
@@ -3894,6 +3899,10 @@ public class AgentPDDCOP extends Agent {
   
   public String getSelfRanomVariable() {
     return getLocalName().replace("x", "y");
+  }
+
+  public Map<String, Double> getDoubleValuesToSendInVALUEPhase() {
+    return doubleValuesToSendInVALUEPhase;
   }
 
 }
