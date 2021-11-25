@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Random;
 
 import agent.AgentPDDCOP;
-import function.Interval;
 import function.multivariate.PiecewiseMultivariateQuadFunction;
 import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
@@ -39,6 +38,8 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
 
   @Override
   public void action() {
+    agent.startSimulatedTiming();
+    
     functionMap.putAll(agent.getFunctionWithPParentMap());
     // Compute expected function if any and add the expected function to the dpopFuncionList
     if (agent.hasRandomFunction()) {
@@ -46,6 +47,7 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
       functionMap.put(agent.getRandomVariable(), agent.getExpectedFunction(currentTimeStep));
     }
     
+    // Add switching cost function to the function list
     PiecewiseMultivariateQuadFunction swFunc = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
     if (swFunc != null) {
       functionMap.put(agent.getLocalName(), swFunc);
@@ -54,19 +56,23 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
     // Initialize value for this time step if this is the first iteration
     if (localSearchIteration == 0) {
       // Randomize initial values here
-      Interval agentDomain = agent.getSelfInterval();
-      agent.setChosenDoubleValueAtEachTimeStep(currentTimeStep, agentDomain.randomDouble(agent.getRandomGenerator()));
+      double randomValue = agent.getSelfInterval().randomDouble(agent.getRandomGenerator());
+      agent.setChosenDoubleValueAtEachTimeStep(currentTimeStep, randomValue);
     }
+    
+    agent.stopSimulatedTiming();
     
     // send the current value to neighbors
     for (AID neighborAID : agent.getNeighborAIDSet()) {
-      agent.sendObjectMessageWithIteration(neighborAID, agent.getChosenValueAtEachTimeStep(currentTimeStep),
+      agent.sendObjectMessageWithIteration(neighborAID, getCurrentValue(),
           DSA_VALUE, localSearchIteration, agent.getSimulatedTime());
     }
 
     PiecewiseMultivariateQuadFunction combinedFunction = new PiecewiseMultivariateQuadFunction();
 
     Map<String, Double> neighborValueMap = waitingForMessageFromNeighborWithTime(DSA_VALUE, localSearchIteration);
+    
+    agent.startSimulatedTiming();
     
     for (PiecewiseMultivariateQuadFunction function : functionMap.values()) {
       combinedFunction = combinedFunction.addPiecewiseFunction(function);
@@ -79,54 +85,60 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
     if (Double.compare(chosenValue, getCurrentValue()) != 0) {
       if (Double.compare(new Random().nextDouble(), DSA_PROBABILITY) <= 0) {
         setCurrentValue(chosenValue);
-        System.out.println("Iteration " + localSearchIteration + " Agent " + agent.getLocalName() + " changes to a better value " + chosenValue);
+        agent.print("Iteration " + localSearchIteration + " changes to a better value " + chosenValue);
       } else {
-        System.out.println("Iteration " + localSearchIteration + " Agent " + agent.getLocalName() + " could change to a better value " + chosenValue
+        agent.print("Iteration " + localSearchIteration + " could change to a better value " + chosenValue
             + ", but it decides to remain the value " + getCurrentValue());
       }
     } 
     // Can't find better value
     else {
-      System.out.println("Iteration " + localSearchIteration + " Agent " + agent.getLocalName() + " doesn't find a better value and remains " + getCurrentValue());
-    }    
+      agent.print("Iteration " + localSearchIteration + " doesn't find a better value and remains " + getCurrentValue());
+    }
+    
+    agent.stopSimulatedTiming();
   }
   
   private Double getCurrentValue() {
-    return Double.valueOf(agent.getChosenValueAtEachTimeStep(currentTimeStep));
+    return agent.getChosenDoubleValueAtEachTimeStep(currentTimeStep);
   }
   
   private void setCurrentValue(double value) {
-    agent.setChosenValueAtEachTimeStep(currentTimeStep, String.valueOf(value));
+    agent.setChosenDoubleValueAtEachTimeStep(currentTimeStep, value);
   }
   
-  //TODO: Review the simulated runtime
-  private Map<String, Double> waitingForMessageFromNeighborWithTime(int msgCode, int iteration) {
-    // Start of waiting time for the message
-    agent.startSimulatedTiming();    
-    
+  private Map<String, Double> waitingForMessageFromNeighborWithTime(int msgCode, int iteration) {    
     Map<String, Double> valueMap = new HashMap<>();
     
     while (valueMap.size() < agent.getNeighborAIDSet().size()) {
-      
       MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchPerformative(msgCode), MessageTemplate.MatchConversationId(String.valueOf(iteration)));      
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
-        
         try {
           String sender = receivedMessage.getSender().getLocalName();
           Double content = (Double) receivedMessage.getContentObject();
+          int msgIteration = Integer.valueOf(receivedMessage.getConversationId());
+          
+          // Matching iteration
+          if (msgIteration != iteration) {
+            continue;
+          }
           
           if (!valueMap.containsKey(sender)) {
             valueMap.put(sender, content);
           }
           
-          System.out.println("Iteration " + localSearchIteration + " Agent " + agent.getLocalName() + " receives " + receivedMessage.getContentObject() + " from "
+          long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
+
+          if (timeFromReceiveMessage > agent.getSimulatedTime()) {
+            agent.setSimulatedTime(timeFromReceiveMessage);
+          }
+          
+          agent.print("Iteration " + localSearchIteration + " receives " + receivedMessage.getContentObject() + " from "
               + receivedMessage.getSender().getLocalName());
 
         } catch (UnreadableException e) {
           e.printStackTrace();
         }        
-//      } else
-//        block();
     }
     
     return valueMap;
