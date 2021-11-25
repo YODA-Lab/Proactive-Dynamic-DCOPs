@@ -570,11 +570,16 @@ public class AgentPDDCOP extends Agent {
     
     // Additional behaviors for GRADIENT to search for better solution 
     if (pddcop_algorithm == PDDcopAlgorithm.GRADIENT) {
-      mainSequentialBehaviourList.addSubBehaviour(new GD_SEND_RECEIVE_VALUE(this, gradientIteration));
+      int initialIteration = -1;
+      mainSequentialBehaviourList.addSubBehaviour(new GD_SEND_RECEIVE_VALUE(this, initialIteration));
+      mainSequentialBehaviourList.addSubBehaviour(new GD_RECEIVE_SEND_LS_UTIL(this, initialIteration));
       
       for (int iteration = 0; iteration < MAX_ITERATION; iteration++) {
-        mainSequentialBehaviourList.addSubBehaviour(new GD_SEND_RECEIVE_IMPROVE(this, gradientIteration));
-        mainSequentialBehaviourList.addSubBehaviour(new GD_RECEIVE_SEND_LS_UTIL(this, gradientIteration));
+        mainSequentialBehaviourList.addSubBehaviour(new GD_SEND_RECEIVE_IMPROVE(this, iteration));
+        // TODO: Should agents send the list of updated values
+        // Not necessary if agents can change value on their own and there are not two neighbors changing values at the same time
+        mainSequentialBehaviourList.addSubBehaviour(new GD_SEND_RECEIVE_VALUE(this, initialIteration));
+        mainSequentialBehaviourList.addSubBehaviour(new GD_RECEIVE_SEND_LS_UTIL(this, iteration));
       }
     }
     
@@ -2769,7 +2774,7 @@ public class AgentPDDCOP extends Agent {
 	}
 
 	public double getLocalSearchQualityAt(int iteration) {
-		return localSearchQualityMap.get(iteration);
+		return localSearchQualityMap.getOrDefault(iteration, -Double.MAX_VALUE);
 	}
 
 	public void setLocalSearchQuality(int iteration, double quality) {
@@ -3206,9 +3211,7 @@ public class AgentPDDCOP extends Agent {
 	}
 
 	public void print(String s) {
-//    if (agentID.equals("8")) {
 		System.out.println("Agent " + getLocalName() + " " + s);
-//    }
 	}
 
 	public boolean isRunningPDDCOPLocalSearch() {
@@ -3794,6 +3797,8 @@ public class AgentPDDCOP extends Agent {
   }
   
   /**
+   * THIS FUNCTION HAS BEEN REVIEWED WITH FORWARD AND BACKWARD
+   * 
    * @param timeStep
    * @param pddcop_alg
    * @param type

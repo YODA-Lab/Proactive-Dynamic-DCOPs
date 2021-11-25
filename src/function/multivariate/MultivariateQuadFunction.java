@@ -52,6 +52,7 @@ public final class MultivariateQuadFunction implements Serializable {
 	}
 	
 	/**
+	 * THIS FUNCTION HAS BEEN REVIEWED
 	 * @param selfAgent
 	 * @param value
 	 * @param discounted
