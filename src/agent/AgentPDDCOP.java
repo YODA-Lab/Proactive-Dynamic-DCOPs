@@ -163,9 +163,10 @@ public class AgentPDDCOP extends Agent {
 	private Map<Integer, PiecewiseMultivariateQuadFunction> expectedFunctionMap = new HashMap<>();
 	
 	// for Hybrid Max-Sum
-	private Map<String, PiecewiseMultivariateQuadFunction> MSFunctionMapIOwn = new HashMap<>();
+	private Map<String, PiecewiseMultivariateQuadFunction> MSFunctionOwnedByMeMap = new HashMap<>();
+	
+	private Map<String, PiecewiseMultivariateQuadFunction> currrentMSFunctionOwnedByMeMap = new HashMap<>();
 
-  //	private int onlineRun;
 	/*
 	 * Read from input file
 	 */
@@ -334,7 +335,7 @@ public class AgentPDDCOP extends Agent {
   private final boolean isApprox = true; // Used in APPROX_DPOP
   private final int numberOfApproxAgents = 0; // Used in APPROX_DPOP
   
-  private Set<AID> functionIOwn = new HashSet<>(); // Set of neighbors where I own the constraint with
+  private Set<AID> functionOwnedByMe = new HashSet<>(); // Set of neighbors where I own the constraint with
   private Set<AID> functionOwnedByOther = new HashSet<>(); // Set of neighbors where they own the constraint
   private Map<AID, MaxSumMessage> received_FUNCTION_TO_VARIABLE = new HashMap<>();
   private Map<AID, MaxSumMessage> received_VARIABLE_TO_FUNCTION = new HashMap<>();
@@ -1504,11 +1505,11 @@ public class AgentPDDCOP extends Agent {
           neighborFunctionMap.put(neighborAgent, pwFunc);
           
           // Set the functions that I own. Functions are binary
-          if (isRunningMaxsum() && 
-                (neighborAgent.contains(RANDOM_PREFIX) || getLocalName().compareTo(neighborAgent) < 0)) {
+          // Do not add random function to MSFunctionMapIOwn
+          if (isRunningMaxsum() && getLocalName().compareTo(neighborAgent) < 0) {
             // add the function to Maxsum function map
             // add the neighbor to external-var-agent-set
-            MSFunctionMapIOwn.put(neighborAgent, pwFunc);
+            MSFunctionOwnedByMeMap.put(neighborAgent, pwFunc);
           }
         }
         else if (leftHandSide.contains(INIT_PROB_PREFIX)) {
@@ -1564,7 +1565,7 @@ public class AgentPDDCOP extends Agent {
         }
       }
       
-      print("MSFunctionMapIOwn=" + MSFunctionMapIOwn);
+      print("MSFunctionMapIOwn=" + MSFunctionOwnedByMeMap);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -3724,24 +3725,28 @@ public class AgentPDDCOP extends Agent {
         || dcop_algorithm == DcopAlgorithm.CAC_DPOP || dcop_algorithm == DcopAlgorithm.APPROX_DPOP;
   }
   
-  public Map<String, PiecewiseMultivariateQuadFunction> getMSFunctionMapIOwn() {
-    return MSFunctionMapIOwn;
+  /**
+   * Do not contain random function and switching cost function
+   * @return
+   */
+  public Map<String, PiecewiseMultivariateQuadFunction> getMSFunctionOwnedByMeMap() {
+    return MSFunctionOwnedByMeMap;
   }
   
-  public void addAgentToFunctionIOwn(AID insideAgent) {
-    this.functionIOwn.add(insideAgent);
+  public void addNeighborToFunctionOwnedByMe(AID insideAgent) {
+    this.functionOwnedByMe.add(insideAgent);
+  }
+  
+  public Set<AID> getNeighborFunctionOwnedByMe() {
+    return functionOwnedByMe;
   }
 
-  public Set<AID> getFunctionOwnedByOther() {
+  public Set<AID> getNeighborFunctionOwnedByOther() {
     return functionOwnedByOther;
   }
   
-  public void addAgentToFunctionOwnedByOther(AID outsideAgent) {
+  public void addNeighborToFunctionOwnedByOther(AID outsideAgent) {
     this.functionOwnedByOther.add(outsideAgent);
-  }
-  
-  public Set<AID> getFunctionIOwn() {
-    return functionIOwn;
   }
   
   public Map<AID, MaxSumMessage> getReceived_FUNCTION_TO_VARIABLE() {
@@ -3910,4 +3915,7 @@ public class AgentPDDCOP extends Agent {
     return doubleValuesToSendInVALUEPhase;
   }
 
+  public Map<String, PiecewiseMultivariateQuadFunction> getCurrrentMSFunctionOwnedByMeMap() {
+    return currrentMSFunctionOwnedByMeMap;
+  }
 }

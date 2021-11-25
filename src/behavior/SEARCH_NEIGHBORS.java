@@ -50,17 +50,17 @@ public class SEARCH_NEIGHBORS extends OneShotBehaviour implements MESSAGE_TYPE {
     // Add agents to AgentKeepMyFunctionAID and AgentNotOwningFunctionAID
     if (agent.isRunningMaxsum()) {
       for (AID agentID : agent.getNeighborAIDSet()) {
-        if (agent.getMSFunctionMapIOwn().keySet().contains(agentID.getLocalName())) {
-          agent.addAgentToFunctionIOwn(agentID);
+        if (agent.getMSFunctionOwnedByMeMap().containsKey(agentID.getLocalName())) {
+          agent.addNeighborToFunctionOwnedByMe(agentID);
         } else {
-          agent.addAgentToFunctionOwnedByOther(agentID);
+          agent.addNeighborToFunctionOwnedByOther(agentID);
         }
       }
     }
     
-    agent.print("getMSFunctionMapIOwn=" + agent.getMSFunctionMapIOwn());
-    agent.print("agentToFunctionIOwn=" + agent.getFunctionIOwn());
-    agent.print("getFunctionOwnedByOther=" + agent.getFunctionOwnedByOther());
+    agent.print("getMSFunctionMapIOwn=" + agent.getMSFunctionOwnedByMeMap());
+    agent.print("agentToFunctionIOwn=" + agent.getNeighborFunctionOwnedByMe());
+    agent.print("getFunctionOwnedByOther=" + agent.getNeighborFunctionOwnedByOther());
 		
 		agent.print("Done looking for neighbors");
 	}

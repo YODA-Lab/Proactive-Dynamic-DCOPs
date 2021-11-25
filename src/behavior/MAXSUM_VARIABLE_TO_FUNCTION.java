@@ -1,6 +1,8 @@
 package behavior;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -13,6 +15,9 @@ import jade.lang.acl.UnreadableException;
 import maxsum.MaxSumMessage;
 
 import agent.DcopConstants.DcopAlgorithm;
+import agent.DcopConstants.PDDcopAlgorithm;
+import function.multivariate.PiecewiseMultivariateQuadFunction;
+
 import static agent.DcopConstants.VAR_TO_FUNC;
 import static agent.DcopConstants.GRADIENT_SCALING_FACTOR;
 
@@ -78,17 +83,34 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
     if (iteration == 0) {
       agent.startSimulatedTiming();
       
+      // Initialize the message and set initial value set
       MaxSumMessage msgVAR_TO_FUNC = new MaxSumMessage(agent.getCurrentDiscreteValues(currentTimeStep));
       msgVAR_TO_FUNC.setNewValueSet(agent.getCurrentDiscreteValues(currentTimeStep));
       
+      // Update VAR_TO_FUNC message with expected function
+      if (agent.hasRandomFunction()) {
+        updateMSmessageWithExpectedAndCostFunction(msgVAR_TO_FUNC, agent.getExpectedFunction(currentTimeStep));
+      }
+
+      // Update VAR_TO_FUNC message with switching cost function
+      if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.FORWARD || agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.BACKWARD) {
+        PiecewiseMultivariateQuadFunction swFunction = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+        updateMSmessageWithExpectedAndCostFunction(msgVAR_TO_FUNC, swFunction);
+      }
+      
       agent.stopSimulatedTiming();
       
-      for (AID receiver : agent.getFunctionOwnedByOther()) {
+      for (AID receiver : agent.getNeighborFunctionOwnedByOther()) {
         agent.sendObjectMessageWithTime(receiver, msgVAR_TO_FUNC, VAR_TO_FUNC, agent.getSimulatedTime());
       }
-      for (AID store_agent : agent.getFunctionIOwn()) {
+      for (AID store_agent : agent.getNeighborFunctionOwnedByMe()) {
         agent.getStored_VARIABLE_TO_FUNCTION().put(store_agent, msgVAR_TO_FUNC);
       }
+      
+      // Store self initial values to agent itself
+//      if (agent.hasRandomFunction() || agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.FORWARD || agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.BACKWARD) {
+//        agent.getStored_VARIABLE_TO_FUNCTION().put(agent.getAID(), msgVAR_TO_FUNC);
+//      }
     } // end the if (iteration == 0)
     else {
      /*
@@ -114,12 +136,14 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
       
       agent.stopSimulatedTiming();
       
+      // For each neighbor, process func-to-var message except for this neighbor
       for (AID neighbor : agent.getNeighborAIDSet()) {
         // process the function that is OWNED BY OTHER AGENTS
-        if (agent.getFunctionOwnedByOther().contains(neighbor)) {
+        if (agent.getNeighborFunctionOwnedByOther().contains(neighbor)) {
           agent.startSimulatedTiming();
           
-          // Add all messages from getReceived_FUNCTION_TO_VARIABLE except for the neighbor
+          // Add all messages from getReceived_FUNCTION_TO_VARIABLE except for this neighbor
+          // The value set from those messages are identical 
           for (Entry<AID, MaxSumMessage> msgEntry : agent.getReceived_FUNCTION_TO_VARIABLE().entrySet()) {
             if (neighbor.equals(msgEntry.getKey())) {continue;}
             msgVAR_TO_FUNC = msgVAR_TO_FUNC.addMessage(msgEntry.getValue());
@@ -127,7 +151,19 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
           
           // add all messages from getStored_FUNCTION_TO_VARIABLE
           msgVAR_TO_FUNC = msgVAR_TO_FUNC.addAllMessages(agent.getStored_FUNCTION_TO_VARIABLE().values());
-          msgVAR_TO_FUNC.updateAlphaAndValues();
+          
+          // Update VAR_TO_FUNC message with expected function
+          if (agent.hasRandomFunction()) {
+            updateMSmessageWithExpectedAndCostFunction(msgVAR_TO_FUNC, agent.getExpectedFunction(currentTimeStep));
+          }
+
+          // Update VAR_TO_FUNC message with switching cost function
+          if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.FORWARD || agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.BACKWARD) {
+            PiecewiseMultivariateQuadFunction swFunction = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+            updateMSmessageWithExpectedAndCostFunction(msgVAR_TO_FUNC, swFunction);
+          }
+          
+          msgVAR_TO_FUNC.updateAlphaAndValuesForGraph();
           
           msgVAR_TO_FUNC.setNewValueSet(agent.getCurrentDiscreteValues(currentTimeStep));
 
@@ -136,7 +172,7 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
           agent.sendObjectMessageWithTime(neighbor, msgVAR_TO_FUNC, VAR_TO_FUNC, agent.getSimulatedTime());
         } 
         // process the function that I owned
-        else if (agent.getFunctionIOwn().contains(neighbor)) {
+        else if (agent.getNeighborFunctionOwnedByMe().contains(neighbor)) {
           agent.startSimulatedTiming();
           
           // add all messages from getReceived_FUNCTION_TO_VARIABLE
@@ -148,7 +184,18 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
             msgVAR_TO_FUNC = msgVAR_TO_FUNC.addMessage(msgEntry.getValue());
           }
           
-          msgVAR_TO_FUNC.updateAlphaAndValues();
+          // Update VAR_TO_FUNC message with expected function
+          if (agent.hasRandomFunction()) {
+            updateMSmessageWithExpectedAndCostFunction(msgVAR_TO_FUNC, agent.getExpectedFunction(currentTimeStep));
+          }
+
+          // Update VAR_TO_FUNC message with switching cost function
+          if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.FORWARD || agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.BACKWARD) {
+            PiecewiseMultivariateQuadFunction swFunction = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+            updateMSmessageWithExpectedAndCostFunction(msgVAR_TO_FUNC, swFunction);
+          }
+          
+          msgVAR_TO_FUNC.updateAlphaAndValuesForGraph();
           msgVAR_TO_FUNC.setNewValueSet(agent.getCurrentDiscreteValues(currentTimeStep));
           
           agent.getStored_VARIABLE_TO_FUNCTION().put(neighbor, msgVAR_TO_FUNC);
@@ -157,31 +204,55 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
         }
       }
     }
+    
     waiting_store_VAR_TO_FUNC_message_with_time(VAR_TO_FUNC);    
   }
 
   /**
+   * THIS FUNCTION HAS BEEN REVIEWED <br>
+   * 
+   * This function takes into account expected and switching cost function <br>
+   * 
    *  From all first derivative from FUNCTION_TO_VALUES messages
    *  Add those messages up and modify the values accordingly
    */
   private void modifyMSValuesUsingGradient() { 
-    System.out.println("Before: " + agent.getCurrentDiscreteValues(currentTimeStep));
+    agent.print("Before moving MS values: " + agent.getCurrentDiscreteValues(currentTimeStep));
     
     double scalingFactor = GRADIENT_SCALING_FACTOR;
     
     Set<Double> newValueSet = new HashSet<>();
     
-    for (Double oldValue : agent.getCurrentDiscreteValues(currentTimeStep)) {
+    for (double oldValue : agent.getCurrentDiscreteValues(currentTimeStep)) {
       double sumGradient = 0;
       for (AID neighbor : agent.getNeighborAIDSet()) {
-        if (agent.getFunctionOwnedByOther().contains(neighbor)) {
+        if (agent.getNeighborFunctionOwnedByOther().contains(neighbor)) {
           sumGradient = sumGradient + agent.getReceived_FUNCTION_TO_VARIABLE().get(neighbor).getFirstDerivativeMap().get(oldValue);
         }
-        else if (agent.getFunctionIOwn().contains(neighbor)) {
+        else if (agent.getNeighborFunctionOwnedByMe().contains(neighbor)) {
           sumGradient = sumGradient + agent.getStored_FUNCTION_TO_VARIABLE().get(neighbor).getFirstDerivativeMap().get(oldValue);
         }
       }
       
+      // Take into account the gradient of expected function
+      if (agent.hasRandomFunction()) {
+        Map<String, Double> valueMap = new HashMap<>();
+        valueMap.put(agent.getLocalName(), oldValue);
+        
+        PiecewiseMultivariateQuadFunction randomFunction = agent.getExpectedFunction(currentTimeStep);
+        sumGradient += randomFunction.getTheFirstFunction().takeFirstPartialDerivative(agent.getLocalName()).evaluateToValueGivenValueMap(valueMap);
+      }
+      
+      // Take into account the gradient of switching cost function
+      if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.FORWARD || agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.BACKWARD) {
+        Map<String, Double> valueMap = new HashMap<>();
+        valueMap.put(agent.getLocalName(), oldValue);
+        
+        PiecewiseMultivariateQuadFunction swFunction = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+        sumGradient += swFunction.getTheFirstFunction().takeFirstPartialDerivative(agent.getLocalName()).evaluateToValueGivenValueMap(valueMap);
+      }
+      
+      // Taking into account switching cost and expected table here
       double newValue = oldValue + scalingFactor * sumGradient;
       
       // Add new value only if it's in the interval
@@ -194,14 +265,14 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
     
     agent.setCurrentDiscreteValues(currentTimeStep, newValueSet);
            
-    System.out.println("After: " + agent.getCurrentDiscreteValues(currentTimeStep));
+    agent.print("After moving MS values: " + agent.getCurrentDiscreteValues(currentTimeStep));
   }
 
   private void waiting_store_VAR_TO_FUNC_message_with_time(int msgCode) {
     agent.startSimulatedTiming();    
         
     int msgCount = 0;    
-    while (msgCount < agent.getFunctionIOwn().size()) {
+    while (msgCount < agent.getNeighborFunctionOwnedByMe().size()) {
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
 
@@ -212,7 +283,8 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
         long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
         if (timeFromReceiveMessage > agent.getSimulatedTime() + agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime()) {
           agent.setSimulatedTime(timeFromReceiveMessage);
-        } else {
+        } 
+        else {
           agent.setSimulatedTime(agent.getSimulatedTime() + agent.getBean().getCurrentThreadUserTime() - agent.getCurrentStartTime());
         }
       } catch (UnreadableException e) {
@@ -220,6 +292,25 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
       }
       agent.getReceived_VARIABLE_TO_FUNCTION().put(receivedMessage.getSender(), maxsumMsg);
       msgCount++;
+    }
+    
+    agent.stopSimulatedTiming();
+  }
+  
+  public void updateMSmessageWithExpectedAndCostFunction(MaxSumMessage msgVAR_TO_FUNC, PiecewiseMultivariateQuadFunction function) {        
+    if (function == null) {
+      return ;
+    }
+    
+    for (Entry<Double, Double> utilityEntry : msgVAR_TO_FUNC.getValueUtilityMap().entrySet()) {
+      double value = utilityEntry.getKey();
+      double utility = utilityEntry.getValue();
+
+      Map<String, Double> valueMap = new HashMap<>();
+      valueMap.put(agent.getLocalName(), value);
+      
+      double evaluation = function.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap);
+      utilityEntry.setValue(utility + evaluation);
     }
   }
 }

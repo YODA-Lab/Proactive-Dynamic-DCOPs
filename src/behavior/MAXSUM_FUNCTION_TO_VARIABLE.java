@@ -68,10 +68,10 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
      * End
      */
     
-    for (AID functionAgent : agent.getFunctionIOwn()) {
+    for (AID functionAgent : agent.getNeighborFunctionOwnedByMe()) {
       agent.startSimulatedTiming();
       
-      PiecewiseMultivariateQuadFunction function = agent.getMSFunctionMapIOwn().get(functionAgent.getLocalName());
+      PiecewiseMultivariateQuadFunction function = agent.getMSFunctionOwnedByMeMap().get(functionAgent.getLocalName());
       
       MaxSumMessage var2FuncMsgStored = agent.getStored_VARIABLE_TO_FUNCTION().get(functionAgent);
       MaxSumMessage var2FuncMsgReceived = agent.getReceived_VARIABLE_TO_FUNCTION().get(functionAgent);
@@ -97,7 +97,7 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
     waiting_store_FUNC_TO_VAR_message_with_time(FUNC_TO_VAR);
     
     double bestValue = calculateTheBestValue();
-    System.out.println("Agent " + agent.getLocalName() + " at iteration " + iteration + " choose the best value: " + bestValue);
+    agent.print(" at iteration " + iteration + " choose the best value: " + bestValue);
     
     setCurrentValue(bestValue);
   }
@@ -107,11 +107,11 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
    */
   private double calculateTheBestValue() {
     MaxSumMessage msg = new MaxSumMessage(agent.getCurrentDiscreteValues(currentTimeStep));
-    for (AID functionAgent : agent.getFunctionOwnedByOther()) {
+    for (AID functionAgent : agent.getNeighborFunctionOwnedByOther()) {
       msg = msg.addMessage(agent.getReceived_FUNCTION_TO_VARIABLE().get(functionAgent));
     }
     
-    for (AID functionAgent : agent.getFunctionIOwn()) {
+    for (AID functionAgent : agent.getNeighborFunctionOwnedByMe()) {
       msg = msg.addMessage(agent.getStored_FUNCTION_TO_VARIABLE().get(functionAgent));
     }
     
@@ -215,14 +215,16 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
       firstDerivative.put(agentToKeepValue, firstDerivativeFunc.getTheFirstFunction().evaluateToValueGivenValueMap(valueMap));
     }
     
-    return new MaxSumMessage(valueUtilMap, new HashSet<Double>(), firstDerivative);
+    MaxSumMessage msMessage = new MaxSumMessage(valueUtilMap, new HashSet<Double>(), firstDerivative);
+    
+    return msMessage;
   }
   
   private void waiting_store_FUNC_TO_VAR_message_with_time(int msgCode) {
     agent.startSimulatedTiming();    
     
     int msgCount = 0;
-    while (msgCount < agent.getFunctionOwnedByOther().size()) {
+    while (msgCount < agent.getNeighborFunctionOwnedByOther().size()) {
       MessageTemplate template = MessageTemplate.MatchPerformative(msgCode);
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
       

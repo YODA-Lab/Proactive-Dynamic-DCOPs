@@ -95,9 +95,10 @@ public class MaxSumMessage implements Serializable {
   /**
    * Update alpha in MaxSum on graph
    */
-  public void updateAlphaAndValues() {
+  public void updateAlphaAndValuesForGraph() {
     int size = valueUtilityMap.size();
     double alpha = -valueUtilityMap.values().stream().mapToDouble(value -> value.doubleValue()).sum() / size;
+
     for (Entry<Double, Double> entry : valueUtilityMap.entrySet()) {
       entry.setValue(entry.getValue() + alpha);
     }
