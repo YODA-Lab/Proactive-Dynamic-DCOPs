@@ -28,15 +28,14 @@ public class GD_RAND_PICK_VALUE extends OneShotBehaviour {
   public void action() {
     agent.startSimulatedTiming();
     
-    double lower = agent.getDecisionVariableIntervalMap().get(agent.getAgentID()).getLowerBound();
-    double upper = agent.getDecisionVariableIntervalMap().get(agent.getAgentID()).getUpperBound();
+    double lower = agent.getSelfInterval().getLowerBound();
+    double upper = agent.getSelfInterval().getUpperBound();
 
-    double randomSample = lower + Math.random() * (upper - lower);
-    agent.getChosenValueAtEachTSMap().put(timeStep, String.valueOf(randomSample));
+    double randomSample = lower + agent.getRandomGenerator().nextDouble() * (upper - lower);
+    agent.getChosenDoubleValueAtEachTSMap().put(timeStep, randomSample);
 
     agent.print("Chosen random values=" + agent.getChosenDoubleValueAtEachTSMap());
 
-    
     agent.stopSimulatedTiming();
   }
 }
