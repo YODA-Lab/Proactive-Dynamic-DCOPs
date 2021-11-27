@@ -197,10 +197,6 @@ public final class MultivariateQuadFunction implements Serializable {
 //      intervals.put(entry.getKey(), entry.getValue());
 //    }
 //  }
-	
-	public <T> MultivariateQuadFunction evaluate(final String variable, T value) {
-	  return evaluate(variable, (Double) value);
-	}
 
 	/**
 	 * EVALUATE operator <br>
@@ -614,9 +610,9 @@ public final class MultivariateQuadFunction implements Serializable {
 		return func;
 	}
 
-	public <T> MultivariateQuadFunction evaluateToFunctionGivenValueMap(Map<String, T> valueMap) {
+	public MultivariateQuadFunction evaluateToFunctionGivenValueMap(Map<String, Double> valueMap) {
 		MultivariateQuadFunction func = new MultivariateQuadFunction(this);
-		for (Map.Entry<String, T> entry : valueMap.entrySet()) {
+		for (Map.Entry<String, Double> entry : valueMap.entrySet()) {
 			func = func.evaluate(entry.getKey(), entry.getValue());
 		}
 

@@ -285,7 +285,7 @@ public final class PiecewiseMultivariateQuadFunction implements Serializable {
     return Sets.cartesianProduct(listOfSortedIntervals);
   }
   
-  public <T> PiecewiseMultivariateQuadFunction evaluateToUnaryFunction(Map<String, T> valueMap) {
+  public PiecewiseMultivariateQuadFunction evaluateToUnaryFunction(Map<String, Double> valueMap) {
     PiecewiseMultivariateQuadFunction pwFunc = new PiecewiseMultivariateQuadFunction();
     for (Entry<MultivariateQuadFunction, Set<Map<String, Interval>>> functionEntry : functionMap.entrySet()) {
       MultivariateQuadFunction function = functionEntry.getKey();
