@@ -1,7 +1,7 @@
 package behavior;
 
-import static agent.DcopConstants.DSA_VALUE;
 import static agent.DcopConstants.DSA_PROBABILITY;
+import static agent.DcopConstants.MessageType;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -65,12 +65,12 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
     // send the current value to neighbors
     for (AID neighborAID : agent.getNeighborAIDSet()) {
       agent.sendObjectMessageWithIteration(neighborAID, getCurrentValue(),
-          DSA_VALUE, localSearchIteration, agent.getSimulatedTime());
+          MessageType.DSA_VALUE, localSearchIteration, agent.getSimulatedTime());
     }
 
     PiecewiseMultivariateQuadFunction combinedFunction = new PiecewiseMultivariateQuadFunction();
 
-    Map<String, Double> neighborValueMap = waitingForMessageFromNeighborWithTime(DSA_VALUE, localSearchIteration);
+    Map<String, Double> neighborValueMap = waitingForMessageFromNeighborWithTime(MessageType.DSA_VALUE, localSearchIteration);
     
     agent.startSimulatedTiming();
     
@@ -107,7 +107,9 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
     agent.setChosenDoubleValueAtEachTimeStep(currentTimeStep, value);
   }
   
-  private Map<String, Double> waitingForMessageFromNeighborWithTime(int msgCode, int iteration) {    
+  private Map<String, Double> waitingForMessageFromNeighborWithTime(MessageType msgType, int iteration) {    
+    int msgCode = msgType.ordinal();
+    
     Map<String, Double> valueMap = new HashMap<>();
     
     while (valueMap.size() < agent.getNeighborAIDSet().size()) {

@@ -22,7 +22,9 @@ import maxsum.MaxSumMessage;
 import table.RowDouble;
 import table.TableDouble;
 
-import static agent.DcopConstants.*;
+import static agent.DcopConstants.MessageType;
+import static agent.DcopConstants.FUNC_TO_VAR_TO_SEND_OUT;
+import static agent.DcopConstants.FUNC_TO_VAR_TO_STORE;
 
 
 /**
@@ -83,7 +85,7 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
       
       agent.stopSimulatedTiming();
       
-      agent.sendObjectMessageWithTime(functionAgent, FUNC_TO_VARmsg_to_send, FUNC_TO_VAR, time);
+      agent.sendObjectMessageWithTime(functionAgent, FUNC_TO_VARmsg_to_send, MessageType.FUNC_TO_VAR, time);
       
       agent.startSimulatedTiming();
       
@@ -94,7 +96,7 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
       agent.stopSimulatedTiming();
     }
     
-    waiting_store_FUNC_TO_VAR_message_with_time(FUNC_TO_VAR);
+    waiting_store_FUNC_TO_VAR_message_with_time(MessageType.FUNC_TO_VAR);
     
     double bestValue = calculateTheBestValue();
     agent.print(" at iteration " + iteration + " choose the best value: " + bestValue);
@@ -220,8 +222,10 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
     return msMessage;
   }
   
-  private void waiting_store_FUNC_TO_VAR_message_with_time(int msgCode) {
-    agent.startSimulatedTiming();    
+  private void waiting_store_FUNC_TO_VAR_message_with_time(MessageType msgType) {
+    agent.startSimulatedTiming();
+    
+    int msgCode = msgType.ordinal();
     
     int msgCount = 0;
     while (msgCount < agent.getNeighborFunctionOwnedByOther().size()) {

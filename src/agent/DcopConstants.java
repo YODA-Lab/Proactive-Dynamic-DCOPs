@@ -50,6 +50,33 @@ public interface DcopConstants {
     FINITE_HORIZON, INFINITE_HORIZON, ONLINE, STATIONARY
   }
   
+  public static enum MessageType {
+    DPOP_UTIL,
+    DPOP_VALUE,
+    PROPAGATE_DPOP_VALUE,
+    SWICHING_COST,
+    LS_IMPROVE,
+    LS_VALUE,
+    LS_UTIL,
+    RAND_VALUE,
+    PSEUDOTREE,
+    INFO,
+    INIT_LS_UTIL,
+    FINAL_UTIL,
+    FINAL_VALUE,
+    MGM_VALUE,
+    MGM_IMPROVE,
+    MGM_UTIL,
+    VAR_TO_FUNC,
+    FUNC_TO_VAR,
+    DSA_VALUE,
+    GD_VALUE,
+    GD_IMPROVE,
+    GD_UTL,
+    FINAL_UTIL_CONTINOUS,
+    FINAL_VALUE_CONTINUOUS
+  }
+  
   public static final int FUNC_TO_VAR_TO_SEND_OUT = 0;
   public static final int FUNC_TO_VAR_TO_STORE = 1;
   
@@ -64,16 +91,20 @@ public interface DcopConstants {
   
   public static final int MAX_ITERATION = 40;
 
-  public static final int PSEUDOTREE = 0;
-  public static final int PSEUDO_INFO = 1;
-  public static final int DPOP_UTIL = 2;
-  public static final int DPOP_VALUE = 3;
-  public static final int VAR_TO_FUNC = 4;
-  public static final int FUNC_TO_VAR = 5;
-  public static final int PROPAGATE_VALUE = 6;
-  public static final int UTILITY_TO_THE_ROOT = 7;
-  public static final int MSG_COUNT_TO_THE_ROOT = 8;
-  public static final int DSA_VALUE = 9;
+  
+  
+  
+  
+//  public static final int PSEUDOTREE = 0;
+//  public static final int PSEUDO_INFO = 1;
+//  public static final int DPOP_UTIL = 2;
+//  public static final int DPOP_VALUE = 3;
+//  public static final int VAR_TO_FUNC = 4;
+//  public static final int FUNC_TO_VAR = 5;
+//  public static final int PROPAGATE_VALUE = 6;
+//  public static final int UTILITY_TO_THE_ROOT = 7;
+//  public static final int MSG_COUNT_TO_THE_ROOT = 8;
+//  public static final int DSA_VALUE = 9;
   public static final String msgTypes[] = { "PSEUDOTREE", "PSEUDO_INFO", "DPOP_UTIL", "DPOP_VALUE", "VAR_TO_FUNC", "FUNC_TO_VAR",
       "PROPAGATE_VALUE", "UTILITY_TO_THE_ROOT", "MSG_COUNT_TO_THE_ROOT", "DSA_VALUE"};
   

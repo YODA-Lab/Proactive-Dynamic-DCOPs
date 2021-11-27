@@ -13,7 +13,7 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
  * @author khoihd
  *
  */
-public class SEARCH_NEIGHBORS extends OneShotBehaviour implements MESSAGE_TYPE {
+public class SEARCH_NEIGHBORS extends OneShotBehaviour {
 
 	/**
    * 
@@ -58,9 +58,9 @@ public class SEARCH_NEIGHBORS extends OneShotBehaviour implements MESSAGE_TYPE {
       }
     }
     
-    agent.print("getMSFunctionMapIOwn=" + agent.getMSFunctionOwnedByMeMap());
-    agent.print("agentToFunctionIOwn=" + agent.getNeighborFunctionOwnedByMe());
-    agent.print("getFunctionOwnedByOther=" + agent.getNeighborFunctionOwnedByOther());
+//    agent.print("getMSFunctionMapIOwn=" + agent.getMSFunctionOwnedByMeMap());
+//    agent.print("agentToFunctionIOwn=" + agent.getNeighborFunctionOwnedByMe());
+//    agent.print("getFunctionOwnedByOther=" + agent.getNeighborFunctionOwnedByOther());
 		
 		agent.print("Done looking for neighbors");
 	}

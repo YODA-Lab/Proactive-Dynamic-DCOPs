@@ -10,6 +10,7 @@ import static agent.DcopConstants.MARKOV_CONVERGENCE_TIME_STEP;
 import static agent.DcopConstants.NOT_TO_OPTIMIZE_INTERVAL;
 import static agent.DcopConstants.DECISION_TABLE;
 import static agent.DcopConstants.RANDOM_TABLE;
+import agent.DcopConstants.MessageType;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -64,7 +65,6 @@ import behavior.INIT_PROPAGATE_DPOP_VALUE;
 import behavior.INIT_RECEIVE_DPOP_VALUE;
 import behavior.INIT_RECEIVE_SEND_LS_UTIL;
 import behavior.LS_RECEIVE_SEND_LS_UTIL;
-import behavior.MESSAGE_TYPE;
 import behavior.MGM_RAND_PICK_VALUE;
 import behavior.MGM_SEND_RECEIVE_IMPROVE;
 import behavior.MGM_SEND_RECEIVE_UTIL;
@@ -439,7 +439,7 @@ public class AgentPDDCOP extends Agent {
 	protected void setup() {
 		readArguments();
 		
-		if (dcopType == DcopType.DISCRETE) {
+		if (isDiscrete()) {
 			parseInputFileDiscrete(INPUT_FOLDER + "/" + inputFileName);
 		} else {
 			parseInputFileContinuous(INPUT_FOLDER + "/" + inputFileName);
@@ -876,8 +876,11 @@ public class AgentPDDCOP extends Agent {
 		return lastTimeStep;
 	}
 	
-  public void sendByteObjectMessageWithTime(AID receiver, PiecewiseMultivariateQuadFunction content, int msgCode,
+  public void sendByteObjectMessageWithTime(AID receiver, PiecewiseMultivariateQuadFunction content, MessageType msgType,
       long time) throws IOException {
+    int msgCode = msgType.ordinal();
+    
+    
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     GZIPOutputStream gzipOut = new GZIPOutputStream(baos);
     ObjectOutputStream objectOut = new ObjectOutputStream(gzipOut);
@@ -952,7 +955,7 @@ public class AgentPDDCOP extends Agent {
 		stopSimulatedTiming();
 
 		for (AID neighbor : neighborAIDSet) {
-			sendObjectMessageWithTime(neighbor, bestImproveUtilityMap, MESSAGE_TYPE.LS_IMPROVE, simulatedTime);
+			sendObjectMessageWithTime(neighbor, bestImproveUtilityMap, MessageType.LS_IMPROVE, simulatedTime);
 		}
 	}
 
@@ -1339,18 +1342,22 @@ public class AgentPDDCOP extends Agent {
 		print("send message " + content + " to agent " + receiver.getLocalName());
 	}
 
-	public void sendStringMessage(AID receiver, String content, int msgCode) {
-		ACLMessage message = new ACLMessage(msgCode);
+	public void sendStringMessage(AID receiver, String content, MessageType msgType) {
+	  int msgCode = msgType.ordinal();
+	  
+	  ACLMessage message = new ACLMessage(msgCode);
 		message.setContent(content);
 		message.addReceiver(receiver);
 		send(message);
 
-		print("sends message type " + MESSAGE_TYPE.msgTypes.get(msgCode) + " to agent " + receiver.getLocalName() + ": "
+		print("sends message type " + msgType.toString() + " to agent " + receiver.getLocalName() + ": "
 				+ content);
 	}
 
-	public void sendObjectMessageWithTime(AID receiver, Object content, int msgCode, long time) {
-		ACLMessage message = new ACLMessage(msgCode);
+	public void sendObjectMessageWithTime(AID receiver, Object content, MessageType msgType, long time) {
+	  int msgCode = msgType.ordinal();
+	  
+	  ACLMessage message = new ACLMessage(msgCode);
 		try {
 			message.setContentObject((Serializable) content);
 		} catch (IOException e) {
@@ -1360,11 +1367,11 @@ public class AgentPDDCOP extends Agent {
 		message.setLanguage(String.valueOf(time));
 		send(message);
 
-		if (msgCode != MESSAGE_TYPE.DPOP_UTIL) {
-			print("sends message type " + MESSAGE_TYPE.msgTypes.get(msgCode) + " to agent " + receiver.getLocalName()
+		if (msgType != MessageType.DPOP_UTIL) {
+			print("sends message type " + msgType.toString() + " to agent " + receiver.getLocalName()
 					+ ": " + content);
 		} else {
-			print("sends message type " + MESSAGE_TYPE.msgTypes.get(msgCode) + " to agent " + receiver.getLocalName());
+			print("sends message type " + msgType.toString() + " to agent " + receiver.getLocalName());
 		}
 	}
 
@@ -3707,7 +3714,9 @@ public class AgentPDDCOP extends Agent {
     this.lsIteration++;
   }
   
-  public void sendObjectMessageWithIteration(AID receiver, Object content, int msgCode, int iteration, long time) {
+  public void sendObjectMessageWithIteration(AID receiver, Object content, MessageType msgType, int iteration, long time) {
+    int msgCode = msgType.ordinal();
+    
     ACLMessage message = new ACLMessage(msgCode);
     try {
       message.setContentObject((Serializable) content);

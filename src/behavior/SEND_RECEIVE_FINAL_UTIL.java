@@ -7,6 +7,7 @@ import java.util.Map;
 
 import agent.AgentPDDCOP;
 import agent.DcopConstants.DynamicType;
+import agent.DcopConstants.MessageType;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
@@ -17,7 +18,7 @@ import utilities.Utilities;
  * @author khoihd
  *
  */
-public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
+public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour {
 
   private static final long serialVersionUID = 6619734019693007342L;
 
@@ -36,7 +37,7 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
     Map<Integer, Double> actual_switching_cost_from_children = new HashMap<>();
     agent.print("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap().values());
     
-    List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(FINAL_UTIL);
+    List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(MessageType.FINAL_UTIL);
     agent.startSimulatedTiming();
     
     for (ACLMessage msg : receiveMessages) {
@@ -84,7 +85,7 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
     agent.stopSimulatedTiming();
     
     if (!agent.isRoot()) {
-      agent.sendObjectMessageWithTime(agent.getParentAID(), messageForParent, FINAL_UTIL, agent.getSimulatedTime());
+      agent.sendObjectMessageWithTime(agent.getParentAID(), messageForParent, MessageType.FINAL_UTIL, agent.getSimulatedTime());
     }
     else {
       if (agent.isDynamic(DynamicType.ONLINE) || agent.isDynamic(DynamicType.STATIONARY)) {
@@ -110,7 +111,8 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour implements MESSAGE
     }
   }
   
-  private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode) {
+  private List<ACLMessage> waitingForMessageFromChildrenWithTime(MessageType msgType) {
+    int msgCode = msgType.ordinal();
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
     while (messageList.size() < agent.getChildrenAIDSet().size()) {

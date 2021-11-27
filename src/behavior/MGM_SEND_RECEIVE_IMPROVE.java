@@ -6,13 +6,14 @@ import java.util.List;
 import java.util.Map;
 
 import agent.AgentPDDCOP;
+import agent.DcopConstants.MessageType;
 import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 
-public class MGM_SEND_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAGE_TYPE {
+public class MGM_SEND_RECEIVE_IMPROVE extends OneShotBehaviour {
 
   /**
    * 
@@ -57,10 +58,10 @@ public class MGM_SEND_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAG
     agent.stopSimulatedTiming();
 
     for (AID neighbor : agent.getNeighborAIDSet()) {
-      agent.sendObjectMessageWithTime(neighbor, maxGain, MESSAGE_TYPE.MGM_IMPROVE, agent.getSimulatedTime());
+      agent.sendObjectMessageWithTime(neighbor, maxGain, MessageType.MGM_IMPROVE, agent.getSimulatedTime());
     }
 
-    List<ACLMessage> receivedMessageFromNeighborList = waitingForMessageFromNeighborWithTime(MGM_IMPROVE);
+    List<ACLMessage> receivedMessageFromNeighborList = waitingForMessageFromNeighborWithTime(MessageType.MGM_IMPROVE);
     
     agent.startSimulatedTiming();
     
@@ -85,7 +86,8 @@ public class MGM_SEND_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAG
     agent.stopSimulatedTiming();
   }
   
-  private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {
+  private List<ACLMessage> waitingForMessageFromNeighborWithTime(MessageType msgType) {
+    int msgCode = msgType.ordinal();
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
     while (messageList.size() < agent.getNeighborAIDSet().size()) {

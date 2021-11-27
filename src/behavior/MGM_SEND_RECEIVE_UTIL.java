@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import agent.AgentPDDCOP;
+import agent.DcopConstants.MessageType;
+
 import static agent.DcopConstants.MAX_ITERATION;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
@@ -15,7 +17,7 @@ import jade.lang.acl.UnreadableException;
  * @author khoihd
  *
  */
-public class MGM_SEND_RECEIVE_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
+public class MGM_SEND_RECEIVE_UTIL extends OneShotBehaviour {
 
   private static final long serialVersionUID = 4766760189659187968L;
 
@@ -33,7 +35,7 @@ public class MGM_SEND_RECEIVE_UTIL extends OneShotBehaviour implements MESSAGE_T
   @Override
   public void action() {    
     double utilFromChildren = 0;
-    List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(MGM_UTIL);
+    List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(MessageType.MGM_UTIL);
     
     agent.startSimulatedTiming();
     
@@ -50,7 +52,7 @@ public class MGM_SEND_RECEIVE_UTIL extends OneShotBehaviour implements MESSAGE_T
     agent.stopSimulatedTiming();
 
     if (!agent.isRoot()) {
-      agent.sendObjectMessageWithTime(agent.getParentAID(), localSearchQuality, MGM_UTIL, agent.getSimulatedTime());
+      agent.sendObjectMessageWithTime(agent.getParentAID(), localSearchQuality, MessageType.MGM_UTIL, agent.getSimulatedTime());
     }
     else {
       if (mgm_time_step == 0) {
@@ -79,7 +81,8 @@ public class MGM_SEND_RECEIVE_UTIL extends OneShotBehaviour implements MESSAGE_T
     }
   }
   
-  private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode) {
+  private List<ACLMessage> waitingForMessageFromChildrenWithTime(MessageType msgType) {
+    int msgCode = msgType.ordinal();
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
     while (messageList.size() < agent.getChildrenAIDSet().size()) {

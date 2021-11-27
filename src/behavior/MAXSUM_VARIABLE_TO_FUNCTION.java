@@ -18,7 +18,7 @@ import agent.DcopConstants.DcopAlgorithm;
 import agent.DcopConstants.PDDcopAlgorithm;
 import function.multivariate.PiecewiseMultivariateQuadFunction;
 
-import static agent.DcopConstants.VAR_TO_FUNC;
+import static agent.DcopConstants.MessageType;
 import static agent.DcopConstants.GRADIENT_SCALING_FACTOR;
 
 /**
@@ -101,7 +101,7 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
       agent.stopSimulatedTiming();
       
       for (AID receiver : agent.getNeighborFunctionOwnedByOther()) {
-        agent.sendObjectMessageWithTime(receiver, msgVAR_TO_FUNC, VAR_TO_FUNC, agent.getSimulatedTime());
+        agent.sendObjectMessageWithTime(receiver, msgVAR_TO_FUNC, MessageType.VAR_TO_FUNC, agent.getSimulatedTime());
       }
       for (AID store_agent : agent.getNeighborFunctionOwnedByMe()) {
         agent.getStored_VARIABLE_TO_FUNCTION().put(store_agent, msgVAR_TO_FUNC);
@@ -169,7 +169,7 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
 
           agent.stopSimulatedTiming();
 
-          agent.sendObjectMessageWithTime(neighbor, msgVAR_TO_FUNC, VAR_TO_FUNC, agent.getSimulatedTime());
+          agent.sendObjectMessageWithTime(neighbor, msgVAR_TO_FUNC, MessageType.VAR_TO_FUNC, agent.getSimulatedTime());
         } 
         // process the function that I owned
         else if (agent.getNeighborFunctionOwnedByMe().contains(neighbor)) {
@@ -205,7 +205,7 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
       }
     }
     
-    waiting_store_VAR_TO_FUNC_message_with_time(VAR_TO_FUNC);    
+    waiting_store_VAR_TO_FUNC_message_with_time(MessageType.VAR_TO_FUNC);    
   }
 
   /**
@@ -268,8 +268,10 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
     agent.print("After moving MS values: " + agent.getCurrentDiscreteValues(currentTimeStep));
   }
 
-  private void waiting_store_VAR_TO_FUNC_message_with_time(int msgCode) {
-    agent.startSimulatedTiming();    
+  private void waiting_store_VAR_TO_FUNC_message_with_time(MessageType msgType) {
+    agent.startSimulatedTiming();
+    
+    int msgCode = msgType.ordinal();
         
     int msgCount = 0;    
     while (msgCount < agent.getNeighborFunctionOwnedByMe().size()) {

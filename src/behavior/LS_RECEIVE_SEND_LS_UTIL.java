@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import agent.AgentPDDCOP;
+import agent.DcopConstants.MessageType;
+
 import static agent.DcopConstants.MAX_ITERATION;
 import utilities.*;
 import jade.core.behaviours.OneShotBehaviour;
@@ -16,7 +18,7 @@ import jade.lang.acl.UnreadableException;
  * @author khoihd
  *
  */
-public class LS_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
+public class LS_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour {
 
 	private static final long serialVersionUID = 4766760189659187968L;
 
@@ -35,7 +37,7 @@ public class LS_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSAGE
 	@Override
 	public void action() {	  
     double utilFromChildren = 0;
-    List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(LS_UTIL);
+    List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(MessageType.LS_UTIL);
     
     agent.startSimulatedTiming();
     
@@ -53,7 +55,7 @@ public class LS_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSAGE
     agent.stopSimulatedTiming();
 
 		if (!agent.isRoot()) {
-			agent.sendObjectMessageWithTime(agent.getParentAID(), localSearchQuality, LS_UTIL, agent.getSimulatedTime());
+			agent.sendObjectMessageWithTime(agent.getParentAID(), localSearchQuality, MessageType.LS_UTIL, agent.getSimulatedTime());
 		}
 		else {
       agent.setLocalSearchQuality(localTimeStep,
@@ -68,7 +70,8 @@ public class LS_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour implements MESSAGE
 		}
 	}
 	
-  private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode) {
+  private List<ACLMessage> waitingForMessageFromChildrenWithTime(MessageType msgType) {
+    int msgCode = msgType.ordinal();
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
     while (messageList.size() < agent.getChildrenAIDSet().size()) {

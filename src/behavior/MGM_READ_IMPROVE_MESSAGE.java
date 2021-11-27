@@ -4,11 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import agent.AgentPDDCOP;
+import agent.DcopConstants.MessageType;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
-public class MGM_READ_IMPROVE_MESSAGE extends CyclicBehaviour implements MESSAGE_TYPE{
+public class MGM_READ_IMPROVE_MESSAGE extends CyclicBehaviour {
 
   /**
    * 
@@ -27,7 +28,7 @@ public class MGM_READ_IMPROVE_MESSAGE extends CyclicBehaviour implements MESSAGE
 
   @Override
   public void action() {
-    MessageTemplate template = MessageTemplate.MatchPerformative(MGM_VALUE);
+    MessageTemplate template = MessageTemplate.MatchPerformative(MessageType.MGM_VALUE.ordinal());
     ACLMessage receivedMessage = myAgent.receive(template);
     
     if (receivedMessage != null) {

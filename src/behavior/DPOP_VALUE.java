@@ -13,6 +13,7 @@ import java.util.Map.Entry;
 
 import agent.AgentPDDCOP;
 import agent.DcopConstants.DcopAlgorithm;
+import agent.DcopConstants.MessageType;
 import agent.DcopConstants.PDDcopAlgorithm;
 import function.Interval;
 import function.multivariate.MultivariateQuadFunction;
@@ -30,7 +31,7 @@ import table.RowString;
  *         the minimum utility 2.1 IF (X is not a leaf) Send the value to all
  *         the children PRINT_OUT the picked value STOP
  */
-public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
+public class DPOP_VALUE extends OneShotBehaviour {
 	/**
    * 
    */
@@ -93,7 +94,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
     agent.addDoubleValuesToSendInVALUEPhase(agent.getLocalName(), getValue(timeStep));
     
     for (AID childrenAgentAID : agent.getChildrenAIDSet()) {
-      agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE, agent.getSimulatedTime());
+      agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(), MessageType.DPOP_VALUE, agent.getSimulatedTime());
     }
   }
   
@@ -105,7 +106,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
    * Non-root agent chooses and sends value to its children
    */
   private void nonRootChooseAndSendValue(int timeStep) {
-    Map<String, Double> valuesFromParent = waitingForValuesFromParentWithTime(DPOP_VALUE);
+    Map<String, Double> valuesFromParent = waitingForValuesFromParentWithTime(MessageType.DPOP_VALUE);
     
     agent.startSimulatedTiming();
     
@@ -127,7 +128,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
     
     if (agent.isLeaf() == false) {      
       for (AID children : agent.getChildrenAIDSet()) {
-        agent.sendObjectMessageWithTime(children, agent.getDoubleValuesToSendInVALUEPhase(), DPOP_VALUE, agent.getSimulatedTime());
+        agent.sendObjectMessageWithTime(children, agent.getDoubleValuesToSendInVALUEPhase(), MessageType.DPOP_VALUE, agent.getSimulatedTime());
       }
     } 
   }
@@ -209,8 +210,10 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
   }
 
   @SuppressWarnings("unchecked")
-  private Map<String, Double> waitingForValuesFromParentWithTime(int msgCode) {
+  private Map<String, Double> waitingForValuesFromParentWithTime(MessageType msgType) {
     agent.startSimulatedTiming();    
+    
+    int msgCode = msgType.ordinal();
     
     ACLMessage receivedMessage = null;
     Map<String, Double> valuesFromParent = new HashMap<String, Double>();
@@ -251,12 +254,12 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
       }
 
       for (AID childrenAgentAID : agent.getChildrenAIDSet()) {
-        agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE,
+        agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(), MessageType.DPOP_VALUE,
             agent.getSimulatedTime());
       }
     } else {
       // leaf or internal nodes
-      ACLMessage receivedMessage = waitingForMessageFromParent(DPOP_VALUE);
+      ACLMessage receivedMessage = waitingForMessageFromParent(MessageType.DPOP_VALUE);
       agent.startSimulatedTiming();
 
       HashMap<Integer, String> variableAgentViewIndexValueMap = new HashMap<Integer, String>();
@@ -326,7 +329,7 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 
       if (!agent.isLeaf()) {
         for (AID children : agent.getChildrenAIDSet()) {
-          agent.sendObjectMessageWithTime(children, agent.getValuesToSendInVALUEPhase(), DPOP_VALUE,
+          agent.sendObjectMessageWithTime(children, agent.getValuesToSendInVALUEPhase(), MessageType.DPOP_VALUE,
               agent.getSimulatedTime());
         }
       }
@@ -335,8 +338,9 @@ public class DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
     agent.print("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap().values());
   }
 
-  private ACLMessage waitingForMessageFromParent(int msgCode) {
-		ACLMessage receivedMessage = null;
+  private ACLMessage waitingForMessageFromParent(MessageType msgType) {
+    int msgCode = msgType.ordinal();
+    ACLMessage receivedMessage = null;
 
 		while (true) {
 			agent.startSimulatedTiming();

@@ -6,13 +6,14 @@ import java.util.List;
 import java.util.Map;
 
 import agent.AgentPDDCOP;
+import agent.DcopConstants.MessageType;
 import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
 
-public class SEND_RECEIVE_FINAL_VALUE_CONTINUOUS extends OneShotBehaviour implements MESSAGE_TYPE {
+public class SEND_RECEIVE_FINAL_VALUE_CONTINUOUS extends OneShotBehaviour {
   
   /**
    * 
@@ -34,10 +35,10 @@ public class SEND_RECEIVE_FINAL_VALUE_CONTINUOUS extends OneShotBehaviour implem
     
     for (AID neighborAgentAID : agent.getNeighborAIDSet()) {
       agent.sendObjectMessageWithTime(neighborAgentAID, agent.getChosenDoubleValueAtEachTSMap(),
-          FINAL_UTIL_CONTINOUS, agent.getSimulatedTime());
+          MessageType.FINAL_UTIL_CONTINOUS, agent.getSimulatedTime());
     }
     
-    List<ACLMessage> receivedMessageFromNeighborList = waitingForMessageFromNeighborWithTime(FINAL_UTIL_CONTINOUS);
+    List<ACLMessage> receivedMessageFromNeighborList = waitingForMessageFromNeighborWithTime(MessageType.FINAL_UTIL_CONTINOUS);
     
     for (ACLMessage receivedMessage : receivedMessageFromNeighborList) {
       String sender = receivedMessage.getSender().getLocalName();
@@ -52,7 +53,8 @@ public class SEND_RECEIVE_FINAL_VALUE_CONTINUOUS extends OneShotBehaviour implem
     }
   }
   
-  private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {
+  private List<ACLMessage> waitingForMessageFromNeighborWithTime(MessageType msgType) {
+    int msgCode = msgType.ordinal();
     List<ACLMessage> messageList = new ArrayList<>();
 
     while (messageList.size() < agent.getNeighborStrSet().size()) {

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import agent.AgentPDDCOP;
+import agent.DcopConstants.MessageType;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
@@ -14,7 +15,7 @@ import jade.lang.acl.UnreadableException;
  * @author khoihd
  *
  */
-public class SEND_RECEIVE_FINAL_UTIL_CONTINUOUS extends OneShotBehaviour implements MESSAGE_TYPE {
+public class SEND_RECEIVE_FINAL_UTIL_CONTINUOUS extends OneShotBehaviour {
 
   /**
    * 
@@ -30,7 +31,7 @@ public class SEND_RECEIVE_FINAL_UTIL_CONTINUOUS extends OneShotBehaviour impleme
   @Override
   public void action() {    
     double utilFromChildren = 0;
-    List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(FINAL_UTIL_CONTINOUS);
+    List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(MessageType.FINAL_UTIL_CONTINOUS);
     
     for (ACLMessage msg : receiveMessages) {
       try {
@@ -44,7 +45,7 @@ public class SEND_RECEIVE_FINAL_UTIL_CONTINUOUS extends OneShotBehaviour impleme
         agent.utilityLSWithParentAndPseudoAndUnaryContinuous() - agent.computeSwitchingCostAllTimeStepContinuous();
 
     if (!agent.isRoot()) {
-      agent.sendObjectMessageWithTime(agent.getParentAID(), localSearchQuality, FINAL_UTIL_CONTINOUS, agent.getSimulatedTime());
+      agent.sendObjectMessageWithTime(agent.getParentAID(), localSearchQuality, MessageType.FINAL_UTIL_CONTINOUS, agent.getSimulatedTime());
     }
             
     if (agent.isRoot()) {
@@ -53,7 +54,8 @@ public class SEND_RECEIVE_FINAL_UTIL_CONTINUOUS extends OneShotBehaviour impleme
     }
   }
   
-  private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode) {
+  private List<ACLMessage> waitingForMessageFromChildrenWithTime(MessageType msgType) {
+    int msgCode = msgType.ordinal();
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
     while (messageList.size() < agent.getChildrenAIDSet().size()) {

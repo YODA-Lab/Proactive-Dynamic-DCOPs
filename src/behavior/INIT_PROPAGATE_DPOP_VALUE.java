@@ -1,6 +1,7 @@
 package behavior;
 
 import agent.AgentPDDCOP;
+import agent.DcopConstants.MessageType;
 import jade.core.AID;
 import jade.core.behaviours.OneShotBehaviour;
 
@@ -10,7 +11,7 @@ import jade.core.behaviours.OneShotBehaviour;
  * @author khoihd
  *
  */
-public class INIT_PROPAGATE_DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
+public class INIT_PROPAGATE_DPOP_VALUE extends OneShotBehaviour {
 
 	private static final long serialVersionUID = -9137969826179481705L;
 	
@@ -35,7 +36,7 @@ public class INIT_PROPAGATE_DPOP_VALUE extends OneShotBehaviour implements MESSA
 		
 		for (AID neighborAgentAID : agent.getNeighborAIDSet()) {
 			agent.sendObjectMessageWithTime(neighborAgentAID, agent.getChosenValueAtEachTSMap(),
-					PROPAGATE_DPOP_VALUE, agent.getSimulatedTime());
+			    MessageType.PROPAGATE_DPOP_VALUE, agent.getSimulatedTime());
 		}
 	}
 }

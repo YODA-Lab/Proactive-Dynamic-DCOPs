@@ -47,6 +47,7 @@ import function.Interval;
 import function.multivariate.MultivariateQuadFunction;
 import function.multivariate.PiecewiseMultivariateQuadFunction;
 import agent.DcopConstants.DynamicType;
+import agent.DcopConstants.MessageType;
 import table.RowDouble;
 import table.RowString;
 import table.TableDouble;
@@ -91,7 +92,7 @@ import weka.core.SparseInstance;
  *         parent <br>
  *         STOP; <br>
  */
-public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
+public class DPOP_UTIL extends OneShotBehaviour {
 
 	private static final long serialVersionUID = -2438558665331658059L;
 
@@ -204,7 +205,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
     agent.stopSimulatedTiming();
 
-    agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());
+    agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, MessageType.DPOP_UTIL, agent.getSimulatedTime());
   }
   
   /**
@@ -238,7 +239,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     agent.stopSimulatedTiming();
     
     try {
-      agent.sendByteObjectMessageWithTime(agent.getParentAID(), projectedFunction, DPOP_UTIL, agent.getSimulatedTime());
+      agent.sendByteObjectMessageWithTime(agent.getParentAID(), projectedFunction, MessageType.DPOP_UTIL, agent.getSimulatedTime());
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -315,7 +316,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     agent.stopSimulatedTiming();
     
     agent.print(" send utilTable size " + utilTable.size() + " to agent " + agent.getParentAID().getLocalName());
-    agent.sendObjectMessageWithTime(agent.getParentAID(), utilTable, DPOP_UTIL, agent.getSimulatedTime());
+    agent.sendObjectMessageWithTime(agent.getParentAID(), utilTable, MessageType.DPOP_UTIL, agent.getSimulatedTime());
   }
   
   /**
@@ -338,7 +339,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     
     agent.stopSimulatedTiming();
     
-    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(MessageType.DPOP_UTIL);
 
     // Start of processing 
     agent.startSimulatedTiming();
@@ -364,7 +365,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
     agent.stopSimulatedTiming();
     
-    agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());
+    agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, MessageType.DPOP_UTIL, agent.getSimulatedTime());
   }
   
   private void internalNode_FUNC() {
@@ -383,7 +384,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     
     agent.stopSimulatedTiming();
     
-    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(MessageType.DPOP_UTIL);
     
     agent.startSimulatedTiming();
         
@@ -432,7 +433,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     agent.stopSimulatedTiming();
 
     try {
-      agent.sendByteObjectMessageWithTime(agent.getParentAID(), projectedFunction, DPOP_UTIL, agent.getSimulatedTime());
+      agent.sendByteObjectMessageWithTime(agent.getParentAID(), projectedFunction, MessageType.DPOP_UTIL, agent.getSimulatedTime());
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -474,7 +475,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
     agent.stopSimulatedTiming();
 
-    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(MessageType.DPOP_UTIL);
     
     agent.startSimulatedTiming();
     
@@ -515,7 +516,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     
     agent.stopSimulatedTiming();
     
-    agent.sendObjectMessageWithTime(agent.getParentAID(), utilTable, DPOP_UTIL, agent.getSimulatedTime());
+    agent.sendObjectMessageWithTime(agent.getParentAID(), utilTable, MessageType.DPOP_UTIL, agent.getSimulatedTime());
   }
   
   public void root_FUNC() {
@@ -535,7 +536,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     
     agent.stopSimulatedTiming();
 
-    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(MessageType.DPOP_UTIL);
     
     // Start of processing time
     agent.startSimulatedTiming();
@@ -604,7 +605,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
     
     agent.stopSimulatedTiming();
     
-    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(MessageType.DPOP_UTIL);
 
     // Start of processing time
     agent.startSimulatedTiming();
@@ -649,7 +650,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
   public void root_HYBRID() {
     agent.print("ROOT is running");
     
-    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+    List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(MessageType.DPOP_UTIL);
 
     // Start of processing time
     agent.startSimulatedTiming();
@@ -1021,7 +1022,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 		agent.stopSimulatedTiming();
 
-		agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());
+		agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, MessageType.DPOP_UTIL, agent.getSimulatedTime());
 	}
 
 	/**
@@ -1043,7 +1044,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 
 		agent.stopSimulatedTiming();
 
-		agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, DPOP_UTIL, agent.getSimulatedTime());
+		agent.sendObjectMessageWithTime(agent.getParentAID(), projectedTable, MessageType.DPOP_UTIL, agent.getSimulatedTime());
 	}
 
 	/**
@@ -1058,7 +1059,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.LS_SDPOP) && isFirstTimeUTIL()) {
 			combinedTable = agent.getStoredReuseTable();
 
-			List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+			List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(MessageType.DPOP_UTIL);
 			// Separate children into children with decision and children with random
 			List<TableString> decisionUtil = new ArrayList<>();
 			List<TableString> randomUtil = new ArrayList<>();
@@ -1104,7 +1105,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 				return null;
 			}
 
-			List<ACLMessage> randomUtilMessages = waitingForMessageFromChildrenWithTime(DPOP_UTIL,
+			List<ACLMessage> randomUtilMessages = waitingForMessageFromChildrenWithTime(MessageType.DPOP_UTIL,
 					agent.getChildrenAIDSet().size() - agent.getReuseChildUTIL().size());
 
 			agent.startSimulatedTiming();
@@ -1122,7 +1123,7 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		}
 		// Not LS_SDPOP
 		else {
-			List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(DPOP_UTIL);
+			List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(MessageType.DPOP_UTIL);
 
 			agent.startSimulatedTiming();
 
@@ -1277,12 +1278,14 @@ public class DPOP_UTIL extends OneShotBehaviour implements MESSAGE_TYPE {
 		return resultTableList;
 	}
 
-	private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode) {
-		return waitingForMessageFromChildrenWithTime(msgCode, agent.getChildrenAIDSet().size());
+	private List<ACLMessage> waitingForMessageFromChildrenWithTime(MessageType msgType) {
+		return waitingForMessageFromChildrenWithTime(msgType, agent.getChildrenAIDSet().size());
 	}
 
-	private List<ACLMessage> waitingForMessageFromChildrenWithTime(int msgCode, int childCount) {
-		List<ACLMessage> messageList = new ArrayList<ACLMessage>();
+	private List<ACLMessage> waitingForMessageFromChildrenWithTime(MessageType msgType, int childCount) {
+	  int msgCode = msgType.ordinal();
+	  
+	  List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
 		while (messageList.size() < childCount) {
 			agent.startSimulatedTiming();

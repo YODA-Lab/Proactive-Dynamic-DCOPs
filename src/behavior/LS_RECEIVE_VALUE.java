@@ -12,13 +12,14 @@ import java.util.List;
 import java.util.Map;
 
 import agent.AgentPDDCOP;
+import agent.DcopConstants.MessageType;
 
 /**
  * REVIEWED
  * @author khoihd
  *
  */
-public class LS_RECEIVE_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
+public class LS_RECEIVE_VALUE extends OneShotBehaviour {
 
 	private static final long serialVersionUID = 3951196053602788669L;
 
@@ -38,10 +39,10 @@ public class LS_RECEIVE_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
 	public void action() {    
     for (AID neighbor:agent.getNeighborAIDSet()) { 
       agent.sendObjectMessageWithTime(neighbor, agent.getBestImproveValueMap(), 
-            LS_VALUE, agent.getSimulatedTime());  
+          MessageType.LS_VALUE, agent.getSimulatedTime());  
     }
 		
-		List<ACLMessage> messageList = waitingForMessageFromNeighborWithTime(LS_VALUE);
+		List<ACLMessage> messageList = waitingForMessageFromNeighborWithTime(MessageType.LS_VALUE);
 		
 		agent.startSimulatedTiming();
 						
@@ -71,7 +72,8 @@ public class LS_RECEIVE_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
     agent.print("is done SEND_RECEIVE_VALUE at iteration: " + localTimeStep);
 	}
 	
-  private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {
+  private List<ACLMessage> waitingForMessageFromNeighborWithTime(MessageType msgType) {
+    int msgCode = msgType.ordinal();
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
     while (messageList.size() < agent.getNeighborAIDSet().size()) {

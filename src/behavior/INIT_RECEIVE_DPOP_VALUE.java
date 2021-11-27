@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import agent.AgentPDDCOP;
+import agent.DcopConstants.MessageType;
 
 /**
  * REVIEWED
@@ -17,7 +18,7 @@ import agent.AgentPDDCOP;
  * @author khoihd
  *
  */
-public class INIT_RECEIVE_DPOP_VALUE extends OneShotBehaviour implements MESSAGE_TYPE {
+public class INIT_RECEIVE_DPOP_VALUE extends OneShotBehaviour {
 
 	private static final long serialVersionUID = -2879055736536273274L;
 
@@ -31,7 +32,7 @@ public class INIT_RECEIVE_DPOP_VALUE extends OneShotBehaviour implements MESSAGE
 	@SuppressWarnings("unchecked")
 	@Override
 	public void action() {
-		List<ACLMessage> receivedMessageFromNeighborList = waitingForMessageFromNeighborsWithTime(PROPAGATE_DPOP_VALUE);
+		List<ACLMessage> receivedMessageFromNeighborList = waitingForMessageFromNeighborsWithTime(MessageType.PROPAGATE_DPOP_VALUE);
 		
 		agent.startSimulatedTiming();
 		
@@ -50,7 +51,8 @@ public class INIT_RECEIVE_DPOP_VALUE extends OneShotBehaviour implements MESSAGE
 		agent.stopSimulatedTiming();
 	}
 	
-	private List<ACLMessage> waitingForMessageFromNeighborsWithTime(int msgCode) {
+	private List<ACLMessage> waitingForMessageFromNeighborsWithTime(MessageType msgType) {
+	  int msgCode = msgType.ordinal();
 	  List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 		while (messageList.size() < agent.getNeighborAIDSet().size()) {
 			agent.startSimulatedTiming();

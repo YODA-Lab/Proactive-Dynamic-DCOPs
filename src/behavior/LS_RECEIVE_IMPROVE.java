@@ -10,14 +10,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import agent.AgentPDDCOP;;
+import agent.AgentPDDCOP;
+import agent.DcopConstants.MessageType;;
 
 /**
  * REVIEWED 
  * @author khoihd
  *
  */
-public class LS_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAGE_TYPE {
+public class LS_RECEIVE_IMPROVE extends OneShotBehaviour {
 
 	private static final long serialVersionUID = -5530908625966260157L;
 
@@ -35,7 +36,7 @@ public class LS_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAGE_TYPE
 	@SuppressWarnings("unchecked")
   @Override
 	public void action() {
-		List<ACLMessage> messageList = waitingForMessageFromNeighborWithTime(LS_IMPROVE);
+		List<ACLMessage> messageList = waitingForMessageFromNeighborWithTime(MessageType.LS_IMPROVE);
 		
 		agent.startSimulatedTiming();
 		
@@ -77,7 +78,8 @@ public class LS_RECEIVE_IMPROVE extends OneShotBehaviour implements MESSAGE_TYPE
     agent.print("is done RECEIVE_IMPROVE at iteration = " + localTimeStep);
 	}
 	
-  private List<ACLMessage> waitingForMessageFromNeighborWithTime(int msgCode) {
+  private List<ACLMessage> waitingForMessageFromNeighborWithTime(MessageType msgType) {
+    int msgCode = msgType.ordinal();
     List<ACLMessage> messageList = new ArrayList<ACLMessage>();
 
     while (messageList.size() < agent.getNeighborAIDSet().size()) {
