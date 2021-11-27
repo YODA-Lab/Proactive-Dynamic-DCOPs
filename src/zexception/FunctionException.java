@@ -1,5 +1,7 @@
 package zexception;
 
+import agent.AgentPDDCOP;
+
 public class FunctionException extends RuntimeException {
 
   /**
@@ -12,6 +14,11 @@ public class FunctionException extends RuntimeException {
   }
 
   public FunctionException(String message){
-      super(message);
+    super(message);
+  }
+  
+  public FunctionException(String message, AgentPDDCOP agent){
+    super(message);
+    agent.debug("EXCEPTION!");
   }
 }

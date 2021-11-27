@@ -3221,6 +3221,10 @@ public class AgentPDDCOP extends Agent {
 	public void print(String s) {
 		System.out.println("Agent " + getLocalName() + " " + s);
 	}
+	
+	public void debug(String s) {
+	  System.err.println("Agent " + getLocalName() + " DEBUG " + s);
+	}
 
 	public boolean isRunningPDDCOPLocalSearch() {
 		return pddcop_algorithm == PDDcopAlgorithm.LS_RAND || pddcop_algorithm == PDDcopAlgorithm.LS_SDPOP;
@@ -3927,4 +3931,23 @@ public class AgentPDDCOP extends Agent {
   public Map<String, PiecewiseMultivariateQuadFunction> getCurrrentMSFunctionOwnedByMeMap() {
     return currrentMSFunctionOwnedByMeMap;
   }
+  
+  /**
+   * Compute the expected function (if any) at current time step
+   * 
+   * THIS FUNCTION HAS TO BE CALLED AFTER THE PSEUDOTREE_GENERATION behavior has been executed
+   */
+  public void computeExpectedFunctionCurrentTimeStep(int timeStep) {
+    String randomVariable = getRandomVariable(); 
+
+    if (randomVariable != null) {
+      Map<String, Double> randomValueMap = new HashMap<>();
+      
+      PiecewiseMultivariateQuadFunction randomFunction = getNeighborFunctionMap().get(randomVariable);
+      double distributionMean = getMeanAtEveryTimeStep().get(timeStep);
+      randomValueMap.put(randomVariable, distributionMean);
+
+      expectedFunctionMap.put(timeStep, randomFunction.evaluateToUnaryFunction(randomValueMap));
+    }
+  } 
 }

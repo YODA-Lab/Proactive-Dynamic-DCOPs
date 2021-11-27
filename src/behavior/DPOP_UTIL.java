@@ -131,7 +131,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
 
 	  // Compute expected function if any and add the expected function to the dpopFuncionList
 	  if (agent.hasRandomFunction()) {
-	    computeExpectedFunctionCurrentTimeStep(currentTimeStep);
+	    agent.computeExpectedFunctionCurrentTimeStep(currentTimeStep);
 	    dpopFunctionMap.put(agent.getRandomVariable(), agent.getExpectedFunction(currentTimeStep));
 	  }
 	  
@@ -734,7 +734,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
 //              ? functionWithPP.takeFirstPartialDerivative(ppAgentToMove) // At leaf, use constraint with pParent
 //              : agent.getAgentViewFunction().takeFirstPartialDerivative(ppAgentToMove); // At internal, use agentView
 
-          PiecewiseMultivariateQuadFunction derivativePw = functionWithPP.takeFirstPartialDerivative(ppAgentToMove);
+          PiecewiseMultivariateQuadFunction derivativePw = functionWithPP.takeFirstPartialDerivative(ppAgentToMove, agent.getLocalName(), ppAgentToMove);
 //              : agent.getAgentViewFunction().takeFirstPartialDerivative(ppAgentToMove); // At internal, use agentView
           
           // Create a map of other agents' values
@@ -861,26 +861,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
     }
     
     return tableListWithParents;
-  }
-  
-  /**
-   * Compute the expected function (if any) at current time step
-   * 
-   * THIS FUNCTION HAS TO BE CALLED AFTER THE PSEUDOTREE_GENERATION behavior has been executed
-   */
-  private void computeExpectedFunctionCurrentTimeStep(int timeStep) {
-    String randomVariable = agent.getRandomVariable(); 
-
-    if (randomVariable != null) {
-      Map<String, Double> randomValueMap = new HashMap<>();
-      
-      PiecewiseMultivariateQuadFunction randomFunction = agent.getNeighborFunctionMap().get(randomVariable);
-      double distributionMean = agent.getMeanAtEveryTimeStep().get(timeStep);
-      randomValueMap.put(randomVariable, distributionMean);
-
-      agent.getExpectedFunctionMap().put(timeStep, randomFunction.evaluateToUnaryFunction(randomValueMap));
-    }
-  }    
+  }   
 	
 	private void actionDiscrete() {
     if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.BOUND_DPOP)) {

@@ -125,12 +125,12 @@ public final class PiecewiseMultivariateQuadFunction implements Serializable {
     return pwFunc;
   }
   
-  public PiecewiseMultivariateQuadFunction takeFirstPartialDerivative(String agentInPartialDerivative) {
+  public PiecewiseMultivariateQuadFunction takeFirstPartialDerivative(String agentInPartialDerivative, String owner, String otherAgent) {
     PiecewiseMultivariateQuadFunction pwFunc = new PiecewiseMultivariateQuadFunction();
 
     for (Entry<MultivariateQuadFunction, Set<Map<String, Interval>>> functionEntry : functionMap.entrySet()) {
       MultivariateQuadFunction function = functionEntry.getKey();
-      pwFunc.addToFunctionMapWithIntervalSet(function.takeFirstPartialDerivative(agentInPartialDerivative), functionEntry.getValue());
+      pwFunc.addToFunctionMapWithIntervalSet(function.takeFirstPartialDerivative(agentInPartialDerivative, owner, otherAgent), functionEntry.getValue());
     }
     return pwFunc;
   }

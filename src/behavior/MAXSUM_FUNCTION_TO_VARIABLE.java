@@ -187,6 +187,9 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
 
       mapValue.put(agentToKeep, agentToKeepValue);
       mapValue.put(agentToProject, agentToProjectValue);
+      
+//      agent.debug("function=" + function);
+//      agent.debug("mapValue=" + mapValue);
 
       double evaluatedValue = function.getTheFirstFunction().evaluateToValueGivenValueMap(mapValue);
 //      evaluatedValue += var2FuncMsg.getValueUtilityMap().get(agentToKeepValue);
@@ -205,7 +208,12 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
     }
     
     Map<Double, Double> firstDerivative = new HashMap<>();
-    PiecewiseMultivariateQuadFunction firstDerivativeFunc = function.takeFirstPartialDerivative(agentToKeep);
+        
+    PiecewiseMultivariateQuadFunction firstDerivativeFunc = function.takeFirstPartialDerivative(agentToKeep, agentToKeep, agentToProject);
+    
+//    agent.debug("agentToKeep=" + agentToKeep + " function=" + function);
+//    agent.debug("firstDerivativeFunc=" + firstDerivativeFunc);
+
     for (double agentToKeepValue : agentToKeepValueSet) {
       Map<String, Double> valueMap = new HashMap<>();
       valueMap.put(agentToKeep, agentToKeepValue);

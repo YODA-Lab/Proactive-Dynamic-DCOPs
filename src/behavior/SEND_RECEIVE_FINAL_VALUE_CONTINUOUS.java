@@ -31,14 +31,14 @@ public class SEND_RECEIVE_FINAL_VALUE_CONTINUOUS extends OneShotBehaviour {
   @Override
   public void action() {
     
-    agent.print("SEND_RECEIVE_FINAL_UTIL_CONTINUOUS");
+    agent.print("SEND_RECEIVE_FINAL_VALUE_CONTINUOUS");
     
     for (AID neighborAgentAID : agent.getNeighborAIDSet()) {
       agent.sendObjectMessageWithTime(neighborAgentAID, agent.getChosenDoubleValueAtEachTSMap(),
-          MessageType.FINAL_UTIL_CONTINOUS, agent.getSimulatedTime());
+          MessageType.FINAL_VALUE_CONTINUOUS, agent.getSimulatedTime());
     }
     
-    List<ACLMessage> receivedMessageFromNeighborList = waitingForMessageFromNeighborWithTime(MessageType.FINAL_UTIL_CONTINOUS);
+    List<ACLMessage> receivedMessageFromNeighborList = waitingForMessageFromNeighborWithTime(MessageType.FINAL_VALUE_CONTINUOUS);
     
     for (ACLMessage receivedMessage : receivedMessageFromNeighborList) {
       String sender = receivedMessage.getSender().getLocalName();

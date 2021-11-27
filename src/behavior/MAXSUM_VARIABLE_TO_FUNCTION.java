@@ -83,6 +83,8 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
     if (iteration == 0) {
       agent.startSimulatedTiming();
       
+      agent.computeExpectedFunctionCurrentTimeStep(currentTimeStep);
+      
       // Initialize the message and set initial value set
       MaxSumMessage msgVAR_TO_FUNC = new MaxSumMessage(agent.getCurrentDiscreteValues(currentTimeStep));
       msgVAR_TO_FUNC.setNewValueSet(agent.getCurrentDiscreteValues(currentTimeStep));
@@ -240,7 +242,7 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
         valueMap.put(agent.getLocalName(), oldValue);
         
         PiecewiseMultivariateQuadFunction randomFunction = agent.getExpectedFunction(currentTimeStep);
-        sumGradient += randomFunction.getTheFirstFunction().takeFirstPartialDerivative(agent.getLocalName()).evaluateToValueGivenValueMap(valueMap);
+        sumGradient += randomFunction.getTheFirstFunction().takeFirstPartialDerivative(agent.getLocalName(), agent.getLocalName(), "").evaluateToValueGivenValueMap(valueMap);
       }
       
       // Take into account the gradient of switching cost function
@@ -249,7 +251,9 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
         valueMap.put(agent.getLocalName(), oldValue);
         
         PiecewiseMultivariateQuadFunction swFunction = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
-        sumGradient += swFunction.getTheFirstFunction().takeFirstPartialDerivative(agent.getLocalName()).evaluateToValueGivenValueMap(valueMap);
+        if (swFunction != null) {
+          sumGradient += swFunction.getTheFirstFunction().takeFirstPartialDerivative(agent.getLocalName(), agent.getLocalName(), "").evaluateToValueGivenValueMap(valueMap);
+        }
       }
       
       // Taking into account switching cost and expected table here

@@ -38,17 +38,29 @@ public final class MultivariateQuadFunction implements Serializable {
 	 */
 	private static final long serialVersionUID = 2751671064195985634L;
 	
-	private String owner = "";
-	private String otherVariable = "";
+	private String owner;
+	private String otherVariable;
+	private static final String EMPTY_AGENT = "";
 	private Table<String, String, Double> coefficients = HashBasedTable.create();
 	private Map<String, Interval> critFuncIntervalMap = new HashMap<>();
 
+
+	 /**
+   * Constructor with no parameter <br>
+   * Initialize the constant coefficient to 0.0
+   */
+  public MultivariateQuadFunction(String owner) {
+    this(owner, EMPTY_AGENT);
+  }
+	
 	/**
 	 * Constructor with no parameter <br>
 	 * Initialize the constant coefficient to 0.0
 	 */
-	public MultivariateQuadFunction() {
-		coefficients.put("", "", 0.0);
+	public MultivariateQuadFunction(String owner, String otherVariable) {
+	  this.owner = owner;
+	  this.otherVariable = otherVariable;
+	  coefficients.put("", "", 0.0);
 	}
 	
 	/**
@@ -60,7 +72,7 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * @return
 	 */
 	public static MultivariateQuadFunction switchingCostDiscountedFunction(String selfAgent, double value, double discounted, SwitchingType type) {	  
-	  MultivariateQuadFunction swFunc = new MultivariateQuadFunction();
+	  MultivariateQuadFunction swFunc = new MultivariateQuadFunction(selfAgent);
 	  
 	  // (x - value)^2 = x^2 - 2 * value + value^2
 	  if (type == SwitchingType.QUADRATIC) {
@@ -68,8 +80,6 @@ public final class MultivariateQuadFunction implements Serializable {
 	    swFunc.addOrUpdate(selfAgent, "", -2 * value * discounted);
 	    swFunc.addOrUpdate("", "",  value * value * discounted);
 	  }
-	  
-	  swFunc.setOwner(selfAgent);
 	  
 	  return swFunc;
 	}
@@ -85,15 +95,13 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * @param globalInterval
 	 */
 	public MultivariateQuadFunction(String[] coeff, String selfAgent, String otherAgent) {
-		coefficients.put(selfAgent, selfAgent, Double.valueOf(coeff[0]));
+	  this(selfAgent, otherAgent);
+	  coefficients.put(selfAgent, selfAgent, Double.valueOf(coeff[0]));
 		coefficients.put(selfAgent, "", Double.valueOf(coeff[1]));
 		coefficients.put(otherAgent, otherAgent, Double.valueOf(coeff[2]));
 		coefficients.put(otherAgent, "", Double.valueOf(coeff[3]));
 		coefficients.put(selfAgent, otherAgent, Double.valueOf(coeff[4]));
 		coefficients.put("", "", Double.valueOf(coeff[5]));
-
-		owner = selfAgent;
-		otherVariable = otherAgent;
 	}
 
 	/**
@@ -105,18 +113,16 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * @param owner
 	 */
 	public MultivariateQuadFunction(double a, double b, double c, final String owner, final Interval critFuncInterval) {
-		coefficients.put(owner, owner, a);
+	  this(owner);
+	  coefficients.put(owner, owner, a);
 		coefficients.put(owner, "", b);
 		coefficients.put("", "", c);
-		this.owner = owner;
 		critFuncIntervalMap.put(owner, critFuncInterval);
 	}
 
 	public MultivariateQuadFunction(final String owner, final String other,
 			final Table<String, String, Double> coefficients, Map<String, Interval> intervalMap) {
-		this();
-		this.owner = owner;
-		this.otherVariable = other;
+		this(owner, other);
 		this.coefficients.putAll(coefficients);
 		this.critFuncIntervalMap.putAll(intervalMap);
 	}
@@ -247,11 +253,16 @@ public final class MultivariateQuadFunction implements Serializable {
 		// Delete all columns and rows that contain the variable
 		evaluatedFunc.getCoefficients().row(variable).clear();
 		evaluatedFunc.getCoefficients().column(variable).clear();
+		evaluatedFunc.setOtherVariable(EMPTY_AGENT);
 
 		return evaluatedFunc;
 	}
 
-	/**
+	private void setOtherVariable(String otherVariable) {
+	  this.otherVariable = otherVariable;
+  }
+
+  /**
 	 * Create an ordered set, where each element is a list of ordered intervals.
 	 * <br>
 	 * The ordering of interval in the list match the ordering of <variable,
@@ -445,8 +456,8 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * 
 	 * @return
 	 */
-	public MultivariateQuadFunction takeFirstPartialDerivative(String derivativeAgent) {
-		MultivariateQuadFunction firstPartialDerivative = new MultivariateQuadFunction();
+	public MultivariateQuadFunction takeFirstPartialDerivative(String derivativeAgent, String owner, String otherVariable) {
+		MultivariateQuadFunction firstPartialDerivative = new MultivariateQuadFunction(owner, otherVariable);
 
 		// constant => 0
 		firstPartialDerivative.put("", "", 0.0);
@@ -470,8 +481,6 @@ public final class MultivariateQuadFunction implements Serializable {
 			firstPartialDerivative.addOrUpdate(rowEntry.getKey(), "", rowEntry.getValue());
 		}
 
-		firstPartialDerivative.setOwner(derivativeAgent);
-
 		firstPartialDerivative.setcritFuncIntervalMap(this.getCritFuncIntervalMap());
 
 		return firstPartialDerivative;
@@ -484,8 +493,12 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * @param agent2
 	 * @return
 	 */
-	private Double get(String agent1, String agent2) {
-		return getCoefficients().get(agent1, agent2);
+	private double get(String agent1, String agent2) {
+	  if (contains(agent1, agent2)) {
+	    return getCoefficients().get(agent1, agent2);
+	  }
+	  
+	  return 0D;
 	}
 
 	/**
@@ -496,7 +509,7 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * @return
 	 */
 	private boolean contains(String agent1, String agent2) {
-		return getCoefficients().contains(agent1, agent2);
+		return getCoefficients().contains(agent1, agent2) || getCoefficients().contains(agent2, agent1);
 	}
 
 	/**
@@ -519,6 +532,7 @@ public final class MultivariateQuadFunction implements Serializable {
 	@SuppressWarnings("unused")
 	private void remove(String agent1, String agent2) {
 		getCoefficients().remove(agent1, agent2);
+		getCoefficients().remove(agent2, agent1);
 	}
 
 	/**
@@ -619,24 +633,55 @@ public final class MultivariateQuadFunction implements Serializable {
 		return func;
 	}
 
-	public double evaluateToValueGivenValueMap(Map<String, Double> valueMap) {
-		MultivariateQuadFunction func = new MultivariateQuadFunction(this);
-		int count = 1;
-		for (Map.Entry<String, Double> entry : valueMap.entrySet()) {
-			if (count < valueMap.size()) {
-				func = func.evaluate(entry.getKey(), entry.getValue());
-			} else {
-				return func.evaluateUnaryFunction(entry.getKey(), entry.getValue());
-			}
-			count++;
-		}
-		
-		return Double.MAX_VALUE;
-	}
-	
-	public double evaluateUnaryFunction(String variable, String value) {
-	  return evaluateUnaryFunction(variable, Double.valueOf(value));
-	}
+  public double evaluateToValueGivenValueMap(Map<String, Double> valueMap) {
+    if (!valueMap.containsKey(owner)) {
+      throw new FunctionException(
+          "valueMap does not contains the owner=" + owner + " . ValueMap=" + valueMap + "\nFunction=" + this);
+    }
+
+    // Evaluating unary function
+    if (valueMap.size() == 1 && otherVariable.isEmpty()) {
+      for (Entry<String, Double> entry : valueMap.entrySet()) {
+        String agent = entry.getKey();
+        double value = entry.getValue();
+        return this.evaluateUnaryFunction(agent, value);
+      }
+    }
+    // Evaluating binary function
+    else if (valueMap.size() == 2 && !otherVariable.isEmpty()) {
+      if (!valueMap.containsKey(otherVariable)) {
+        throw new FunctionException("valueMap does not contains the otherVariable=" + otherVariable + " . ValueMap="
+            + valueMap + "\nFunction=" + this);
+      }
+
+      double ownerValue = valueMap.get(owner);
+      double otherValue = valueMap.get(otherVariable);
+
+      return get(owner, owner) * Math.pow(ownerValue, 2) + get(owner, "") * ownerValue
+          + get(otherVariable, otherVariable) * Math.pow(otherValue, 2) + get(otherVariable, "") * otherValue
+          + get(owner, otherVariable) * ownerValue * otherValue + get("", "");
+    } else {
+      throw new FunctionException(
+          "ValueMap and Function are mismatched!!! " + "ValueMap=" + valueMap + "\nFunction=" + this);
+    }
+
+    return Double.MAX_VALUE;
+  }
+
+//	public double evaluateToValueGivenValueMap(Map<String, Double> valueMap) {
+//		MultivariateQuadFunction func = new MultivariateQuadFunction(this);
+//		int count = 1;
+//		for (Map.Entry<String, Double> entry : valueMap.entrySet()) {
+//			if (count < valueMap.size()) {
+//				func = func.evaluate(entry.getKey(), entry.getValue());
+//			} else {
+//				return func.evaluateUnaryFunction(entry.getKey(), entry.getValue());
+//			}
+//			count++;
+//		}
+//		
+//		return Double.MAX_VALUE;
+//	}
 
 	/**
 	 * Evaluate this unary function. The number of variables is checked if 1 
@@ -808,11 +853,6 @@ public final class MultivariateQuadFunction implements Serializable {
 		this.coefficients = coefficients;
 	}
 
-//  public void setIntervals(final Map<String, Interval> intervals) {
-//    this.intervals.clear();
-//    this.intervals.putAll(intervals);
-//  }
-
 	public void setOwner(String owner) {
 		this.owner = owner;
 	}
@@ -822,12 +862,6 @@ public final class MultivariateQuadFunction implements Serializable {
 			throw new FunctionException("DIFFERENT owner when checkSameSelfAgent " + owner + " " + func2.getOwner());
 	}
 
-//  public void checkSameSelfInterval(MultivariateQuadFunction func2) {
-//    if (!intervals.get(owner).equals(func2.getIntervals().get(func2.getOwner())))
-//    throw new FunctionException(
-//        "DIFFERENT interval when checkSameSelfInterval " + intervals.get(owner) + " " + func2.getIntervals().get(func2.getOwner()));
-//  }
-
 	@Override
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
@@ -835,6 +869,8 @@ public final class MultivariateQuadFunction implements Serializable {
 		sb.append(coefficients);
 		sb.append(", Owner = ");
 		sb.append(owner);
+		sb.append(", otherVariable = ");
+    sb.append(otherVariable);
 		sb.append(", critFuncIntervalMap = ");
 		sb.append(critFuncIntervalMap + "]");
 		return sb.toString();
@@ -869,11 +905,7 @@ public final class MultivariateQuadFunction implements Serializable {
 	}
 
 	public String getOtherVariable() {
-		return otherVariable;
-	}
-
-	public void setOtherVariable(String otherVariable) {
-		this.otherVariable = otherVariable;
+	  return otherVariable;
 	}
 	
 	public boolean hasRandom() {
