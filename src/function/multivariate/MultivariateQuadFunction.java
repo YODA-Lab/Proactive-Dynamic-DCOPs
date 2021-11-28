@@ -213,9 +213,9 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * @return
 	 */
 	public MultivariateQuadFunction evaluate(final String variable, final double value) {
-		if (!getVariableList().contains(variable)) {
+		if (!getVariableSet().contains(variable)) {
 			throw new FunctionException("The function doesn't contain the variable that needed to be evaluated "
-					+ variable + " " + critFuncIntervalMap);
+					+ variable + " " + critFuncIntervalMap + "\n" + this.toString());
 		}
 
 		MultivariateQuadFunction evaluatedFunc = new MultivariateQuadFunction(this);
@@ -719,9 +719,9 @@ public final class MultivariateQuadFunction implements Serializable {
 							+ critFuncIntervalMap);
 		}
 
-		if (!getVariableList().contains(owner)) {
+		if (!getVariableSet().contains(owner)) {
 			throw new FunctionException("Owner, which is the only variable left, is not contained in variable list: "
-					+ getVariableList() + " and the owner " + owner);
+					+ getVariableSet() + " and the owner " + owner);
 		}
 
 		double LB = intervalMap.get(owner).getLowerBound();
@@ -817,7 +817,7 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * @return the number of variables
 	 */
 	public int getNumberOfVariable() {
-		return getVariableList().size();
+		return getVariableSet().size();
 	}
 
 	/**
@@ -825,17 +825,14 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * 
 	 * @return the set of variables through intervals.keySet()
 	 */
-	public List<String> getVariableList() {
-		List<String> varList = new ArrayList<>();
-		varList.add(owner);
-		if (otherVariable.contains("x") || !otherVariable.isEmpty()) {
-		  varList.add(otherVariable);
-		}
-//		varSet.addAll(coefficients.columnKeySet());
-//		varSet.addAll(coefficients.rowKeySet());
-//		varSet.remove("");
+	public Set<String> getVariableSet() {
+    Set<String> varSet = new HashSet<>();
+	  
+	  varSet.addAll(coefficients.columnKeySet());
+		varSet.addAll(coefficients.rowKeySet());
+		varSet.remove("");
 
-		return varList;
+		return varSet;
 	}
 
 	/**

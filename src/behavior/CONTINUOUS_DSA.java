@@ -40,7 +40,10 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
   public void action() {
     agent.startSimulatedTiming();
     
-    functionMap.putAll(agent.getFunctionWithPParentMap());
+    for (String neighbor : agent.getNeighborStrSet()) {
+      functionMap.put(neighbor, agent.getNeighborFunctionMap().get(neighbor));
+    }
+    
     // Compute expected function if any and add the expected function to the dpopFuncionList
     if (agent.hasRandomFunction()) {
       computeExpectedFunctionCurrentTimeStep(currentTimeStep);
@@ -78,7 +81,10 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
       combinedFunction = combinedFunction.addPiecewiseFunction(function);
     }
         
-    double chosenValue = combinedFunction.getArgmax(this.getAgent().getLocalName(), neighborValueMap);
+    agent.debug(agent.getNeighborStrSet().toString());
+    agent.debug(combinedFunction.toString());
+    agent.debug(neighborValueMap.toString());
+    double chosenValue = combinedFunction.getArgmax(agent.getLocalName(), neighborValueMap);
     
     // Found new value
     // Choose which DSA version?

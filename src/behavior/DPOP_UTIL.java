@@ -840,7 +840,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
     for (PiecewiseMultivariateQuadFunction pwFunction : functionList) {
       MultivariateQuadFunction func = pwFunction.getTheFirstFunction(); // there is only one function in piecewise at this time
 
-      List<String> varListLabel = new ArrayList<>(func.getVariableList());
+      List<String> varListLabel = new ArrayList<>(func.getVariableSet());
       TableDouble tableFromFunc = new TableDouble(varListLabel);
 
       List<List<Double>> valueSetList = new ArrayList<>();
