@@ -94,7 +94,7 @@ public class DPOP_VALUE extends OneShotBehaviour {
     agent.addDoubleValuesToSendInVALUEPhase(agent.getLocalName(), getValue(timeStep));
     
     for (AID childrenAgentAID : agent.getChildrenAIDSet()) {
-      agent.sendObjectMessageWithTime(childrenAgentAID, agent.getValuesToSendInVALUEPhase(), MessageType.DPOP_VALUE, agent.getSimulatedTime());
+      agent.sendObjectMessageWithTime(childrenAgentAID, agent.getDoubleValuesToSendInVALUEPhase(), MessageType.DPOP_VALUE, agent.getSimulatedTime());
     }
   }
   

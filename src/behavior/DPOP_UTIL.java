@@ -500,7 +500,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
 
     agent.setAgentViewTableDouble(joinedTable);
     
-    agent.print(" has agentViewTable label: " + agent.getAgentViewTable().getDecVarLabel());
+    agent.print(" has agentViewTable label: " + agent.getAgentViewTableDouble().getDecVarLabel());
 
     agent.print(" starts moving points with joinedTable size: " + joinedTable.size());
 
