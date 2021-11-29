@@ -134,7 +134,7 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * @param object is the MultivariateQuadFunction to be copied
 	 */
 	public MultivariateQuadFunction(final MultivariateQuadFunction object) {
-		this(object.getOwner(), object.getOtherVariable(), object.getCoefficients(), object.getCritFuncIntervalMap());
+		this(object.getOwner(), object.getOtherAgent(), object.getCoefficients(), object.getCritFuncIntervalMap());
 	}
 
 	/**
@@ -401,8 +401,7 @@ public final class MultivariateQuadFunction implements Serializable {
 		candidateFuncList.add(evaluateBinaryFunctionX1(intervalMap.get(owner).getLowerBound(), intervalMap));
 		candidateFuncList.add(evaluateBinaryFunctionX1(intervalMap.get(owner).getUpperBound(), intervalMap));
 
-		// To compare those quadratic unary functions, we need to solve f1 = x2, and
-		// then get the range
+		// To compare those quadratic unary functions, we need to solve f1 = f2, and then get the range
 		for (int first = 0; first < candidateFuncList.size() - 1; first++) {
 			for (int second = first + 1; second < candidateFuncList.size(); second++) {
 				sortedPoint.addAll(Utilities.solveUnaryQuadForValues(candidateFuncList.get(first),
@@ -410,8 +409,8 @@ public final class MultivariateQuadFunction implements Serializable {
 			}
 		}
 
-		double LB = intervalMap.get(getOtherVariable()).getLowerBound();
-		double UB = intervalMap.get(getOtherVariable()).getUpperBound();
+		double LB = intervalMap.get(getOtherAgent()).getLowerBound();
+		double UB = intervalMap.get(getOtherAgent()).getUpperBound();
 
 		sortedPoint.add(LB);
 		sortedPoint.add(UB);
@@ -440,7 +439,7 @@ public final class MultivariateQuadFunction implements Serializable {
 			}
 
 			Map<String, Interval> domain = new HashMap<>();
-			domain.put(getOtherVariable(), interval);
+			domain.put(getOtherAgent(), interval);
 
 			pwFunction.addToFunctionMapWithInterval(functionToAdd, domain, TO_OPTIMIZE_INTERVAL);
 		}
@@ -563,8 +562,8 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * @return UnaryFunction from taking the derivative and set to 0
 	 */
 	public MultivariateQuadFunction getUnaryFunctionAtCriticalPoint(Map<String, Interval> intervalMap) {
-//    String otherAgent = getOtherAgent();
-		String otherAgent = otherVariable;
+    String otherAgent = getOtherAgent();
+//		String otherAgent = otherVariable;
 
 		double a1 = coefficients.get(owner, owner);
 		double b1 = coefficients.get(owner, "");
@@ -753,11 +752,16 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * 
 	 * @return
 	 */
-//  public String getOtherAgent() {
-//    List<String> tempVarList = new ArrayList<>(getVariableSet());
-//    tempVarList.remove(owner);
-//    return tempVarList.get(0); // assume binary function
-//  }
+  public String getOtherAgent() {
+    List<String> tempVarList = new ArrayList<>(getVariableSet());
+    tempVarList.remove(owner);
+    
+    if (tempVarList.isEmpty()) {
+      return EMPTY_AGENT;
+    }
+    
+    return tempVarList.get(0); // assume binary function
+  }
 
 	public double getA() {
 		return coefficients.get(owner, owner);
@@ -885,7 +889,7 @@ public final class MultivariateQuadFunction implements Serializable {
 
 		return this.coefficients.equals(function.getCoefficients()) 
 		    && this.owner.equals(function.getOwner())
-				&& this.otherVariable.equals(function.getOtherVariable());
+				&& this.otherVariable.equals(function.getOtherAgent());
 	}
 
 	@Override
@@ -900,12 +904,12 @@ public final class MultivariateQuadFunction implements Serializable {
 	public void setcritFuncIntervalMap(Map<String, Interval> critFuncIntervalMap) {
 		this.critFuncIntervalMap = critFuncIntervalMap;
 	}
-
-	public String getOtherVariable() {
-	  return otherVariable;
-	}
 	
 	public boolean hasRandom() {
 	  return otherVariable.contains(RANDOM_PREFIX);
 	}
+
+  public void setOtherVariable() {
+    otherVariable = getOtherAgent();
+  }
 }

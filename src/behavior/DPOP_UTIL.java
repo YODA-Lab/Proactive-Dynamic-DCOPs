@@ -223,6 +223,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
     }
 
     combinedFunction.setOwner(agent.getLocalName());
+    combinedFunction.setOtherAgent();
 
     agent.setAgentViewFunction(combinedFunction);
 
@@ -233,6 +234,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
           agent.getNumberOfApproxAgents(), agent.isApprox());
     } 
     else if (agent.getDcop_algorithm() == DcopAlgorithm.EC_DPOP) {
+      agent.debug("combinedFunction=" + combinedFunction.toString());
       projectedFunction = combinedFunction.analyticalProject();
     }
 
@@ -380,7 +382,9 @@ public class DPOP_UTIL extends OneShotBehaviour {
       sumFunction = sumFunction.addPiecewiseFunction(pseudoParentFunction);
     }
     
-    agent.print("INTERNAL node is DONE adding functions from dpopFunctionMap");
+    agent.print("INTERNAL node is DONE adding functions from dpopFunctionMap with sumFunction=" + sumFunction);
+    
+    sumFunction.setOtherAgent();
     
     agent.stopSimulatedTiming();
     
@@ -401,15 +405,19 @@ public class DPOP_UTIL extends OneShotBehaviour {
     } catch (IOException e1) {
       e1.printStackTrace();
     }
+    
+    combinedFunctionMessage.setOtherAgent();
 
-    agent.print("INTERNAL node functions counts before joining rewards " + combinedFunctionMessage.size());
+    agent.print("INTERNAL node functions counts before joining rewards size=" + combinedFunctionMessage.size() + ": " + combinedFunctionMessage);
     
     combinedFunctionMessage = combinedFunctionMessage.addPiecewiseFunction(sumFunction);
+    
+    combinedFunctionMessage.setOtherAgent();
 
-    agent.print("INTERNAL node number of combined function: "
-        + combinedFunctionMessage.getFunctionMap().size());
+    agent.print("INTERNAL node number of combined function size=" + combinedFunctionMessage.getFunctionMap().size() + ": " + combinedFunctionMessage);
 
     combinedFunctionMessage.setOwner(agent.getLocalName());
+    combinedFunctionMessage.setOtherAgent();
 
     agent.setAgentViewFunction(combinedFunctionMessage);
 
@@ -554,7 +562,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
     
     combinedFunctionMessage = combinedFunctionMessage.addPiecewiseFunction(sumFunction);
 
-    combinedFunctionMessage.setOwner(agent.getAgentID());
+    combinedFunctionMessage.setOwner(agent.getLocalName());
     
     agent.print("ROOT node STARTS adding functions with functions from message");
     
@@ -577,7 +585,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
       }
     }
     
-    agent.setChosenValueAtEachTimeStep(currentTimeStep, String.valueOf(argmax));
+    agent.setChosenDoubleValueAtEachTimeStep(currentTimeStep, argmax);
 
     agent.print("MAX VALUE IS " + max);
     agent.print("ARGMAX VALUE IS " + argmax);

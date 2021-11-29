@@ -111,6 +111,10 @@ public final class PiecewiseMultivariateQuadFunction implements Serializable {
   }
   
 
+  /**
+   * For each function in the piecewise with the domain, project each one
+   * @return
+   */
   public PiecewiseMultivariateQuadFunction analyticalProject() {
     PiecewiseMultivariateQuadFunction pwFunc = new PiecewiseMultivariateQuadFunction();
 
@@ -398,8 +402,15 @@ public final class PiecewiseMultivariateQuadFunction implements Serializable {
     }
   }
   
+  public void setOtherAgent() {
+    // TODO Auto-generated method stub
+    for (Entry<MultivariateQuadFunction, Set<Map<String, Interval>>> functionEntry : functionMap.entrySet()) {
+      functionEntry.getKey().setOtherVariable();
+    }
+  }
+  
   public String getOtherAgent() {
-    return getTheFirstFunction().getOtherVariable();
+    return getTheFirstFunction().getOtherAgent();
   }
   
   // Return the shallow copy of the first function without interval

@@ -244,7 +244,10 @@ public class Utilities {
 	 */
 	public static Set<Double> solveUnaryQuadForValues(MultivariateQuadFunction func1, MultivariateQuadFunction func2,
 			boolean isGettingSmallerInterval) {
-		TreeSet<Double> valueIntervalSet = new TreeSet<>();
+
+	  System.out.println("solveUnaryQuadForValues: f1=" + func1 + ", f2=" + func2);
+	  
+	  TreeSet<Double> valueIntervalSet = new TreeSet<>();
 
 		func1.checkSameSelfAgent(func2);
 		Interval intervalOfTheResult = null;
