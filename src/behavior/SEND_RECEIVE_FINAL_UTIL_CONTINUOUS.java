@@ -41,6 +41,7 @@ public class SEND_RECEIVE_FINAL_UTIL_CONTINUOUS extends OneShotBehaviour {
       }
     }
     
+    // TODO: Reviewing this
     double localSearchQuality = utilFromChildren + 
         agent.utilityLSWithParentAndPseudoAndUnaryContinuous() - agent.computeSwitchingCostAllTimeStepContinuous();
 
@@ -65,15 +66,15 @@ public class SEND_RECEIVE_FINAL_UTIL_CONTINUOUS extends OneShotBehaviour {
       ACLMessage receivedMessage = myAgent.blockingReceive(template);
         
       agent.stopSimulatedTiming();
-//      if (receivedMessage != null) {
-        long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
-          
-        if (timeFromReceiveMessage > agent.getSimulatedTime()) {
-          agent.setSimulatedTime(timeFromReceiveMessage);
-        }
+      long timeFromReceiveMessage = Long.parseLong(receivedMessage.getLanguage());
         
-        messageList.add(receivedMessage); 
+      if (timeFromReceiveMessage > agent.getSimulatedTime()) {
+        agent.setSimulatedTime(timeFromReceiveMessage);
+      }
+      
+      messageList.add(receivedMessage); 
     }
+    
     agent.setSimulatedTime(agent.getSimulatedTime() + AgentPDDCOP.getDelayMessageTime());
     return messageList;
   }

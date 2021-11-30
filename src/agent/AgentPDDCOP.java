@@ -2062,9 +2062,9 @@ public class AgentPDDCOP extends Agent {
 	}
 	
 	 /**
-   * REVIEWED <br>
+   * THIS FUNCTION IS REVIEWED <br>
    * 
-   * Get utility with parents and pseudoparents, then add its switching cost
+   * Get utility with parents and pseudo-parents, then add its switching cost
    * 
    * @param timeSteps
    * @return
@@ -2124,7 +2124,7 @@ public class AgentPDDCOP extends Agent {
 	}
 	
 	 /**
-   * REVIEWED <br>
+   * THIS FUNCTION IS REVIEWED <br>
    * 
    * Return switching cost in positive values
    * 
@@ -2134,7 +2134,7 @@ public class AgentPDDCOP extends Agent {
     double switchingCost = 0;
 
     if (chosenDoubleValueAtEachTSMap.size() == 1) {
-      return Double.MAX_VALUE;
+      return 0;
     }
 
     // Compute switching costs from the first time step to the horizon
@@ -2142,9 +2142,9 @@ public class AgentPDDCOP extends Agent {
       double valueCurrentTimeStep = chosenDoubleValueAtEachTSMap.get(timeStep);
       double valueNextTimeStep = chosenDoubleValueAtEachTSMap.get(timeStep + 1);
       
-      double switchCost = SWITCHING_TYPE == SwitchingType.QUADRATIC ? Math.pow(valueCurrentTimeStep - valueNextTimeStep, 2) : 0;
+      double nonDiscountedSc = SWITCHING_TYPE == SwitchingType.QUADRATIC ? Math.pow(valueCurrentTimeStep - valueNextTimeStep, 2) : 0;
       
-      switchingCost += Math.pow(discountFactor, timeStep) * switchCost;
+      switchingCost += Math.pow(discountFactor, timeStep) * nonDiscountedSc;
     }
 
     return switchingCost;
