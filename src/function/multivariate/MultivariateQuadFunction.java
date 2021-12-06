@@ -856,6 +856,7 @@ public final class MultivariateQuadFunction implements Serializable {
 
 	public void setOwner(String owner) {
 		this.owner = owner;
+		this.setOtherVariable();
 	}
 
 	public void checkSameSelfAgent(MultivariateQuadFunction func2) {

@@ -234,17 +234,17 @@ class TestFunction {
   
   @Test
   void testAnalyticalProjectDPOP() {
-    String owner = "1";
+    String owner = "x1";
     
     PiecewiseMultivariateQuadFunction f = new PiecewiseMultivariateQuadFunction();
     MultivariateQuadFunction f1 = new MultivariateQuadFunction(owner);
 
     // -2x_1^2 + 4x_1 + 2x_2^2 + x_2 + 7x_1x_2 - 10
-    f1.getCoefficients().put("1", "1", -2.0);
-    f1.getCoefficients().put("1", "", 4.0);    
-    f1.getCoefficients().put("2", "2", 2.0);
-    f1.getCoefficients().put("2", "", 1.0);
-    f1.getCoefficients().put("2", "1", 7.0);
+    f1.getCoefficients().put("x1", "x1", -2.0);
+    f1.getCoefficients().put("x1", "", 4.0);    
+    f1.getCoefficients().put("x2", "x2", 2.0);
+    f1.getCoefficients().put("x2", "", 1.0);
+    f1.getCoefficients().put("x2", "x1", 7.0);
     f1.getCoefficients().put("", "", -10.0);    
 
     Interval int_1 = new Interval(-5, 5);
@@ -252,11 +252,12 @@ class TestFunction {
     
     Map<String, Interval> intervalMap = new HashMap<>();
 
-    intervalMap.put("1", int_1);
-    intervalMap.put("2", int_2);
+    intervalMap.put("x1", int_1);
+    intervalMap.put("x2", int_2);
     
     f.addToFunctionMapWithInterval(f1, intervalMap, false);
     f.setOwner(owner);
+    f.setOtherAgent();
     
     out.println("BEFORE projecting:\n" + f);
     

@@ -400,6 +400,8 @@ public final class PiecewiseMultivariateQuadFunction implements Serializable {
     for (Entry<MultivariateQuadFunction, Set<Map<String, Interval>>> functionEntry : functionMap.entrySet()) {
       functionEntry.getKey().setOwner(idStr);
     }
+    
+    this.setOtherAgent();
   }
   
   public void setOtherAgent() {
