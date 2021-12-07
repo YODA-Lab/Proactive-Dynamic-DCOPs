@@ -261,6 +261,7 @@ class TestFunction {
     
     out.println("BEFORE projecting:\n" + f);
     
+    // Testing each critical function by projecting the multivariate quad function and print out
     MultivariateQuadFunction critF = f1.getUnaryFunctionAtCriticalPoint(intervalMap);
     MultivariateQuadFunction LB_function = f1.evaluateBinaryFunctionX1(intervalMap.get(f1.getOwner()).getLowerBound(), intervalMap);
     MultivariateQuadFunction UB_function = f1.evaluateBinaryFunctionX1(intervalMap.get(f1.getOwner()).getUpperBound(), intervalMap);
@@ -274,7 +275,8 @@ class TestFunction {
     
     PiecewiseMultivariateQuadFunction projected = f1.analyticalProject(intervalMap);
     out.println("AFTER projecting:\n" + projected);
-     
+    
+    out.println("AFTER projecting:\n" + f.analyticalProject());
   }
 
 //  Internal node combined function: 

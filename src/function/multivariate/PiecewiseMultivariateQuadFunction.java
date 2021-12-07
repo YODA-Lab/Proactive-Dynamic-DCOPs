@@ -81,7 +81,9 @@ public final class PiecewiseMultivariateQuadFunction implements Serializable {
         }
       }
       // no need to re-add the function with interval map
-    } else {
+    } 
+    // Put new key if this piecewise doesn't have this function before
+    else {
       setOfIntervalMap.add(intervalMap);
       functionMap.put(function, setOfIntervalMap);
     }

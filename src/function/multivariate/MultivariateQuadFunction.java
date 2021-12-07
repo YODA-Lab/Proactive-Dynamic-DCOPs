@@ -379,6 +379,13 @@ public final class MultivariateQuadFunction implements Serializable {
 		return mpwFunc;
 	}
 
+	/**
+	 * Project the MultivariateQuadFunction with the provided intervalMap <br>
+	 * 
+	 * The result is a PiecewiseMultivariateQuadFunction
+	 * @param intervalMap
+	 * @return
+	 */
 	public PiecewiseMultivariateQuadFunction analyticalProject(Map<String, Interval> intervalMap) {
 		// After project, the function become PiecewiseQuadFunction
 		// Also change the owner to the otherAgent
@@ -440,6 +447,8 @@ public final class MultivariateQuadFunction implements Serializable {
 
 			Map<String, Interval> domain = new HashMap<>();
 			domain.put(getOtherAgent(), interval);
+			
+			functionToAdd.setcritFuncIntervalMap(domain);
 
 			pwFunction.addToFunctionMapWithInterval(functionToAdd, domain, TO_OPTIMIZE_INTERVAL);
 		}
@@ -447,10 +456,7 @@ public final class MultivariateQuadFunction implements Serializable {
 		return pwFunction;
 	}
 
-	/*
-	 * TODO: rewrite this function to make it take derivative for multivariate
-	 * function Take the first derivative of quadratic function
-	 * 
+	/* 
 	 * @param derivativeAgent
 	 * 
 	 * @return
@@ -601,7 +607,9 @@ public final class MultivariateQuadFunction implements Serializable {
 
 	/**
 	 * Sequentially evaluate the function with the midpoint from the interval until
-	 * the function becomes unary This function is already TESTED
+	 * the function becomes unary <br> 
+	 * 
+	 * This function is already TESTED <br>
 	 * 
 	 * @param intervalMap is the map {@code <}variable, interval>
 	 * @return
