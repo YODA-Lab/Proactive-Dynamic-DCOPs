@@ -340,7 +340,7 @@ public class TableDouble extends AbstractTable implements Serializable {
   }
   
   /**
-   * THIS FUNCTION IS UNIT-TESTED
+   * THIS FUNCTION IS UNIT-TESTED <br>
    * Do the interpolation with the inverse weights.
    * @param interpolatedPoint
    * @return the row if the point needed to be interpolated is already in the table
@@ -352,8 +352,8 @@ public class TableDouble extends AbstractTable implements Serializable {
       RowDouble row = this.rowList.get(i);
       
       double eucliDistance = euclidDistance(row.getValueList(), interpolatedPoint);
-      
-      // Return null if the interpolatedPoint is already in the table
+            
+      // Return the same row if the interpolatedPoint is already in the table
       if (compare(eucliDistance, 0) == 0) {
         return row;
       }

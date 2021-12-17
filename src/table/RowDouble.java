@@ -2,8 +2,10 @@ package table;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * @author khoihd
@@ -37,6 +39,12 @@ public class RowDouble extends AbstractRow implements Serializable {
 		this.utility = utility;
 	}
 	
+	 
+  public RowDouble(double[] input, double utility) {
+    valueList.addAll(Arrays.stream(input).boxed().collect(Collectors.toList()));
+    this.utility = utility;
+  }
+	
 	public RowDouble(List<Double> decisionVariableList, List<Double> randVariableList, double utility) {
 		this.valueList.addAll(decisionVariableList);
 		this.randomList.addAll(randVariableList);
@@ -54,8 +62,8 @@ public class RowDouble extends AbstractRow implements Serializable {
 
 		this.utility = utility;
 	}
-	
-	public double getValueAtPosition(int index) {
+
+  public double getValueAtPosition(int index) {
 		if (index < 0 || index >= valueList.size()) {return Double.MAX_VALUE;}
 	  
 		return valueList.get(index);

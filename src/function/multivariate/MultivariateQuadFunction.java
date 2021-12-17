@@ -304,15 +304,15 @@ public final class MultivariateQuadFunction implements Serializable {
 	}
 
 	/**
-	 * PROJECT operator This function is UNIT-TESTED 1. Divide each interval into to
-	 * smaller k intervals accordingly <br>
-	 * 2. In <itv1, itv2,..., itvn> in k^(#variables) intervals, get the midpoints
-	 * <br>
-	 * 3. Evaluate the original function recursively into a unary function where the
-	 * selfvariable is the only variable <br>
-	 * 4. Get v_i = argmax of the unary function<br>
-	 * 5. Evaluate the original function with this argmax value (Now the arity is
-	 * decreased by 1)
+	 * PROJECT operator <br>
+	 * 
+	 * This function is UNIT-TESTED <br> 
+	 * 
+	 * 1. Divide each interval into to smaller k intervals accordingly <br>
+	 * 2. In <itv1, itv2,..., itvn> in k^(#variables) intervals, get the midpoints <br>
+	 * 3. Evaluate the original function recursively into a unary function where the selfvariable is the only variable <br>
+	 * 4. Get v_i = argmax of the unary function <br>
+	 * 5. Evaluate the original function with this argmax value (Now the arity is decreased by 1)
 	 * 
 	 * @param numberOfIntervals each agent divides its interval into this number of
 	 *                          smaller intervals
@@ -383,6 +383,9 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * Project the MultivariateQuadFunction with the provided intervalMap <br>
 	 * 
 	 * The result is a PiecewiseMultivariateQuadFunction
+	 * 
+	 * THIS FUNCTION HAS BEEN UNIT TESTED TOGETHER WITH analyticalProject() from Piecewise
+	 * 
 	 * @param intervalMap
 	 * @return
 	 */
@@ -541,7 +544,9 @@ public final class MultivariateQuadFunction implements Serializable {
 	}
 
 	/**
-	 * Apply for binary function only This function is correct
+	 * Apply for binary function only <br>
+	 * 
+	 * THIS FUNCTION HAS BEEN UNIT TESTED TOGETHER WITH analyticalProject() from Piecewise
 	 * 
 	 * @param x1
 	 * @return
@@ -563,7 +568,7 @@ public final class MultivariateQuadFunction implements Serializable {
 	}
 
 	/**
-	 * This function is correct
+	 * THIS FUNCTION HAS BEEN UNIT TESTED WITH 
 	 * 
 	 * @return UnaryFunction from taking the derivative and set to 0
 	 */
@@ -814,6 +819,13 @@ public final class MultivariateQuadFunction implements Serializable {
 		return rootsAndBounds.subSet(LB, false, UB, false);
 	}
 
+	/**
+	 * 
+	 * THIS FUNCTION HAS BEEN UNIT TESTED TOGETHER WITH analyticalProject() from Piecewise
+	 * 
+	 * @param value
+	 * @return
+	 */
 	double evaluateUnary(double value) {
 		double a = getA();
 		double b = getB();

@@ -221,7 +221,9 @@ public class Utilities {
 	}
 
 	/**
-	 * Code checked
+	 * Code checked <br>
+	 * 
+	 * THIS FUNCTION HAS BEEN UNIT TESTED TOGETHER WITH analyticalProject() from Piecewise
 	 * 
 	 * @param sortedValues
 	 * @return list of sorted merged intervals

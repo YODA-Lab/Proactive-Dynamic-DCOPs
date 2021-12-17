@@ -114,7 +114,10 @@ public final class PiecewiseMultivariateQuadFunction implements Serializable {
   
 
   /**
-   * For each function in the piecewise with the domain, project each one
+   * For each function in the piecewise with the domain, project each one <br>
+   * 
+   * THIS FUNCTION HAS BEEN UNIT TESTED
+   * 
    * @return
    */
   public PiecewiseMultivariateQuadFunction analyticalProject() {
@@ -170,10 +173,12 @@ public final class PiecewiseMultivariateQuadFunction implements Serializable {
     return commonVarSet;
   }
 
-  /**
-   * ADD operator Adding two PiecewiseMultivariateQuadFunction 1. Find the set X
-   * of common variables 2. For each variable in X, get the atomic ranges =>
-   * Create a map <commonVariable, TreeSet<Double>> 3. For each
+  /** 
+   * ADDING two PiecewiseMultivariateQuadFunction 
+   * 
+   * 1. Find the set X of common variables <br> 
+   * 2. For each variable in X, get the atomic ranges => Create a map <commonVariable, TreeSet<Double>> 
+   * 3. For each
    * 
    * THIS FUNCTION IS TESTED WHEN ADDING WITH THE SAME INTERVAL SET
    * @param pmqFunc
