@@ -481,7 +481,8 @@ public class AgentPDDCOP extends Agent {
 	}
 	
   /**
-   *  Naive sampling and use Welford's online algorithm to compute running mean
+   *  Naive sampling and use Welford's online algorithm to compute running mean <br>
+   *  THIS FUNCTION HAS BEEN REVIEWED
    */
   private void samplingAndComputeMean() {
     String randVar = getSelfRanomVariable();
@@ -494,16 +495,20 @@ public class AgentPDDCOP extends Agent {
     for (int samplingIteration = 1; samplingIteration <= SAMPLING_ITERATION; samplingIteration++) {
       BetaDistribution currentDistribution = initialDistributionMap.get(randVar);
 
-      for (int timeStep = 0; timeStep <= horizon; timeStep++) {
-        double currentMean = meanAtEveryTimeStep.getOrDefault(timeStep, 0D);
-        double sample = currentDistribution.sample();
-        
-        // ((n-1) * m_{n-1} + x_n) / n
-        double updatedMean = ((samplingIteration - 1) * currentMean + sample) / samplingIteration;
-        meanAtEveryTimeStep.put(timeStep, updatedMean);
-
+      for (int timeStep = 0; timeStep <= horizon; timeStep++) {        
+        double standardSample = currentDistribution.sample();
         // Compute the Beta distribution for the next time step
-        currentDistribution = transitionDistributionFamilyMap.get(randVar).computeBetaDistribution(sample);
+        currentDistribution = transitionDistributionFamilyMap.get(randVar).computeBetaDistribution(standardSample);
+        
+        // Compute the augmented sample from the sample and from the bounds
+        double lowerBound = randomVariableIntervalMap.get(randVar).getLowerBound();
+        double upperBound = randomVariableIntervalMap.get(randVar).getUpperBound();
+        double augmentedSample = standardSample * (upperBound - lowerBound) + lowerBound;
+        
+        // Compute the running mean based on the augmented sample: ((n-1) * m_{n-1} + x_n) / n
+        double currentRunningMean = meanAtEveryTimeStep.getOrDefault(timeStep, 0D);
+        double updatedRunningMean = ((samplingIteration - 1) * currentRunningMean + augmentedSample) / samplingIteration;
+        meanAtEveryTimeStep.put(timeStep, updatedRunningMean);
       }
     }
   }

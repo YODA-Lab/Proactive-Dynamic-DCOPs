@@ -26,15 +26,26 @@ public class TransitionFamilyDistribution {
     return betaDist.sample();
   }
   
+  /**
+   * Compute the new Beta distribution based on the current Alpha value, and the computed Beta value from the alpha and mean <br>
+   * @param mean
+   * @return
+   */
   public BetaDistribution computeBetaDistribution(double mean) {
-    double beta = computeBeta(mean);
+    double beta = computeBetaFromAlphaAndMean(alpha, mean);
     
     return new BetaDistribution(alpha, beta);
   }
   
-  // TODO: Compute mean
-  public double computeBeta(double mean) {
-      return 0;
+  /**
+   * mean = alpha / (alpha + beta) <br>
+   * => beta = (alpha - alpha * mean) / mean 
+   * @param alpha
+   * @param mean
+   * @return
+   */
+  public double computeBetaFromAlphaAndMean(double alpha, double mean) {
+      return (alpha - alpha * mean) / mean;
   }
 
   @Override
