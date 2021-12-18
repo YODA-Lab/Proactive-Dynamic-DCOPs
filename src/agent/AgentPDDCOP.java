@@ -555,10 +555,8 @@ public class AgentPDDCOP extends Agent {
       }
     }
     else if (pddcop_algorithm == PDDcopAlgorithm.BACKWARD) {
-      print("Running " + pddcop_algorithm + " " + dcop_algorithm + " " + isRunningDPOPFamily());
       for (int timeStep = horizon; timeStep >= 0; timeStep--) {
         if (isRunningDPOPFamily()) {
-          print("Adding UTIL and VALUE behaviors " + timeStep);
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, timeStep));
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, timeStep));
         } 
