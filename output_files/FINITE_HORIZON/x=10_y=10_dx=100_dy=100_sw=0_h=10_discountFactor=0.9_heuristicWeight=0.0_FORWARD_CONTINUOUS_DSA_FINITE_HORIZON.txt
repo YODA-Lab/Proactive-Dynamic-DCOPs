@@ -1,0 +1,2 @@
+InstanceID	Utility	Time (ms)	PD_DCOP_Algorithm	DCOP_Algorithm	Dynamic	Agents	Switching cost	Discount	Horizon
+0	0	0	FORWARD	CONTINUOUS_DSA	FINITE_HORIZON	10	0.0	0.9	10

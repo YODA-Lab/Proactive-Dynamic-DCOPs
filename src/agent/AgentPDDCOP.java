@@ -534,7 +534,7 @@ public class AgentPDDCOP extends Agent {
     
     if (pddcop_algorithm == PDDcopAlgorithm.FORWARD || pddcop_algorithm == PDDcopAlgorithm.GRADIENT) {
       for (int timeStep = 0; timeStep <= horizon; timeStep++) {
-        if (isRuningDPOPFamily()) {
+        if (isRunningDPOPFamily()) {
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, timeStep));
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, timeStep));
         }
@@ -555,8 +555,10 @@ public class AgentPDDCOP extends Agent {
       }
     }
     else if (pddcop_algorithm == PDDcopAlgorithm.BACKWARD) {
+      print("Running " + pddcop_algorithm + " " + dcop_algorithm + " " + isRunningDPOPFamily());
       for (int timeStep = horizon; timeStep >= 0; timeStep--) {
         if (isRunningDPOPFamily()) {
+          print("Adding UTIL and VALUE behaviors " + timeStep);
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_UTIL(this, timeStep));
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, timeStep));
         } 
@@ -3595,12 +3597,7 @@ public class AgentPDDCOP extends Agent {
     return dcop_algorithm == DcopAlgorithm.EC_DPOP || dcop_algorithm == DcopAlgorithm.AC_DPOP ||
         dcop_algorithm == DcopAlgorithm.CAC_DPOP;
   }
-  
-  public boolean isRuningDPOPFamily() {
-    return dcop_algorithm == DcopAlgorithm.EC_DPOP || dcop_algorithm == DcopAlgorithm.AC_DPOP ||
-        dcop_algorithm == DcopAlgorithm.CAC_DPOP || dcop_algorithm == DcopAlgorithm.DPOP || dcop_algorithm == DcopAlgorithm.APPROX_DPOP; 
-  }
-
+ 
   public Map<Integer, PiecewiseMultivariateQuadFunction> getExpectedFunctionMap() {
     return expectedFunctionMap;
   }
@@ -3740,7 +3737,9 @@ public class AgentPDDCOP extends Agent {
   
   public boolean isRunningDPOPFamily() {
     return dcop_algorithm == DcopAlgorithm.EC_DPOP || dcop_algorithm == DcopAlgorithm.AC_DPOP 
-        || dcop_algorithm == DcopAlgorithm.CAC_DPOP || dcop_algorithm == DcopAlgorithm.APPROX_DPOP;
+        || dcop_algorithm == DcopAlgorithm.CAC_DPOP || dcop_algorithm == DcopAlgorithm.APPROX_DPOP
+        || dcop_algorithm == DcopAlgorithm.DPOP
+        ;
   }
   
   /**

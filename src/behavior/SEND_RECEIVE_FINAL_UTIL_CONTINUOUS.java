@@ -9,6 +9,7 @@ import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.lang.acl.UnreadableException;
+import utilities.Utilities;
 
 /**
  * REVIEWED
@@ -52,6 +53,8 @@ public class SEND_RECEIVE_FINAL_UTIL_CONTINUOUS extends OneShotBehaviour {
     if (agent.isRoot()) {
       // TODO: Write final solution quality here
 //      Utilities.writeLocalSearchResult(agent);
+      Utilities.writeFinalResult(agent);
+      
     }
   }
   
