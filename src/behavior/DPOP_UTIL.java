@@ -135,7 +135,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
 	    dpopFunctionMap.put(agent.getRandomVariable(), agent.getExpectedFunction(currentTimeStep));
 	  }
 	  
-	  PiecewiseMultivariateQuadFunction swFunc = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+	  PiecewiseMultivariateQuadFunction swFunc = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.getSwitchingCost(), agent.SWITCHING_TYPE);
     if (swFunc != null) {
       dpopFunctionMap.put(agent.getLocalName(), swFunc);
     }

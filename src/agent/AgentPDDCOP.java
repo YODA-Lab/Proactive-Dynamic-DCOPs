@@ -10,6 +10,7 @@ import static agent.DcopConstants.MARKOV_CONVERGENCE_TIME_STEP;
 import static agent.DcopConstants.NOT_TO_OPTIMIZE_INTERVAL;
 import static agent.DcopConstants.DECISION_TABLE;
 import static agent.DcopConstants.RANDOM_TABLE;
+import static agent.DcopConstants.GRADIENT_SCALING_FACTOR;
 import agent.DcopConstants.MessageType;
 
 import java.io.BufferedReader;
@@ -365,7 +366,9 @@ public class AgentPDDCOP extends Agent {
 		sb.append("_sw=" + (int) switchingCost);
 		sb.append("_h=" + horizon);
 		sb.append("_discountFactor=" + discountFactor);
-		sb.append("_heuristicWeight=" + heuristicWeight);
+		sb.append("_gradientIteration=" + gradientIteration);
+		sb.append("_numberOfPoints=" + numberOfPoints);
+		sb.append("_gradientStepSize=" + GRADIENT_SCALING_FACTOR);
 		sb.append("_" + pddcop_algorithm + "_" + dcop_algorithm + "_" + dynamicType);
 		if (pddcop_algorithm == PDDcopAlgorithm.R_LEARNING) {
 			sb.append("_rLearningIteration=" + rLearningIteration);
@@ -401,12 +404,9 @@ public class AgentPDDCOP extends Agent {
 		switchingCost = Integer.valueOf((String) args[4]);
 		discountFactor = Double.valueOf((String) args[5]);
 		dynamicType = DynamicType.valueOf((String) args[6]);
-		
-		heuristicWeight = Double.valueOf((String) args[7]);
-		rLearningIteration = Integer.valueOf((String) args[8]); // The number of iterations used for R-LEARNING
-    gradientIteration = Integer.valueOf((String) args[9]);
-    numberOfPoints = Integer.valueOf((String) args[10]);
-		dcopType = DcopType.valueOf((String) args[11]);
+    gradientIteration = Integer.valueOf((String) args[7]); // AC-, CAC-DPOP, HCMS, and C-DSA use the same iteration
+    numberOfPoints = Integer.valueOf((String) args[8]);
+		dcopType = DcopType.valueOf((String) args[9]);
 
 		String a[] = inputFileName.substring(inputFileName.indexOf("/") + 1).replaceAll("instance_", "")
 				.replaceAll(".dzn", "").split("_");
@@ -3825,7 +3825,7 @@ public class AgentPDDCOP extends Agent {
    * @param type
    * @return null if the recomputed timeStep with pddcop_alg is < 0 or > h
    */
-  public PiecewiseMultivariateQuadFunction computeSwitchingCostDiscountedFunction(int timeStep, PDDcopAlgorithm pddcop_alg, SwitchingType type) {
+  public PiecewiseMultivariateQuadFunction computeSwitchingCostDiscountedFunction(int timeStep, PDDcopAlgorithm pddcop_alg, double constantCost, SwitchingType type) {
     // FORWARD: get the value in timeStep - 1
     // BACKWARD: get the value in the timeStep + 1
 
@@ -3851,7 +3851,7 @@ public class AgentPDDCOP extends Agent {
     Map<String, Interval> intervalMap = new HashMap<>();
     intervalMap.put(getLocalName(), getSelfInterval());
     
-    MultivariateQuadFunction func = MultivariateQuadFunction.switchingCostDiscountedFunction(getLocalName(), value, adjustedDiscounted, type);
+    MultivariateQuadFunction func = MultivariateQuadFunction.switchingCostDiscountedFunction(getLocalName(), value, adjustedDiscounted, constantCost, type);
     swFunction.addToFunctionMapWithInterval(func, intervalMap, NOT_TO_OPTIMIZE_INTERVAL);
     
     return swFunction;
@@ -3875,8 +3875,8 @@ public class AgentPDDCOP extends Agent {
       sumFunction.addPiecewiseFunction(expectedFunctionMap.get(timeStep));
     }
     
-    PiecewiseMultivariateQuadFunction switchingCostFuncPrev = computeSwitchingCostDiscountedFunction(timeStep, PDDcopAlgorithm.FORWARD, SWITCHING_TYPE);
-    PiecewiseMultivariateQuadFunction switchingCostFuncLater = computeSwitchingCostDiscountedFunction(timeStep, PDDcopAlgorithm.BACKWARD, SWITCHING_TYPE);
+    PiecewiseMultivariateQuadFunction switchingCostFuncPrev = computeSwitchingCostDiscountedFunction(timeStep, PDDcopAlgorithm.FORWARD, switchingCost, SWITCHING_TYPE);
+    PiecewiseMultivariateQuadFunction switchingCostFuncLater = computeSwitchingCostDiscountedFunction(timeStep, PDDcopAlgorithm.BACKWARD, switchingCost, SWITCHING_TYPE);
     
     sumFunction.addPiecewiseFunction(switchingCostFuncPrev);
     sumFunction.addPiecewiseFunction(switchingCostFuncLater);

@@ -112,7 +112,7 @@ public interface DcopConstants {
   public static final int DONE_AT_INTERNAL_NODE = 2;
   
   public static final String INPUT_FOLDER = "input_files";
-  public static final double GRADIENT_SCALING_FACTOR = Math.pow(10, -3);
+  public static final double GRADIENT_SCALING_FACTOR = Math.pow(10, -2);
 
   public static final int MARKOV_CONVERGENCE_TIME_STEP = 40;
   public static final boolean RANDOM_TABLE = true;

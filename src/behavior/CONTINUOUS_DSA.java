@@ -51,7 +51,7 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
     }
     
     // Add switching cost function to the function list
-    PiecewiseMultivariateQuadFunction swFunc = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+    PiecewiseMultivariateQuadFunction swFunc = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.getSwitchingCost(), agent.SWITCHING_TYPE);
     if (swFunc != null) {
       functionMap.put(agent.getLocalName(), swFunc);
     }

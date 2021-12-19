@@ -71,14 +71,14 @@ public final class MultivariateQuadFunction implements Serializable {
 	 * @param type
 	 * @return
 	 */
-	public static MultivariateQuadFunction switchingCostDiscountedFunction(String selfAgent, double value, double discounted, SwitchingType type) {	  
+	public static MultivariateQuadFunction switchingCostDiscountedFunction(String selfAgent, double value, double discounted, double constantCost, SwitchingType type) {	  
 	  MultivariateQuadFunction swFunc = new MultivariateQuadFunction(selfAgent);
 	  
-	  // (x - value)^2 = x^2 - 2 * value + value^2
+	  // constantCost * (x - value)^2 = constantCost * (x^2 - 2 * value + value^2)
 	  if (type == SwitchingType.QUADRATIC) {
-	    swFunc.addOrUpdate(selfAgent, selfAgent, 1D * discounted);
-	    swFunc.addOrUpdate(selfAgent, "", -2 * value * discounted);
-	    swFunc.addOrUpdate("", "",  value * value * discounted);
+	    swFunc.addOrUpdate(selfAgent, selfAgent, discounted * constantCost);
+	    swFunc.addOrUpdate(selfAgent, "", -2 * value * discounted * constantCost);
+	    swFunc.addOrUpdate("", "",  value * value * discounted * constantCost);
 	  }
 	  
 	  return swFunc;

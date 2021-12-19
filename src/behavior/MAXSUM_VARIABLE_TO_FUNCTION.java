@@ -96,7 +96,7 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
 
       // Update VAR_TO_FUNC message with switching cost function
       if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.FORWARD || agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.BACKWARD) {
-        PiecewiseMultivariateQuadFunction swFunction = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+        PiecewiseMultivariateQuadFunction swFunction = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.getSwitchingCost(), agent.SWITCHING_TYPE);
         updateMSmessageWithExpectedAndCostFunction(msgVAR_TO_FUNC, swFunction);
       }
       
@@ -161,7 +161,7 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
 
           // Update VAR_TO_FUNC message with switching cost function
           if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.FORWARD || agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.BACKWARD) {
-            PiecewiseMultivariateQuadFunction swFunction = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+            PiecewiseMultivariateQuadFunction swFunction = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.getSwitchingCost(), agent.SWITCHING_TYPE);
             updateMSmessageWithExpectedAndCostFunction(msgVAR_TO_FUNC, swFunction);
           }
           
@@ -193,7 +193,7 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
 
           // Update VAR_TO_FUNC message with switching cost function
           if (agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.FORWARD || agent.getPDDCOP_Algorithm() == PDDcopAlgorithm.BACKWARD) {
-            PiecewiseMultivariateQuadFunction swFunction = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+            PiecewiseMultivariateQuadFunction swFunction = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.getSwitchingCost(), agent.SWITCHING_TYPE);
             updateMSmessageWithExpectedAndCostFunction(msgVAR_TO_FUNC, swFunction);
           }
           
@@ -250,7 +250,7 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
         Map<String, Double> valueMap = new HashMap<>();
         valueMap.put(agent.getLocalName(), oldValue);
         
-        PiecewiseMultivariateQuadFunction swFunction = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.SWITCHING_TYPE);
+        PiecewiseMultivariateQuadFunction swFunction = agent.computeSwitchingCostDiscountedFunction(currentTimeStep, agent.getPDDCOP_Algorithm(), agent.getSwitchingCost(), agent.SWITCHING_TYPE);
         if (swFunction != null) {
           sumGradient += swFunction.getTheFirstFunction().takeFirstPartialDerivative(agent.getLocalName(), agent.getLocalName(), "").evaluateToValueGivenValueMap(valueMap);
         }
