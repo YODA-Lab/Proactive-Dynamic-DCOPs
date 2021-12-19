@@ -37,7 +37,7 @@ public class Utilities {
 	public static void writeFinalResult(AgentPDDCOP agent) {
 		StandardOpenOption writeMode = agent.isFirstInstance() ? TRUNCATE_EXISTING : APPEND;
 
-		String result = getResult(agent);
+		String result = agent.isDiscrete() ? getResult(agent) : getResultContiuous(agent);
 		if (agent.isFirstInstance()) {
 			result = header + result;
 		}
@@ -57,6 +57,24 @@ public class Utilities {
 		sb.append("Discount" + "\t");
 		sb.append("Horizon" + "\n");
 		return sb.toString();
+	}
+	
+	private static String getResultContiuous(AgentPDDCOP agent) {
+	  DecimalFormat df = new DecimalFormat("##.##");
+
+	  StringBuffer sb = new StringBuffer();
+	  sb.append(agent.getInstanceID() + "\t");
+    sb.append(df.format(agent.getSolutionQuality()) + "\t");
+    sb.append(agent.getFinalRuntime() / 1000000 + "\t");
+    sb.append(agent.getPDDCOP_Algorithm() + "\t");
+    sb.append(agent.getDcop_algorithm() + "\t");
+    sb.append(agent.getDynamicType() + "\t");
+    sb.append(agent.getAgentCount() + "\t");
+    sb.append(agent.getSwitchingCost() + "\t");
+    sb.append(df.format(agent.getDiscountFactor()) + "\t");
+    sb.append(agent.getHorizon() + "\n");
+	  
+	  return sb.toString();
 	}
 
 	private static String getResult(AgentPDDCOP agent) {

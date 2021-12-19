@@ -42,19 +42,17 @@ public class SEND_RECEIVE_FINAL_UTIL_CONTINUOUS extends OneShotBehaviour {
       }
     }
     
-    // TODO: Reviewing this
-    double localSearchQuality = utilFromChildren + 
+    double localQuality = utilFromChildren + 
         agent.utilityLSWithParentAndPseudoAndUnaryContinuous() - agent.computeSwitchingCostAllTimeStepContinuous();
 
     if (!agent.isRoot()) {
-      agent.sendObjectMessageWithTime(agent.getParentAID(), localSearchQuality, MessageType.FINAL_UTIL_CONTINOUS, agent.getSimulatedTime());
+      agent.sendObjectMessageWithTime(agent.getParentAID(), localQuality, MessageType.FINAL_UTIL_CONTINOUS, agent.getSimulatedTime());
     }
             
     if (agent.isRoot()) {
-      // TODO: Write final solution quality here
-//      Utilities.writeLocalSearchResult(agent);
+      agent.setSolutionQuality(localQuality);
+      agent.setFinalRuntime(agent.getSimulatedTime());
       Utilities.writeFinalResult(agent);
-      
     }
   }
   

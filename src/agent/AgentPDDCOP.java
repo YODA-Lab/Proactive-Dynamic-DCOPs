@@ -286,7 +286,7 @@ public class AgentPDDCOP extends Agent {
 	private String solutionForNextState;
 	private double alpha_r = 0.05;
 	private double beta_r = 0.5;
-	private int rLearningIteration; // The number of iterations used for R-LEARNING
+	private int rLearningIteration = 0; // The number of iterations used for R-LEARNING
 	private boolean isApplyingRLearning = true;
 	
 
@@ -401,6 +401,7 @@ public class AgentPDDCOP extends Agent {
 		switchingCost = Integer.valueOf((String) args[4]);
 		discountFactor = Double.valueOf((String) args[5]);
 		dynamicType = DynamicType.valueOf((String) args[6]);
+		
 		heuristicWeight = Double.valueOf((String) args[7]);
 		rLearningIteration = Integer.valueOf((String) args[8]); // The number of iterations used for R-LEARNING
     gradientIteration = Integer.valueOf((String) args[9]);
@@ -539,12 +540,12 @@ public class AgentPDDCOP extends Agent {
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, timeStep));
         }
         else if (dcop_algorithm == DcopAlgorithm.CONTINUOUS_DSA) {
-          for (int iteration = 0; iteration <= MAX_ITERATION; iteration++) {          
+          for (int iteration = 0; iteration <= gradientIteration; iteration++) {          
             mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, timeStep, iteration));
           }
         }        
         else if (isRunningMaxsum()) {
-          for (int iteration = 0; iteration <= MAX_ITERATION; iteration++) {          
+          for (int iteration = 0; iteration <= gradientIteration; iteration++) {          
             mainSequentialBehaviourList.addSubBehaviour(new MAXSUM_VARIABLE_TO_FUNCTION(this, timeStep, iteration));
             mainSequentialBehaviourList.addSubBehaviour(new MAXSUM_FUNCTION_TO_VARIABLE(this, timeStep, iteration));
           }
@@ -561,12 +562,12 @@ public class AgentPDDCOP extends Agent {
           mainSequentialBehaviourList.addSubBehaviour(new DPOP_VALUE(this, timeStep));
         } 
         else if (dcop_algorithm == DcopAlgorithm.CONTINUOUS_DSA) {
-          for (int iteration = 0; iteration <= MAX_ITERATION; iteration++) {          
+          for (int iteration = 0; iteration <= gradientIteration; iteration++) {          
             mainSequentialBehaviourList.addSubBehaviour(new CONTINUOUS_DSA(this, timeStep, iteration));
           }
         }        
         else if (isRunningMaxsum()) {
-          for (int iteration = 0; iteration <= MAX_ITERATION; iteration++) {          
+          for (int iteration = 0; iteration <= gradientIteration; iteration++) {          
             mainSequentialBehaviourList.addSubBehaviour(new MAXSUM_VARIABLE_TO_FUNCTION(this, timeStep, iteration));
             mainSequentialBehaviourList.addSubBehaviour(new MAXSUM_FUNCTION_TO_VARIABLE(this, timeStep, iteration));
           }
