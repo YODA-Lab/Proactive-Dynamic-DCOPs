@@ -28,7 +28,7 @@ public class SEARCH_NEIGHBORS extends OneShotBehaviour {
 	
 	@Override
 	public void action() {
-	  agent.print("Start looking for neighbors:" + agent.getNeighborStrSet());
+	  agent.println("Start looking for neighbors:" + agent.getNeighborStrSet());
 	  
 		DFAgentDescription templateDF = new DFAgentDescription();
 		ServiceDescription serviceDescription = new ServiceDescription();
@@ -62,6 +62,6 @@ public class SEARCH_NEIGHBORS extends OneShotBehaviour {
 //    agent.print("agentToFunctionIOwn=" + agent.getNeighborFunctionOwnedByMe());
 //    agent.print("getFunctionOwnedByOther=" + agent.getNeighborFunctionOwnedByOther());
 		
-		agent.print("Done looking for neighbors");
+		agent.println("Done looking for neighbors");
 	}
 }

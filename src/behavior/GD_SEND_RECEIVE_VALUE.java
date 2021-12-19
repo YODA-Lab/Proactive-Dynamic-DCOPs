@@ -34,7 +34,7 @@ public class GD_SEND_RECEIVE_VALUE extends OneShotBehaviour {
   @Override
   public void action() {
     
-    agent.print("Iteration" + iteration + " GD_SEND_RECEIVE_VALUE");
+    agent.println("Iteration" + iteration + " GD_SEND_RECEIVE_VALUE");
     
     for (AID neighborAgentAID : agent.getNeighborAIDSet()) {
       agent.sendObjectMessageWithTime(neighborAgentAID, agent.getChosenDoubleValueAtEachTSMap(),

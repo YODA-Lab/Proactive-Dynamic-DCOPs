@@ -69,7 +69,7 @@ public class LS_RECEIVE_VALUE extends OneShotBehaviour {
 		
 		agent.stopSimulatedTiming();
 		
-    agent.print("is done SEND_RECEIVE_VALUE at iteration: " + localTimeStep);
+    agent.println("is done SEND_RECEIVE_VALUE at iteration: " + localTimeStep);
 	}
 	
   private List<ACLMessage> waitingForMessageFromNeighborWithTime(MessageType msgType) {

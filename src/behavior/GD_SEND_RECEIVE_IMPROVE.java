@@ -34,7 +34,7 @@ public class GD_SEND_RECEIVE_IMPROVE extends OneShotBehaviour {
   @SuppressWarnings("unchecked")
   @Override
   public void action() {
-    agent.print("Iteration" + iteration + " GD_SEND_RECEIVE_IMPROVE");
+    agent.println("Iteration" + iteration + " GD_SEND_RECEIVE_IMPROVE");
     
     agent.startSimulatedTiming();
     

@@ -35,7 +35,7 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour {
     double pddcop_quality_from_children = 0D;
     Map<Integer, Double> actual_quality_from_children = new HashMap<>();
     Map<Integer, Double> actual_switching_cost_from_children = new HashMap<>();
-    agent.print("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap().values());
+    agent.println("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap().values());
     
     List<ACLMessage> receiveMessages = waitingForMessageFromChildrenWithTime(MessageType.FINAL_UTIL);
     agent.startSimulatedTiming();
@@ -106,7 +106,7 @@ public class SEND_RECEIVE_FINAL_UTIL extends OneShotBehaviour {
       // Write final results 
       agent.setSolutionQuality(pddcop_solution_quality);
       agent.setFinalRuntime(agent.getSimulatedTime());
-      agent.print("agent.getEffectiveSolvingTimeMap()=" + agent.getEffectiveSolvingTimeMap());
+      agent.println("agent.getEffectiveSolvingTimeMap()=" + agent.getEffectiveSolvingTimeMap());
       Utilities.writeFinalResult(agent);
     }
   }

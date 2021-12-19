@@ -189,7 +189,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
   public void leaf_TABLE() {
     agent.startSimulatedTiming();
     
-    agent.print("LEAF is running");
+    agent.println("LEAF is running");
     // get the first table
     TableDouble combinedTable = dpopTableDoubleList.get(0);
     // combinedTable.printDecVar();
@@ -214,7 +214,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
   public void leaf_FUNC() { 
     agent.startSimulatedTiming();
   
-    agent.print("LEAF is running");
+    agent.println("LEAF is running");
     
     PiecewiseMultivariateQuadFunction combinedFunction = new PiecewiseMultivariateQuadFunction();
 
@@ -246,7 +246,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
       e.printStackTrace();
     }
     
-    agent.print("LEAF is done");
+    agent.println("LEAF is done");
   }
   
   /*
@@ -261,7 +261,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
   public void leaf_HYBRID() {
     agent.startSimulatedTiming();
 
-    agent.print("LEAF is running");
+    agent.println("LEAF is running");
     
     // Sum up all functions to create agentViewFunction
     PiecewiseMultivariateQuadFunction sumFunction = new PiecewiseMultivariateQuadFunction();
@@ -317,7 +317,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
     
     agent.stopSimulatedTiming();
     
-    agent.print(" send utilTable size " + utilTable.size() + " to agent " + agent.getParentAID().getLocalName());
+    agent.println(" send utilTable size " + utilTable.size() + " to agent " + agent.getParentAID().getLocalName());
     agent.sendObjectMessageWithTime(agent.getParentAID(), utilTable, MessageType.DPOP_UTIL, agent.getSimulatedTime());
   }
   
@@ -328,16 +328,16 @@ public class DPOP_UTIL extends OneShotBehaviour {
     // Start of processing 
     agent.startSimulatedTiming();
     
-    agent.print("INTERNAL node is running");
+    agent.println("INTERNAL node is running");
     
-    agent.print("STARTS joining tables from pParent table list");
+    agent.println("STARTS joining tables from pParent table list");
 
     TableDouble joinedTable = dpopTableDoubleList.get(0);
     for (int i = 1; i < dpopTableDoubleList.size(); i++) {
       joinedTable = joinTableDouble(joinedTable, dpopTableDoubleList.get(i));
     }
     
-    agent.print("is DONE joining tables from pParent table list");
+    agent.println("is DONE joining tables from pParent table list");
     
     agent.stopSimulatedTiming();
     
@@ -347,23 +347,23 @@ public class DPOP_UTIL extends OneShotBehaviour {
     agent.startSimulatedTiming();
     
     // After combined, it becomes a unary function
-    agent.print("STARTS joining tables from UTIL message");
+    agent.println("STARTS joining tables from UTIL message");
 
     TableDouble combinedUtilAndConstraintTable = combineMessageTableDouble(receivedUTILmsgList);
     
-    agent.print("is DONE joining tables from UTIL message");
+    agent.println("is DONE joining tables from UTIL message");
 
     combinedUtilAndConstraintTable = joinTableDouble(combinedUtilAndConstraintTable, joinedTable);
     
-    agent.print("finishes joining tables");
+    agent.println("finishes joining tables");
 
     agent.setAgentViewTableDouble(combinedUtilAndConstraintTable);
     
-    agent.print("is projecting table");
+    agent.println("is projecting table");
 
     TableDouble projectedTable = projectOperatorDouble(combinedUtilAndConstraintTable, agent.getLocalName());
     
-    agent.print("finishes projecting table");
+    agent.println("finishes projecting table");
 
     agent.stopSimulatedTiming();
     
@@ -371,18 +371,18 @@ public class DPOP_UTIL extends OneShotBehaviour {
   }
   
   private void internalNode_FUNC() {
-    agent.print("INTERNAL node is running");
+    agent.println("INTERNAL node is running");
     
     agent.startSimulatedTiming();
     
-    agent.print("INTERNAL node STARTS adding functions from dpopFunctionMap");
+    agent.println("INTERNAL node STARTS adding functions from dpopFunctionMap");
     
     PiecewiseMultivariateQuadFunction sumFunction = new PiecewiseMultivariateQuadFunction();
     for (PiecewiseMultivariateQuadFunction pseudoParentFunction : dpopFunctionMap.values()) {
       sumFunction = sumFunction.addPiecewiseFunction(pseudoParentFunction);
     }
     
-    agent.print("INTERNAL node is DONE adding functions from dpopFunctionMap with sumFunction=" + sumFunction);
+    agent.println("INTERNAL node is DONE adding functions from dpopFunctionMap with sumFunction=" + sumFunction);
     
     sumFunction.setOtherAgent();
     
@@ -392,7 +392,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
     
     agent.startSimulatedTiming();
         
-    agent.print("INTERNAL node has received all UTIL messages");
+    agent.println("INTERNAL node has received all UTIL messages");
     
     // UnaryPiecewiseFunction
     // PiecewiseMultivariateQuadFunction combinedFunctionMessage =
@@ -408,13 +408,13 @@ public class DPOP_UTIL extends OneShotBehaviour {
     
     combinedFunctionMessage.setOtherAgent();
 
-    agent.print("INTERNAL node functions counts before joining rewards size=" + combinedFunctionMessage.size() + ": " + combinedFunctionMessage);
+    agent.println("INTERNAL node functions counts before joining rewards size=" + combinedFunctionMessage.size() + ": " + combinedFunctionMessage);
     
     combinedFunctionMessage = combinedFunctionMessage.addPiecewiseFunction(sumFunction);
     
     combinedFunctionMessage.setOtherAgent();
 
-    agent.print("INTERNAL node number of combined function size=" + combinedFunctionMessage.getFunctionMap().size() + ": " + combinedFunctionMessage);
+    agent.println("INTERNAL node number of combined function size=" + combinedFunctionMessage.getFunctionMap().size() + ": " + combinedFunctionMessage);
 
     combinedFunctionMessage.setOwner(agent.getLocalName());
     combinedFunctionMessage.setOtherAgent();
@@ -423,9 +423,9 @@ public class DPOP_UTIL extends OneShotBehaviour {
 
     PiecewiseMultivariateQuadFunction projectedFunction = null;
 
-    agent.print("INTERNAL node number of combined function: " + combinedFunctionMessage.getFunctionMap().size());
+    agent.println("INTERNAL node number of combined function: " + combinedFunctionMessage.getFunctionMap().size());
 
-    agent.print("INTERNAL node STARTS projecting functions");
+    agent.println("INTERNAL node STARTS projecting functions");
     
     if (agent.getDcop_algorithm() == DcopAlgorithm.APPROX_DPOP) {
       projectedFunction = combinedFunctionMessage.approxProject(agent.getNumberOfPoints(), agent.getLocalName(),
@@ -434,9 +434,9 @@ public class DPOP_UTIL extends OneShotBehaviour {
       projectedFunction = combinedFunctionMessage.analyticalProject();
     }
     
-    agent.print("INTERNAL node is DONE projecting functions");
+    agent.println("INTERNAL node is DONE projecting functions");
 
-    agent.print("INTERNAL node number of projected function: " + projectedFunction.getFunctionMap().size());
+    agent.println("INTERNAL node number of projected function: " + projectedFunction.getFunctionMap().size());
 
     agent.stopSimulatedTiming();
 
@@ -470,7 +470,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
   private void internalNode_HYBRID() {    
     agent.startSimulatedTiming();
     
-    agent.print("INTERNAL node is running");
+    agent.println("INTERNAL node is running");
     
     // Sum up all functions to create agentViewFunction
     PiecewiseMultivariateQuadFunction sumFunction = new PiecewiseMultivariateQuadFunction();
@@ -491,36 +491,37 @@ public class DPOP_UTIL extends OneShotBehaviour {
     
     agent.print(" receives the UTIL tables:");
     for (TableDouble table : tableList) {
-      System.out.println(table);
+      System.out.print(table.size() + " ");
     }
+    System.out.println();
     
     // Interpolate points and join all the tables
-    agent.print(" starts interpolating and joining table");
+    agent.println(" starts interpolating and joining table");
     TableDouble joinedTable = interpolateAndJoinTable(tableList, NOT_ADD_POINTS);
-    agent.print(" finishes interpolating and joining table size " + joinedTable.size());
-    agent.print(" joined the table:");
-    agent.print(joinedTable.toString());
+    agent.println(" finishes interpolating and joining table size " + joinedTable.size());
+    agent.println(" joined the table:");
+//    agent.print(joinedTable.toString());
     
-    agent.print(" starts adding functions to the table");
+    agent.println(" starts adding functions to the table");
 
     joinedTable = addTheUtilityFunctionsToTheJoinedTable(joinedTable);
-    agent.print(" finishes adding functions to the table size " + joinedTable.size());
+    agent.println(" finishes adding functions to the table size " + joinedTable.size());
 
     agent.setAgentViewTableDouble(joinedTable);
     
-    agent.print(" has agentViewTable label: " + agent.getAgentViewTableDouble().getDecVarLabel());
+    agent.println(" has agentViewTable label: " + agent.getAgentViewTableDouble().getDecVarLabel());
 
-    agent.print(" starts moving points with joinedTable size: " + joinedTable.size());
+    agent.println(" starts moving points with joinedTable size: " + joinedTable.size());
 
     Set<List<Double>> productPPValues = movingPointsUsingTheGradient(joinedTable, DONE_AT_INTERNAL_NODE);
-    agent.print(" finishes moving points " + productPPValues.size());
+    agent.println(" finishes moving points " + productPPValues.size());
         
-    agent.print(" starts create UTIL tables from values set");
+    agent.println(" starts create UTIL tables from values set");
 
     TableDouble utilTable = createUtilTableFromValueSet(joinedTable, productPPValues);
-    agent.print(" finishes create UTIL tables from values set");
+    agent.println(" finishes create UTIL tables from values set");
 
-    agent.print(" send utilTable size " + utilTable.size() + " to agent " + agent.getParentAID().getLocalName());
+    agent.println(" send utilTable size " + utilTable.size() + " to agent " + agent.getParentAID().getLocalName());
     
     agent.stopSimulatedTiming();
     
@@ -530,9 +531,9 @@ public class DPOP_UTIL extends OneShotBehaviour {
   public void root_FUNC() {
     agent.startSimulatedTiming();
     
-    agent.print("ROOT node is running");
+    agent.println("ROOT node is running");
     
-    agent.print("ROOT node STARTS adding functions from dpopFunctionMap");
+    agent.println("ROOT node STARTS adding functions from dpopFunctionMap");
     
     PiecewiseMultivariateQuadFunction sumFunction = new PiecewiseMultivariateQuadFunction();
     
@@ -540,7 +541,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
       sumFunction = sumFunction.addPiecewiseFunction(pseudoParentFunction);
     }
     
-    agent.print("ROOT node IS DONE adding functions from dpopFunctionMap");
+    agent.println("ROOT node IS DONE adding functions from dpopFunctionMap");
     
     agent.stopSimulatedTiming();
 
@@ -549,7 +550,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
     // Start of processing time
     agent.startSimulatedTiming();
     
-    agent.print("ROOT node STARTS adding functions with functions from message");
+    agent.println("ROOT node STARTS adding functions with functions from message");
     
     PiecewiseMultivariateQuadFunction combinedFunctionMessage = null;
     try {
@@ -564,9 +565,9 @@ public class DPOP_UTIL extends OneShotBehaviour {
 
     combinedFunctionMessage.setOwner(agent.getLocalName());
     
-    agent.print("ROOT node STARTS adding functions with functions from message");
+    agent.println("ROOT node STARTS adding functions with functions from message");
     
-    agent.print("ROOT has final function before computing max and argmax: " + combinedFunctionMessage);
+    agent.println("ROOT has final function before computing max and argmax: " + combinedFunctionMessage);
 
     // choose the maximum
     double argmax = -Double.MAX_VALUE;
@@ -587,8 +588,8 @@ public class DPOP_UTIL extends OneShotBehaviour {
     
     agent.setChosenDoubleValueAtEachTimeStep(currentTimeStep, argmax);
 
-    agent.print("MAX VALUE IS " + max);
-    agent.print("ARGMAX VALUE IS " + argmax);
+    agent.println("MAX VALUE IS " + max);
+    agent.println("ARGMAX VALUE IS " + argmax);
     
     agent.stopSimulatedTiming();
   }
@@ -600,16 +601,16 @@ public class DPOP_UTIL extends OneShotBehaviour {
     // Start of processing 
     agent.startSimulatedTiming();
     
-    agent.print("INTERNAL node is running");
+    agent.println("INTERNAL node is running");
     
-    agent.print("STARTS joining tables from pParent table list");
+    agent.println("STARTS joining tables from pParent table list");
 
     TableDouble joinedTable = dpopTableDoubleList.get(0);
     for (int i = 1; i < dpopTableDoubleList.size(); i++) {
       joinedTable = joinTableDouble(joinedTable, dpopTableDoubleList.get(i));
     }
     
-    agent.print("is DONE joining tables from pParent table list");
+    agent.println("is DONE joining tables from pParent table list");
     
     agent.stopSimulatedTiming();
     
@@ -619,17 +620,17 @@ public class DPOP_UTIL extends OneShotBehaviour {
     agent.startSimulatedTiming();
     
     // After combined, it becomes a unary function
-    agent.print("STARTS joining tables from UTIL message");
+    agent.println("STARTS joining tables from UTIL message");
 
     TableDouble combinedUtilAndConstraintTable = combineMessageTableDouble(receivedUTILmsgList);
     
-    agent.print("is DONE joining tables from UTIL message");
+    agent.println("is DONE joining tables from UTIL message");
 
     combinedUtilAndConstraintTable = joinTableDouble(combinedUtilAndConstraintTable, joinedTable);
     
-    agent.print("finishes joining tables");
+    agent.println("finishes joining tables");
 
-    agent.print("Root is finding max and argmax");
+    agent.println("Root is finding max and argmax");
 
     // pick value with smallest utility
     // since agent 0 is always at the beginning of the row formatted:
@@ -645,9 +646,9 @@ public class DPOP_UTIL extends OneShotBehaviour {
       }
     }
 
-    agent.print("CHOSEN: " + agent.getChosenDoubleValueAtEachTimeStep(currentTimeStep));
+    agent.println("CHOSEN: " + agent.getChosenDoubleValueAtEachTimeStep(currentTimeStep));
 
-    agent.print(agent.getPDDCOP_Algorithm() + " " + agent.getDcop_algorithm() + " utility " + maxUtility);
+    agent.println(agent.getPDDCOP_Algorithm() + " " + agent.getDcop_algorithm() + " utility " + maxUtility);
     
     agent.stopSimulatedTiming();
   }
@@ -656,7 +657,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
    * THIS FUNCTION HAS BEEN REVIEWED
    */
   public void root_HYBRID() {
-    agent.print("ROOT is running");
+    agent.println("ROOT is running");
     
     List<ACLMessage> receivedUTILmsgList = waitingForMessageFromChildrenWithTime(MessageType.DPOP_UTIL);
 
@@ -682,9 +683,9 @@ public class DPOP_UTIL extends OneShotBehaviour {
       }
     }
 
-    agent.print("CHOSEN: " + agent.getChosenDoubleValueAtEachTimeStep(currentTimeStep));
+    agent.println("CHOSEN: " + agent.getChosenDoubleValueAtEachTimeStep(currentTimeStep));
 
-    agent.print(agent.getDcop_algorithm() + " utility " + maxUtility);
+    agent.println(agent.getDcop_algorithm() + " utility " + maxUtility);
 
     agent.stopSimulatedTiming();
   }
@@ -726,10 +727,10 @@ public class DPOP_UTIL extends OneShotBehaviour {
     int maxIteration = flag == DONE_AT_LEAF ? agent.getGradientIteration() : agent.getGradientIteration() / 2;
     
     for (int movingIteration = 0; movingIteration < maxIteration; movingIteration++) {
-      agent.print(" is moving iteration " + movingIteration);
+      agent.println(" is moving iteration " + movingIteration);
       
       for (List<Double> valueList : mutableProductPPValues) {
-        agent.print(" is moving point " + valueList);
+//        agent.print(" is moving point " + valueList);
         
         // For each ppToMove (direction), take the derivative of the utility function
         for (int ppToMoveIndex = 0; ppToMoveIndex < valueList.size(); ppToMoveIndex++) {
@@ -774,17 +775,17 @@ public class DPOP_UTIL extends OneShotBehaviour {
               }
             }
             
-            agent.print("Unary function: " + unaryFunction);
-            agent.print("Max of the function: " + max);
-            agent.print("Argmax of the function: " + argMax);
+//            agent.print("Unary function: " + unaryFunction);
+//            agent.print("Max of the function: " + max);
+//            agent.print("Argmax of the function: " + argMax);
             
           } 
           else if (flag == DONE_AT_INTERNAL_NODE){            
             argMax = agent.getAgentViewTableDouble().maxArgmaxHybrid(valueMapOfOtherVariables, agent.getSelfInterval().getMidPointInHalfIntegerRanges())[1];
             
-            if (agent.isPrinting()) {
-              agent.print("Argmax of the table: " + argMax);
-            }
+//            if (agent.isPrinting()) {
+//              agent.print("Argmax of the table: " + argMax);
+//            }
           }
           
           Map<String, Double> valueMap = new HashMap<>();
@@ -795,12 +796,12 @@ public class DPOP_UTIL extends OneShotBehaviour {
           
           double movedPpValue = ppValueToMove + GRADIENT_SCALING_FACTOR * gradient;
           
-          agent.print("Agent to move:" + ppAgentToMove);
-          agent.print("Unary function is: " + functionWithPP);
-          agent.print("Derivative is: " + derivativePw);
-          agent.print("ppValueToMove " + ppValueToMove);
-          agent.print("Argmax value is: " + argMax);
-          agent.print("Moved value is: " + movedPpValue);
+//          agent.print("Agent to move:" + ppAgentToMove);
+//          agent.print("Unary function is: " + functionWithPP);
+//          agent.print("Derivative is: " + derivativePw);
+//          agent.print("ppValueToMove " + ppValueToMove);
+//          agent.print("Argmax value is: " + argMax);
+//          agent.print("Moved value is: " + movedPpValue);
         
           // only move if the new point is within the interval
           if (agent.getSelfInterval().contains(movedPpValue)) {         
@@ -955,25 +956,25 @@ public class DPOP_UTIL extends OneShotBehaviour {
     }
 
     if (agent.isLeaf()) {
-      agent.print("Leaf is running");
+      agent.println("Leaf is running");
       leafDoUtilProcess();
-      agent.print("Leaf is done");
+      agent.println("Leaf is done");
     } else if (agent.isRoot()) {
-      agent.print("Root is running");
+      agent.println("Root is running");
       try {
         rootDoUtilProcess();
       } catch (UnreadableException e) {
         e.printStackTrace();
       }
-      agent.print("Root is done");
+      agent.println("Root is done");
     } else {
-      agent.print("Internal node is running");
+      agent.println("Internal node is running");
       try {
         internalNodeDoUtilProcess();
       } catch (UnreadableException e) {
         e.printStackTrace();
       }
-      agent.print("Internal node is done");
+      agent.println("Internal node is done");
     }
   
 	}
@@ -1141,7 +1142,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
 
 		String chosenValue = "";
 
-		agent.print("Root has combinedTable=" + combinedTable);
+		agent.println("Root has combinedTable=" + combinedTable);
 
 		for (RowString row : combinedTable.getRowList()) {
 			if (Double.compare(row.getUtility(), maxUtility) > 0) {
@@ -1150,8 +1151,8 @@ public class DPOP_UTIL extends OneShotBehaviour {
 			}
 		}
 
-		agent.print("Root has chosen value " + chosenValue);
-		agent.print("Root has chosen utility " + maxUtility);
+		agent.println("Root has chosen value " + chosenValue);
+		agent.println("Root has chosen utility " + maxUtility);
 
 		agent.storeDpopSolution(chosenValue, currentTimeStep);
 		if (agent.isRunningPddcopAlgorithm(PDDcopAlgorithm.C_DCOP)) {
@@ -1862,7 +1863,7 @@ public class DPOP_UTIL extends OneShotBehaviour {
     /*
      * Traverse every table => create the map <Agent, Set<Double>>
      */
-    agent.print("start creatings value map from All table");
+    agent.println("start creatings value map from All table");
     for (TableDouble utilTable : tableList) { 
       for (String commonAgent : commonVariables) {
         Set<Double> valueSetOtherTableGivenAgent = utilTable.getValueSetOfGivenAgent(commonAgent, false);
@@ -1878,16 +1879,16 @@ public class DPOP_UTIL extends OneShotBehaviour {
         }
       }
     }
-    agent.print("Agent finishes creatings value map from all table");
+    agent.println("Agent finishes creatings value map from all table");
     
     /*
      * For each table => do the interpolation and add them to the list
      */
-    agent.print(" start interpolating tables");
+    agent.println(" start interpolating tables");
     for (TableDouble utilTable : tableList) {
       interpolatedRowSetOfEachTable.put(utilTable, utilTable.interpolateGivenValueSetMap(valueFromAllTableMap, 1));
     }
-    agent.print("finishes interpolating tables");
+    agent.println("finishes interpolating tables");
 
     
     // Add the interpolated row to the corresponding table
@@ -1895,13 +1896,13 @@ public class DPOP_UTIL extends OneShotBehaviour {
       entry.getKey().addRows(entry.getValue());
     }
     
-    agent.print("start joining tables");
+    agent.println("start joining tables");
     // Now joining all the tables
     TableDouble joinedTable = null;
     for (TableDouble table : interpolatedRowSetOfEachTable.keySet()) {
       joinedTable = joinTableDouble(joinedTable, table);
     }
-    agent.print("finishes joining tables");
+    agent.println("finishes joining tables");
     
     return joinedTable;
   

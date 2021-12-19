@@ -31,7 +31,7 @@ public class SEND_RECEIVE_FINAL_VALUE_CONTINUOUS extends OneShotBehaviour {
   @Override
   public void action() {
     
-    agent.print("SEND_RECEIVE_FINAL_VALUE_CONTINUOUS");
+    agent.println("SEND_RECEIVE_FINAL_VALUE_CONTINUOUS");
     
     for (AID neighborAgentAID : agent.getNeighborAIDSet()) {
       agent.sendObjectMessageWithTime(neighborAgentAID, agent.getChosenDoubleValueAtEachTSMap(),

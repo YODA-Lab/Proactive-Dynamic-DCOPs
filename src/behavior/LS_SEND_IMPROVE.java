@@ -25,6 +25,6 @@ public class LS_SEND_IMPROVE extends OneShotBehaviour {
 	@Override
 	public void action() {
 		agent.sendImprove(lastTimeStep);
-    agent.print("is done SEND_IMPROVE at iteration: " + localTimeStep);
+    agent.println("is done SEND_IMPROVE at iteration: " + localTimeStep);
 	}
 }

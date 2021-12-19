@@ -63,7 +63,7 @@ public class LS_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour {
       agent.setLocalSearchRuntime(localTimeStep, agent.getSimulatedTime());
 		}
 				
-    agent.print("is done LS_RECEIVE_SEND_LS_UTIL at iteration: " + localTimeStep);
+    agent.println("is done LS_RECEIVE_SEND_LS_UTIL at iteration: " + localTimeStep);
 		
 		if (localTimeStep == MAX_ITERATION && agent.isRoot()) {
 		  Utilities.writeLocalSearchResult(agent);

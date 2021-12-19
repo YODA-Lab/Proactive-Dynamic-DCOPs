@@ -99,7 +99,7 @@ public class MAXSUM_FUNCTION_TO_VARIABLE extends OneShotBehaviour {
     waiting_store_FUNC_TO_VAR_message_with_time(MessageType.FUNC_TO_VAR);
     
     double bestValue = calculateTheBestValue();
-    agent.print(" at iteration " + iteration + " choose the best value: " + bestValue);
+    agent.println(" at iteration " + iteration + " choose the best value: " + bestValue);
     
     setCurrentValue(bestValue);
   }

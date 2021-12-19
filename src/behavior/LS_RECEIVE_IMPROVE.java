@@ -68,14 +68,14 @@ public class LS_RECEIVE_IMPROVE extends OneShotBehaviour {
     for (int index = 0; index <= lastTimeStep; index++) {
 			String improvedValue = agent.getBestImproveValueMap().get(index);
 			if (improvedValue != null) {
-				agent.print("has improvedValue at timestep=" + index + " is: " + improvedValue);
+				agent.println("has improvedValue at timestep=" + index + " is: " + improvedValue);
 				agent.setValueAtTimeStep(index, improvedValue);
 			}
 		}
 		
     agent.stopSimulatedTiming();
 		
-    agent.print("is done RECEIVE_IMPROVE at iteration = " + localTimeStep);
+    agent.println("is done RECEIVE_IMPROVE at iteration = " + localTimeStep);
 	}
 	
   private List<ACLMessage> waitingForMessageFromNeighborWithTime(MessageType msgType) {

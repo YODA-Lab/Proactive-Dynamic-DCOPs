@@ -63,7 +63,7 @@ public class GD_RECEIVE_SEND_LS_UTIL extends OneShotBehaviour {
       agent.setLocalSearchRuntime(iteration, agent.getSimulatedTime());
     }
         
-    agent.print("is done LS_RECEIVE_SEND_LS_UTIL at iteration: " + iteration);
+    agent.println("is done LS_RECEIVE_SEND_LS_UTIL at iteration: " + iteration);
     
     if (iteration == MAX_ITERATION && agent.isRoot()) {
       Utilities.writeLocalSearchResult(agent);

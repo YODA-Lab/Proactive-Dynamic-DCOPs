@@ -219,7 +219,7 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
    *  Add those messages up and modify the values accordingly
    */
   private void modifyMSValuesUsingGradient() { 
-    agent.print("Before moving MS values: " + agent.getCurrentDiscreteValues(currentTimeStep));
+    agent.println("Before moving MS values: " + agent.getCurrentDiscreteValues(currentTimeStep));
     
     double scalingFactor = GRADIENT_SCALING_FACTOR;
     
@@ -269,7 +269,7 @@ public class MAXSUM_VARIABLE_TO_FUNCTION extends OneShotBehaviour {
     
     agent.setCurrentDiscreteValues(currentTimeStep, newValueSet);
            
-    agent.print("After moving MS values: " + agent.getCurrentDiscreteValues(currentTimeStep));
+    agent.println("After moving MS values: " + agent.getCurrentDiscreteValues(currentTimeStep));
   }
 
   private void waiting_store_VAR_TO_FUNC_message_with_time(MessageType msgType) {

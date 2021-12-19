@@ -93,7 +93,7 @@ public class Utilities {
 						long totalWastedRuntime = agent.getMGMdifferenceRuntimeMap().values().stream()
 								.mapToLong(Long::longValue).sum();
 						sb.append((runtime - totalWastedRuntime) / 1000000 + "\t");
-						agent.print("getMGMdifferenceRuntimeMap=" + agent.getMGMdifferenceRuntimeMap());
+						agent.println("getMGMdifferenceRuntimeMap=" + agent.getMGMdifferenceRuntimeMap());
 					} else {
 						sb.append(agent.getLocalSearchRuntimeMap().get(i) / 1000000 + "\t");
 					}
@@ -107,7 +107,7 @@ public class Utilities {
 				long totalWastedRuntime = agent.getMGMdifferenceRuntimeMap().values().stream()
 						.mapToLong(Long::longValue).sum();
 				sb.append((runtime - totalWastedRuntime) / 1000000 + "\t");
-				agent.print("getMGMdifferenceRuntimeMap=" + agent.getMGMdifferenceRuntimeMap());
+				agent.println("getMGMdifferenceRuntimeMap=" + agent.getMGMdifferenceRuntimeMap());
 			} else {
 				sb.append(agent.getFinalRuntime() / 1000000 + "\t");
 			}

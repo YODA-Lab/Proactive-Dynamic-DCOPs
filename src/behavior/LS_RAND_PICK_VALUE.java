@@ -32,7 +32,7 @@ public class LS_RAND_PICK_VALUE extends OneShotBehaviour {
       agent.getChosenValueAtEachTSMap().put(ts, domain.get(agent.getRandomGenerator().nextInt(domain.size())));
     }
 
-    agent.print("Chosen random values=" + agent.getChosenValueAtEachTSMap());
+    agent.println("Chosen random values=" + agent.getChosenValueAtEachTSMap());
 
     agent.stopSimulatedTiming();
   }

@@ -39,7 +39,7 @@ public class MGM_RAND_PICK_VALUE extends OneShotBehaviour {
     
     agent.getChosenValueAtEachTSMap().put(currentTimeStep, domain.get(agent.getRandomGenerator().nextInt(domain.size())));
     
-    agent.print("choose random value at time step " + currentTimeStep + ": " + agent.getChosenValueAtEachTSMap().get(currentTimeStep));
+    agent.println("choose random value at time step " + currentTimeStep + ": " + agent.getChosenValueAtEachTSMap().get(currentTimeStep));
     
     // Compute expected table for the DCOP at this time step
     agent.getMgmTableList().clear();

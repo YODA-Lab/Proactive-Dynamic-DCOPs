@@ -452,16 +452,16 @@ public class AgentPDDCOP extends Agent {
 		setOutputFileName();
 
 		if (isRoot) {
-			print("AgentID = " + agentID);
-			print("PDDCOP Algorithm = " + pddcop_algorithm);
-			print("DCOP Algorithm = " + dcop_algorithm);
-			print("Input file name = " + inputFileName);
-			print("InstanceID = " + instanceID);
-			print("Switching cost = " + switchingCost);
-			print("Discount factor = " + discountFactor);
-			print("Horizon = " + horizon);
-			print("Heuristic weight = " + heuristicWeight);
-			print("Max iteration=" + MAX_ITERATION);
+			println("AgentID = " + agentID);
+			println("PDDCOP Algorithm = " + pddcop_algorithm);
+			println("DCOP Algorithm = " + dcop_algorithm);
+			println("Input file name = " + inputFileName);
+			println("InstanceID = " + instanceID);
+			println("Switching cost = " + switchingCost);
+			println("Discount factor = " + discountFactor);
+			println("Horizon = " + horizon);
+			println("Heuristic weight = " + heuristicWeight);
+			println("Max iteration=" + MAX_ITERATION);
 		}
 
 		registerWithDF();
@@ -469,12 +469,12 @@ public class AgentPDDCOP extends Agent {
 		bean.setThreadContentionMonitoringEnabled(true);
 		
 		if (isContinuous()) {
-		  print("decisionVariableIntervalMap=" + decisionVariableIntervalMap);
-		  print("randomVariableIntervalMap=" + randomVariableIntervalMap);
-		  print("functionMap=" + neighborFunctionMap);
-		  print("neighborSetMap=" + neighborSetMap);
-		  print("initialDistributionMap=" + initialDistributionMap);
-		  print("transitionDistributionFamily=" + transitionDistributionFamilyMap);
+		  println("decisionVariableIntervalMap=" + decisionVariableIntervalMap);
+		  println("randomVariableIntervalMap=" + randomVariableIntervalMap);
+		  println("functionMap=" + neighborFunctionMap);
+		  println("neighborSetMap=" + neighborSetMap);
+		  println("initialDistributionMap=" + initialDistributionMap);
+		  println("transitionDistributionFamily=" + transitionDistributionFamilyMap);
 		}
 
 		SequentialBehaviour mainSequentialBehaviourList = isDiscrete() ? computeBehaviorDiscrete() : computeBehaviorContinuous();
@@ -621,10 +621,10 @@ public class AgentPDDCOP extends Agent {
       }
     }
     
-    print("pickedRandomMap=" + pickedRandomMap);
-    print("probabilityAtEachTimeStepMap=");
+    println("pickedRandomMap=" + pickedRandomMap);
+    println("probabilityAtEachTimeStepMap=");
     for (Entry<String, double[][]> entry : probabilityAtEachTimeStepMap.entrySet()) {
-      print(entry.getKey() + "=" + Arrays.deepToString(entry.getValue()));
+      println(entry.getKey() + "=" + Arrays.deepToString(entry.getValue()));
     }
 	  
 	  SequentialBehaviour mainSequentialBehaviourList = new SequentialBehaviour();
@@ -905,7 +905,7 @@ public class AgentPDDCOP extends Agent {
 	protected void takeDown() {
 //		print("Agent " + agentID + " with threadID " + Thread.currentThread().getId()
 //				+ " has SIMULATED TIME: " + simulatedTime / 1000000 + "ms");
-		print("terminated");
+		println("terminated");
 		try {
 			DFService.deregister(this);
 		} catch (FIPAException e) {
@@ -1345,7 +1345,7 @@ public class AgentPDDCOP extends Agent {
 		message.addReceiver(receiver);
 		send(message);
 
-		print("send message " + content + " to agent " + receiver.getLocalName());
+		println("send message " + content + " to agent " + receiver.getLocalName());
 	}
 
 	public void sendStringMessage(AID receiver, String content, MessageType msgType) {
@@ -1356,7 +1356,7 @@ public class AgentPDDCOP extends Agent {
 		message.addReceiver(receiver);
 		send(message);
 
-		print("sends message type " + msgType.toString() + " to agent " + receiver.getLocalName() + ": "
+		println("sends message type " + msgType.toString() + " to agent " + receiver.getLocalName() + ": "
 				+ content);
 	}
 
@@ -1374,19 +1374,19 @@ public class AgentPDDCOP extends Agent {
 		send(message);
 
 		if (msgType != MessageType.DPOP_UTIL) {
-			print("sends message type " + msgType.toString() + " to agent " + receiver.getLocalName()
+			println("sends message type " + msgType.toString() + " to agent " + receiver.getLocalName()
 					+ ": " + content);
 		} else {
-			print("sends message type " + msgType.toString() + " to agent " + receiver.getLocalName());
+			println("sends message type " + msgType.toString() + " to agent " + receiver.getLocalName());
 		}
 	}
 
 	public void printTree() {
-		print("************");
-		print("My ID is: " + agentID);
+		println("************");
+		println("My ID is: " + agentID);
 		if (!isRoot)
-			print("My parent is: " + parentAID.getLocalName());
-		print("My children are: ");
+			println("My parent is: " + parentAID.getLocalName());
+		println("My children are: ");
 
 		for (AID children : childrenAIDSet) {
 			System.out.print(children.getLocalName() + " ");
@@ -1394,14 +1394,14 @@ public class AgentPDDCOP extends Agent {
 
 		print();
 
-		print("My pseudo_parents are: ");
+		println("My pseudo_parents are: ");
 
 		for (AID pseudoParent : pseudoParentAIDSet) {
 			System.out.print(pseudoParent.getLocalName() + " ");
 		}
 		print();
 
-		print("My pseudo_children are: ");
+		println("My pseudo_children are: ");
 		for (AID pseudoChild : pseudoChildrenAIDSet) {
 			System.out.print(pseudoChild.getLocalName() + " ");
 		}
@@ -1494,7 +1494,7 @@ public class AgentPDDCOP extends Agent {
           String[] termStrList = rightHandSide.split(" ");
           String[] functionParamters = parseFunction(termStrList, getLocalName(), neighborAgent);
 
-          print("functionParamters=" + Arrays.deepToString(functionParamters));
+          println("functionParamters=" + Arrays.deepToString(functionParamters));
 
           MultivariateQuadFunction func = new MultivariateQuadFunction(functionParamters, getLocalName(), neighborAgent);
 
@@ -1578,7 +1578,7 @@ public class AgentPDDCOP extends Agent {
         }
       }
       
-      print("MSFunctionMapIOwn=" + MSFunctionOwnedByMeMap);
+      println("MSFunctionMapIOwn=" + MSFunctionOwnedByMeMap);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -3220,13 +3220,17 @@ public class AgentPDDCOP extends Agent {
 
 	public void print(String s, String agentID) {
 		if (agentID.equals(this.agentID)) {
-			print(s);
+			println(s);
 		}
 	}
 
-	public void print(String s) {
+	public void println(String s) {
 		System.out.println("Agent " + getLocalName() + " " + s);
 	}
+	
+  public void print(String s) {
+    System.out.print("Agent " + getLocalName() + " " + s);
+  }
 	
 	public void debug(String s) {
 	  System.err.println("Agent " + getLocalName() + " DEBUG " + s);

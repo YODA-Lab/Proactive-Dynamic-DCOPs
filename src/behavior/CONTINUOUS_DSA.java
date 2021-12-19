@@ -91,15 +91,15 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
     if (Double.compare(chosenValue, getCurrentValue()) != 0) {
       if (Double.compare(new Random().nextDouble(), DSA_PROBABILITY) <= 0) {
         setCurrentValue(chosenValue);
-        agent.print("Iteration " + localSearchIteration + " changes to a better value " + chosenValue);
+        agent.println("Iteration " + localSearchIteration + " changes to a better value " + chosenValue);
       } else {
-        agent.print("Iteration " + localSearchIteration + " could change to a better value " + chosenValue
+        agent.println("Iteration " + localSearchIteration + " could change to a better value " + chosenValue
             + ", but it decides to remain the value " + getCurrentValue());
       }
     } 
     // Can't find better value
     else {
-      agent.print("Iteration " + localSearchIteration + " doesn't find a better value and remains " + getCurrentValue());
+      agent.println("Iteration " + localSearchIteration + " doesn't find a better value and remains " + getCurrentValue());
     }
     
     agent.stopSimulatedTiming();
@@ -141,7 +141,7 @@ public class CONTINUOUS_DSA extends OneShotBehaviour {
             agent.setSimulatedTime(timeFromReceiveMessage);
           }
           
-          agent.print("Iteration " + localSearchIteration + " receives " + receivedMessage.getContentObject() + " from "
+          agent.println("Iteration " + localSearchIteration + " receives " + receivedMessage.getContentObject() + " from "
               + receivedMessage.getSender().getLocalName());
 
         } catch (UnreadableException e) {

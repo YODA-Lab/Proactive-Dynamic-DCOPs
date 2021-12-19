@@ -89,7 +89,7 @@ public class DPOP_VALUE extends OneShotBehaviour {
    * The simulated processing time is ignore here because of lightweight operations.
    */
   private void rootSendChosenValueWithTime(int timeStep) {    
-    agent.print("Choose value " + getValue(timeStep));
+    agent.println("Choose value " + getValue(timeStep));
 
     agent.addDoubleValuesToSendInVALUEPhase(agent.getLocalName(), getValue(timeStep));
     
@@ -335,7 +335,7 @@ public class DPOP_VALUE extends OneShotBehaviour {
       }
     }
 
-    agent.print("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap().values());
+    agent.println("Chosen value across time steps: " + agent.getChosenValueAtEachTSMap().values());
   }
 
   private ACLMessage waitingForMessageFromParent(MessageType msgType) {
