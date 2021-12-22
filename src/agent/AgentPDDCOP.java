@@ -468,14 +468,14 @@ public class AgentPDDCOP extends Agent {
 		bean = ManagementFactory.getThreadMXBean();
 		bean.setThreadContentionMonitoringEnabled(true);
 		
-		if (isContinuous()) {
-		  println("decisionVariableIntervalMap=" + decisionVariableIntervalMap);
-		  println("randomVariableIntervalMap=" + randomVariableIntervalMap);
-		  println("functionMap=" + neighborFunctionMap);
-		  println("neighborSetMap=" + neighborSetMap);
-		  println("initialDistributionMap=" + initialDistributionMap);
-		  println("transitionDistributionFamily=" + transitionDistributionFamilyMap);
-		}
+//		if (isContinuous()) {
+//		  println("decisionVariableIntervalMap=" + decisionVariableIntervalMap);
+//		  println("randomVariableIntervalMap=" + randomVariableIntervalMap);
+//		  println("functionMap=" + neighborFunctionMap);
+//		  println("neighborSetMap=" + neighborSetMap);
+//		  println("initialDistributionMap=" + initialDistributionMap);
+//		  println("transitionDistributionFamily=" + transitionDistributionFamilyMap);
+//		}
 
 		SequentialBehaviour mainSequentialBehaviourList = isDiscrete() ? computeBehaviorDiscrete() : computeBehaviorContinuous();
 		addBehaviour(mainSequentialBehaviourList);

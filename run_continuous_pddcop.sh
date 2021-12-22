@@ -6,11 +6,11 @@ pddcop_algorithm_list="FORWARD BACKWARD"
 # java -jar build/ND-DCOP-1.0-jar-with-dependencies.jar $LS_RAND rep_0_d5.dzn 10 15 0.9 FINITE_HORIZON 0.3
 topology="random_graph" # random_graph, random_tree, meeting
 jar_file="target/ND-DCOP-1.0-jar-with-dependencies.jar"
-dx=100
-dy=100
+dx=10
+dy=10
 discount_factor=0.9
 gradientIteration=20
-numberOfPoints=5
+numberOfPoints=3
 dcopType=CONTINUOUS
 
 clear
