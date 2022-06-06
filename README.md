@@ -1,6 +1,8 @@
 # PD-DCOP
 
-The source code for PD-DCOP model is on `master` branch. The source code for DC-DCOP model is on `continuous_pddcop` branch.
+The source code for PD-DCOP model is on `master` branch. 
+
+The source code for DC-DCOP model is on `continuous_pddcop` branch.
 
 ## 1. To compile:
 mvn install
